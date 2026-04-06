@@ -69,6 +69,7 @@ export default function PropostaForm() {
         cliente_contato: existing.cliente_contato ?? "",
         indicador: existing.indicador ?? "",
         observacoes: existing.observacoes ?? "",
+        empresa: (existing as any).empresa ?? "",
       });
     }
   }, [existing]);
