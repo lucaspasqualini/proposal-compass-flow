@@ -94,7 +94,13 @@ export default function Projetos() {
                 {filtered?.map((p) => (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projetos/${p.id}`)}>
                     <TableCell className="font-medium">{p.title}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
+                      {(p.clients as any)?.name ? (
+                        <Link to={`/clientes/${p.client_id}`} className="text-primary hover:underline">
+                          {(p.clients as any).name}
+                        </Link>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.budget))}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={projectStatusColors[p.status]}>
