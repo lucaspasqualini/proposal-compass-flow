@@ -397,6 +397,34 @@ export default function PropostaForm() {
         <Button onClick={handleSave} disabled={createProposal.isPending || updateProposal.isPending}>
           {isEdit ? "Salvar" : "Criar Proposta"}
         </Button>
+        {isEdit && (
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const clientName = selectedClient?.name || "Cliente";
+              try {
+                await generateProposalPptx({
+                  proposal_number: existing?.proposal_number || form.title,
+                  title: form.title,
+                  client_name: clientName,
+                  description: form.description ?? null,
+                  scope: form.scope ?? null,
+                  value: form.value ?? null,
+                  parcelas: parcelas,
+                  payment_type: form.payment_type ?? null,
+                  data_envio: form.data_envio ?? null,
+                  empresa: form.empresa ?? null,
+                  tipo_projeto: form.tipo_projeto ?? null,
+                });
+                toast({ title: "PPT gerado com sucesso!" });
+              } catch {
+                toast({ title: "Erro ao gerar PPT", variant: "destructive" });
+              }
+            }}
+          >
+            <FileDown className="h-4 w-4 mr-1" /> Gerar PPT
+          </Button>
+        )}
         <Button variant="outline" onClick={() => navigate("/propostas")}>Cancelar</Button>
       </div>
 
