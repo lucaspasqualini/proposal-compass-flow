@@ -147,16 +147,13 @@ export default function Propostas() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort("proposal_number")}>
-                      <span className="flex items-center">Código <SortIcon col="proposal_number" /></span>
+                      <span className="flex items-center">Nº do Projeto <SortIcon col="proposal_number" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("title")}>
-                      <span className="flex items-center">Título <SortIcon col="title" /></span>
+                      <span className="flex items-center">Nome do Projeto <SortIcon col="title" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("tipo_projeto")}>
                       <span className="flex items-center">Tipo <SortIcon col="tipo_projeto" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort("empresa")}>
-                      <span className="flex items-center">Empresa <SortIcon col="empresa" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort("client")}>
                       <span className="flex items-center">Cliente <SortIcon col="client" /></span>
@@ -167,8 +164,11 @@ export default function Propostas() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("status")}>
                       <span className="flex items-center">Status <SortIcon col="status" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("created_at")}>
-                      <span className="flex items-center">Data <SortIcon col="created_at" /></span>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("data_envio")}>
+                      <span className="flex items-center">Data de Envio <SortIcon col="data_envio" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("data_aprovacao")}>
+                      <span className="flex items-center">Data de Aprovação <SortIcon col="data_aprovacao" /></span>
                     </TableHead>
                     <TableHead className="w-24">Ações</TableHead>
                   </TableRow>
