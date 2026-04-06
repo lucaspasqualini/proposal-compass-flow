@@ -27,8 +27,12 @@ const STATUS_MAP: Record<string, string> = {
   enviada: "enviada",
   "em análise": "em_analise",
   "em analise": "em_analise",
+  "em negociação": "em_negociacao",
+  "em negociacao": "em_negociacao",
   aprovada: "aprovada",
+  ganha: "ganha",
   rejeitada: "rejeitada",
+  perdida: "perdida",
 };
 
 function parseDate(val: any): string | null {
