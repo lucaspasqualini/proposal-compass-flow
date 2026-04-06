@@ -13,7 +13,7 @@ import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors 
 import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import ImportProposals from "@/components/ImportProposals";
 
-type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "created_at" | "empresa" | "tipo_projeto";
+type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
 export default function Propostas() {
@@ -24,7 +24,7 @@ export default function Propostas() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const toggleSort = (key: SortKey) => {
@@ -63,8 +63,8 @@ export default function Propostas() {
         case "client": va = (a.clients as any)?.name ?? ""; vb = (b.clients as any)?.name ?? ""; break;
         case "value": va = Number(a.value) || 0; vb = Number(b.value) || 0; break;
         case "status": va = a.status; vb = b.status; break;
-        case "created_at": va = a.created_at; vb = b.created_at; break;
-        case "empresa": va = (a as any).empresa ?? ""; vb = (b as any).empresa ?? ""; break;
+        case "data_envio": va = (a as any).data_envio ?? ""; vb = (b as any).data_envio ?? ""; break;
+        case "data_aprovacao": va = (a as any).data_aprovacao ?? ""; vb = (b as any).data_aprovacao ?? ""; break;
         case "tipo_projeto": va = (a as any).tipo_projeto ?? ""; vb = (b as any).tipo_projeto ?? ""; break;
         default: va = ""; vb = "";
       }
@@ -147,16 +147,13 @@ export default function Propostas() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort("proposal_number")}>
-                      <span className="flex items-center">Código <SortIcon col="proposal_number" /></span>
+                      <span className="flex items-center">Nº do Projeto <SortIcon col="proposal_number" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("title")}>
-                      <span className="flex items-center">Título <SortIcon col="title" /></span>
+                      <span className="flex items-center">Nome do Projeto <SortIcon col="title" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("tipo_projeto")}>
                       <span className="flex items-center">Tipo <SortIcon col="tipo_projeto" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort("empresa")}>
-                      <span className="flex items-center">Empresa <SortIcon col="empresa" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort("client")}>
                       <span className="flex items-center">Cliente <SortIcon col="client" /></span>
@@ -167,8 +164,11 @@ export default function Propostas() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("status")}>
                       <span className="flex items-center">Status <SortIcon col="status" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("created_at")}>
-                      <span className="flex items-center">Data <SortIcon col="created_at" /></span>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("data_envio")}>
+                      <span className="flex items-center">Data de Envio <SortIcon col="data_envio" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("data_aprovacao")}>
+                      <span className="flex items-center">Data de Aprovação <SortIcon col="data_aprovacao" /></span>
                     </TableHead>
                     <TableHead className="w-24">Ações</TableHead>
                   </TableRow>
@@ -176,7 +176,7 @@ export default function Propostas() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                         Nenhuma proposta encontrada
                       </TableCell>
                     </TableRow>
@@ -186,7 +186,6 @@ export default function Propostas() {
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{(p as any).tipo_projeto || "—"}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm">{(p as any).empresa || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
                       <TableCell>
@@ -194,7 +193,8 @@ export default function Propostas() {
                           {proposalStatusLabels[p.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{formatDate(p.created_at)}</TableCell>
+                      <TableCell className="hidden md:table-cell">{(p as any).data_envio ? formatDate((p as any).data_envio) : "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{(p as any).data_aprovacao ? formatDate((p as any).data_aprovacao) : "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
