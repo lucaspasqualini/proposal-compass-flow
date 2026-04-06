@@ -164,6 +164,10 @@ export default function Propostas() {
             ))}
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2">
+          <Checkbox id="hide-perdida" checked={hidePerdida} onCheckedChange={(v) => setHidePerdida(!!v)} />
+          <label htmlFor="hide-perdida" className="text-sm text-muted-foreground cursor-pointer select-none">Ocultar perdidas</label>
+        </div>
       </div>
 
       <Card>
