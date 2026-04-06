@@ -26,13 +26,9 @@ export const projectStatusLabels: Record<string, string> = {
 };
 
 export const proposalStatusColors: Record<string, string> = {
-  rascunho: "bg-muted text-muted-foreground",
-  enviada: "bg-info/10 text-info",
-  em_analise: "bg-warning/10 text-warning",
+  em_elaboracao: "bg-muted text-muted-foreground",
   em_negociacao: "bg-warning/10 text-warning",
-  aprovada: "bg-success/10 text-success",
   ganha: "bg-success/10 text-success",
-  rejeitada: "bg-destructive/10 text-destructive",
   perdida: "bg-destructive/10 text-destructive",
 };
 

@@ -52,7 +52,7 @@ export function useClientsWithStats() {
       return (clients ?? []).map((c): ClientWithStats => {
         const cp = proposalsByClient.get(c.id) ?? [];
         const wonValues = cp
-          .filter((p) => p.status === "ganha" || p.status === "aprovada")
+          .filter((p) => p.status === "ganha")
           .reduce((sum, p) => sum + (Number(p.value) || 0), 0);
         const totalValue = cp.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
         const dates = cp.map((p) => p.created_at).sort();

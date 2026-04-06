@@ -79,7 +79,7 @@ export default function ClienteDetail() {
     return <div className="p-8 text-center text-muted-foreground">Cliente não encontrado</div>;
   }
 
-  const wonProposals = proposals.filter((p) => p.status === "ganha" || p.status === "aprovada");
+  const wonProposals = proposals.filter((p) => p.status === "ganha");
   const totalValue = proposals.reduce((s, p) => s + (Number(p.value) || 0), 0);
   const wonValue = wonProposals.reduce((s, p) => s + (Number(p.value) || 0), 0);
   const conversionRate = proposals.length > 0 ? Math.round((wonProposals.length / proposals.length) * 100) : 0;

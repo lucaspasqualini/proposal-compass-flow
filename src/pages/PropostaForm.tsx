@@ -142,7 +142,7 @@ export default function PropostaForm() {
         await updateProposal.mutateAsync({ id: id!, ...payload });
         toast({ title: "Proposta atualizada" });
 
-        if (form.status === "aprovada" && oldStatus !== "aprovada") {
+        if (form.status === "ganha" && oldStatus !== "ganha") {
           try {
             await createProject.mutateAsync({
               title: form.title,
