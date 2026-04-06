@@ -138,6 +138,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_date: string | null
+          etapa: string | null
           id: string
           proposal_id: string | null
           start_date: string | null
@@ -151,6 +152,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          etapa?: string | null
           id?: string
           proposal_id?: string | null
           start_date?: string | null
@@ -164,6 +166,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          etapa?: string | null
           id?: string
           proposal_id?: string | null
           start_date?: string | null
@@ -319,11 +322,10 @@ export type Database = {
     }
     Enums: {
       project_status:
-        | "planejamento"
         | "em_andamento"
-        | "pausado"
-        | "concluido"
-        | "cancelado"
+        | "em_pausa"
+        | "aguardando_retorno"
+        | "finalizado"
       proposal_status: "em_elaboracao" | "em_negociacao" | "ganha" | "perdida"
     }
     CompositeTypes: {
@@ -453,11 +455,10 @@ export const Constants = {
   public: {
     Enums: {
       project_status: [
-        "planejamento",
         "em_andamento",
-        "pausado",
-        "concluido",
-        "cancelado",
+        "em_pausa",
+        "aguardando_retorno",
+        "finalizado",
       ],
       proposal_status: ["em_elaboracao", "em_negociacao", "ganha", "perdida"],
     },
