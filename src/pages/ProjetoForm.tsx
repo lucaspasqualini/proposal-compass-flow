@@ -32,7 +32,7 @@ export default function ProjetoForm() {
     client_id: null,
     proposal_id: null,
     description: "",
-    status: "planejamento",
+    status: "em_andamento",
     start_date: null,
     end_date: null,
     budget: null,
