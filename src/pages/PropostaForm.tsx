@@ -50,7 +50,7 @@ export default function PropostaForm() {
     data_envio: null,
     data_aprovacao: null,
     data_fup: null,
-    cliente_contato: "",
+    cliente_contato: null,
     indicador: "",
     observacoes: "",
     empresa: "",
