@@ -75,6 +75,7 @@ export default function Propostas() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Código</TableHead>
                   <TableHead>Título</TableHead>
                   <TableHead className="hidden sm:table-cell">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Valor</TableHead>
