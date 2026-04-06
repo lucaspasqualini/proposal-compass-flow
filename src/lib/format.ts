@@ -15,8 +15,11 @@ export const proposalStatusLabels: Record<string, string> = {
   rascunho: "Rascunho",
   enviada: "Enviada",
   em_analise: "Em Análise",
+  em_negociacao: "Em Negociação",
   aprovada: "Aprovada",
+  ganha: "Ganha",
   rejeitada: "Rejeitada",
+  perdida: "Perdida",
 };
 
 export const projectStatusLabels: Record<string, string> = {
