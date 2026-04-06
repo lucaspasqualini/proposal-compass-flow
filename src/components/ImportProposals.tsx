@@ -140,6 +140,7 @@ export default function ImportProposals() {
       cliente_contato: r.cliente_contato || null,
       indicador: r.indicador || null,
       observacoes: r.observacoes || null,
+      empresa: r.empresa || null,
     }));
 
     const { error: insertError } = await supabase.from("proposals").insert(inserts);
