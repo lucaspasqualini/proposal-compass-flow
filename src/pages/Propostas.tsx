@@ -94,6 +94,7 @@ export default function Propostas() {
                 )}
                 {filtered?.map((p) => (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/propostas/${p.id}`)}>
+                    <TableCell className="text-xs text-muted-foreground font-mono">{(p as any).proposal_number || "—"}</TableCell>
                     <TableCell className="font-medium">{p.title}</TableCell>
                     <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
