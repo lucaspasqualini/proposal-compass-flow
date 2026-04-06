@@ -13,7 +13,7 @@ import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors 
 import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import ImportProposals from "@/components/ImportProposals";
 
-type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "created_at" | "empresa" | "tipo_projeto";
+type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
 export default function Propostas() {
