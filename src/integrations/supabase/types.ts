@@ -202,7 +202,9 @@ export type Database = {
           id: string
           indicador: string | null
           observacoes: string | null
+          parcelas: Json | null
           payment_terms: string | null
+          payment_type: string | null
           proposal_number: string | null
           scope: string | null
           status: Database["public"]["Enums"]["proposal_status"]
@@ -225,7 +227,9 @@ export type Database = {
           id?: string
           indicador?: string | null
           observacoes?: string | null
+          parcelas?: Json | null
           payment_terms?: string | null
+          payment_type?: string | null
           proposal_number?: string | null
           scope?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
@@ -248,7 +252,9 @@ export type Database = {
           id?: string
           indicador?: string | null
           observacoes?: string | null
+          parcelas?: Json | null
           payment_terms?: string | null
+          payment_type?: string | null
           proposal_number?: string | null
           scope?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
