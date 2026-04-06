@@ -198,6 +198,7 @@ export type Database = {
           data_envio: string | null
           data_fup: string | null
           description: string | null
+          empresa: string | null
           id: string
           indicador: string | null
           observacoes: string | null
@@ -220,6 +221,7 @@ export type Database = {
           data_envio?: string | null
           data_fup?: string | null
           description?: string | null
+          empresa?: string | null
           id?: string
           indicador?: string | null
           observacoes?: string | null
@@ -242,6 +244,7 @@ export type Database = {
           data_envio?: string | null
           data_fup?: string | null
           description?: string | null
+          empresa?: string | null
           id?: string
           indicador?: string | null
           observacoes?: string | null

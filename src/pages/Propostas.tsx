@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProposals, useDeleteProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import ImportProposals from "@/components/ImportProposals";
+
+type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "created_at" | "empresa" | "tipo_projeto";
+type SortDir = "asc" | "desc";
 
 export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
@@ -20,16 +23,60 @@ export default function Propostas() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [empresaFilter, setEmpresaFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const filtered = proposals?.filter((p) => {
-    const s = search.toLowerCase();
-    const matchSearch =
-      p.title.toLowerCase().includes(s) ||
-      (p as any).proposal_number?.toLowerCase().includes(s) ||
-      (p.clients as any)?.name?.toLowerCase().includes(s);
-    const matchStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const filtered = useMemo(() => {
+    if (!proposals) return [];
+    let list = proposals.filter((p) => {
+      const s = search.toLowerCase();
+      const matchSearch =
+        p.title.toLowerCase().includes(s) ||
+        (p.proposal_number ?? "").toLowerCase().includes(s) ||
+        ((p.clients as any)?.name ?? "").toLowerCase().includes(s) ||
+        ((p as any).empresa ?? "").toLowerCase().includes(s);
+      const matchStatus = statusFilter === "all" || p.status === statusFilter;
+      const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
+      return matchSearch && matchStatus && matchEmpresa;
+    });
+
+    list.sort((a, b) => {
+      let va: any, vb: any;
+      switch (sortKey) {
+        case "proposal_number": va = a.proposal_number ?? ""; vb = b.proposal_number ?? ""; break;
+        case "title": va = a.title; vb = b.title; break;
+        case "client": va = (a.clients as any)?.name ?? ""; vb = (b.clients as any)?.name ?? ""; break;
+        case "value": va = Number(a.value) || 0; vb = Number(b.value) || 0; break;
+        case "status": va = a.status; vb = b.status; break;
+        case "created_at": va = a.created_at; vb = b.created_at; break;
+        case "empresa": va = (a as any).empresa ?? ""; vb = (b as any).empresa ?? ""; break;
+        case "tipo_projeto": va = (a as any).tipo_projeto ?? ""; vb = (b as any).tipo_projeto ?? ""; break;
+        default: va = ""; vb = "";
+      }
+      if (typeof va === "string") {
+        const cmp = va.localeCompare(vb, "pt-BR", { sensitivity: "base" });
+        return sortDir === "asc" ? cmp : -cmp;
+      }
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+
+    return list;
+  }, [proposals, search, statusFilter, empresaFilter, sortKey, sortDir]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -39,6 +86,12 @@ export default function Propostas() {
       toast({ title: "Erro ao remover", variant: "destructive" });
     }
   };
+
+  const empresas = useMemo(() => {
+    if (!proposals) return [];
+    const set = new Set(proposals.map((p) => (p as any).empresa).filter(Boolean));
+    return Array.from(set).sort();
+  }, [proposals]);
 
   return (
     <div className="space-y-6">
@@ -65,9 +118,20 @@ export default function Propostas() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todos os Status</SelectItem>
             {Object.entries(proposalStatusLabels).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+          <SelectTrigger className="w-52">
+            <SelectValue placeholder="Empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Empresas</SelectItem>
+            {empresas.map((e) => (
+              <SelectItem key={e} value={e}>{e}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -78,66 +142,88 @@ export default function Propostas() {
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Carregando...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Título</TableHead>
-                  <TableHead className="hidden sm:table-cell">Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Data</TableHead>
-                  <TableHead className="w-24">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered?.length === 0 && (
+            <div className="overflow-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      Nenhuma proposta encontrada
-                    </TableCell>
+                    <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort("proposal_number")}>
+                      <span className="flex items-center">Código <SortIcon col="proposal_number" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("title")}>
+                      <span className="flex items-center">Título <SortIcon col="title" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell whitespace-nowrap" onClick={() => toggleSort("tipo_projeto")}>
+                      <span className="flex items-center">Tipo <SortIcon col="tipo_projeto" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort("empresa")}>
+                      <span className="flex items-center">Empresa <SortIcon col="empresa" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => toggleSort("client")}>
+                      <span className="flex items-center">Cliente <SortIcon col="client" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("value")}>
+                      <span className="flex items-center">Valor <SortIcon col="value" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("status")}>
+                      <span className="flex items-center">Status <SortIcon col="status" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("created_at")}>
+                      <span className="flex items-center">Data <SortIcon col="created_at" /></span>
+                    </TableHead>
+                    <TableHead className="w-24">Ações</TableHead>
                   </TableRow>
-                )}
-                {filtered?.map((p) => (
-                  <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/propostas/${p.id}`)}>
-                    <TableCell className="text-xs text-muted-foreground font-mono">{(p as any).proposal_number || "—"}</TableCell>
-                    <TableCell className="font-medium">{p.title}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={proposalStatusColors[p.status]}>
-                        {proposalStatusLabels[p.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{formatDate(p.created_at)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remover proposta?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(p.id)}>Remover</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        Nenhuma proposta encontrada
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filtered.map((p) => (
+                    <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/propostas/${p.id}`)}>
+                      <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
+                      <TableCell className="font-medium">{p.title}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">{(p as any).tipo_projeto || "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">{(p as any).empresa || "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={proposalStatusColors[p.status]}>
+                          {proposalStatusLabels[p.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{formatDate(p.created_at)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remover proposta?</AlertDialogTitle>
+                                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(p.id)}>Remover</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
