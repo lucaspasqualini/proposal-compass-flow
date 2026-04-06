@@ -86,7 +86,7 @@ export default function Propostas() {
               <TableBody>
                 {filtered?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Nenhuma proposta encontrada
                     </TableCell>
                   </TableRow>
