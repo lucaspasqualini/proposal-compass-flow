@@ -37,6 +37,7 @@ const App = () => (
             >
               <Route path="/" element={<Dashboard />} />
               <Route path="/clientes" element={<Clientes />} />
+              <Route path="/clientes/:id" element={<ClienteDetail />} />
               <Route path="/propostas" element={<Propostas />} />
               <Route path="/propostas/nova" element={<PropostaForm />} />
               <Route path="/propostas/:id" element={<PropostaForm />} />
