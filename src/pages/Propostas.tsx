@@ -63,8 +63,8 @@ export default function Propostas() {
         case "client": va = (a.clients as any)?.name ?? ""; vb = (b.clients as any)?.name ?? ""; break;
         case "value": va = Number(a.value) || 0; vb = Number(b.value) || 0; break;
         case "status": va = a.status; vb = b.status; break;
-        case "created_at": va = a.created_at; vb = b.created_at; break;
-        case "empresa": va = (a as any).empresa ?? ""; vb = (b as any).empresa ?? ""; break;
+        case "data_envio": va = (a as any).data_envio ?? ""; vb = (b as any).data_envio ?? ""; break;
+        case "data_aprovacao": va = (a as any).data_aprovacao ?? ""; vb = (b as any).data_aprovacao ?? ""; break;
         case "tipo_projeto": va = (a as any).tipo_projeto ?? ""; vb = (b as any).tipo_projeto ?? ""; break;
         default: va = ""; vb = "";
       }
