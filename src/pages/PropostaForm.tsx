@@ -250,36 +250,26 @@ export default function PropostaForm() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Cliente (select from clients table) */}
-            <div className="grid gap-2">
-              <Label>Cliente</Label>
-              <Select value={form.client_id ?? ""} onValueChange={(v) => {
-                const client = clients?.find((c) => c.id === v);
-                setForm({
-                  ...form,
-                  client_id: v || null,
-                  cliente_contato: client?.contact_name ?? form.cliente_contato ?? "",
-                });
-              }}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {clients?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Cliente (contato) */}
-            <div className="grid gap-2">
-              <Label>Contato</Label>
-              <Input
-                value={form.cliente_contato ?? ""}
-                onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })}
-                placeholder="Nome do contato"
-              />
-            </div>
+          {/* Cliente */}
+          <div className="grid gap-2">
+            <Label>Cliente</Label>
+            <Select value={form.client_id ?? ""} onValueChange={(v) => {
+              if (v === "__new__") {
+                setShowNewClient(true);
+                return;
+              }
+              setForm({ ...form, client_id: v || null });
+            }}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__new__">
+                  <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Adicionar novo cliente</span>
+                </SelectItem>
+                {clients?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Indicador */}
