@@ -1,71 +1,70 @@
-import { useState } from "react";
-import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from "@/hooks/useClients";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCreateClient, useDeleteClient } from "@/hooks/useClients";
+import { useClientsWithStats } from "@/hooks/useClientStats";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp } from "lucide-react";
 
-type Client = Database["public"]["Tables"]["clients"]["Row"];
-type ClientInsert = Database["public"]["Tables"]["clients"]["Insert"];
-
-const emptyClient: ClientInsert = { name: "", cnpj: "", contact_name: "", email: "", phone: "", address: "", notes: "" };
+type SortKey = "name" | "proposal_count" | "project_count" | "won_value" | "last_proposal_date";
+type SortDir = "asc" | "desc";
 
 export default function Clientes() {
-  const { data: clients, isLoading } = useClients();
+  const { data: clients, isLoading } = useClientsWithStats();
   const createClient = useCreateClient();
-  const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Client | null>(null);
-  const [form, setForm] = useState<ClientInsert>(emptyClient);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCnpj, setNewCnpj] = useState("");
 
-  const filtered = clients?.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.cnpj?.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const handleOpen = (client?: Client) => {
-    if (client) {
-      setEditing(client);
-      setForm(client);
-    } else {
-      setEditing(null);
-      setForm(emptyClient);
-    }
-    setOpen(true);
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir(key === "name" ? "asc" : "desc"); }
   };
 
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast({ title: "Nome é obrigatório", variant: "destructive" });
-      return;
-    }
-    try {
-      if (editing) {
-        await updateClient.mutateAsync({ id: editing.id, ...form });
-        toast({ title: "Cliente atualizado" });
-      } else {
-        await createClient.mutateAsync(form);
-        toast({ title: "Cliente criado" });
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const filtered = useMemo(() => {
+    if (!clients) return [];
+    const s = search.toLowerCase();
+    let list = clients.filter(
+      (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
+    );
+    list.sort((a, b) => {
+      let va: any, vb: any;
+      switch (sortKey) {
+        case "name": va = a.name; vb = b.name; break;
+        case "proposal_count": va = a.proposal_count; vb = b.proposal_count; break;
+        case "project_count": va = a.project_count; vb = b.project_count; break;
+        case "won_value": va = a.won_value; vb = b.won_value; break;
+        case "last_proposal_date": va = a.last_proposal_date ?? ""; vb = b.last_proposal_date ?? ""; break;
       }
-      setOpen(false);
-    } catch {
-      toast({ title: "Erro ao salvar", variant: "destructive" });
-    }
-  };
+      if (typeof va === "string") {
+        const cmp = va.localeCompare(vb, "pt-BR", { sensitivity: "base" });
+        return sortDir === "asc" ? cmp : -cmp;
+      }
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+    return list;
+  }, [clients, search, sortKey, sortDir]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     try {
       await deleteClient.mutateAsync(id);
       toast({ title: "Cliente removido" });
@@ -74,72 +73,70 @@ export default function Clientes() {
     }
   };
 
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    try {
+      await createClient.mutateAsync({ name: newName.trim(), cnpj: newCnpj.trim() || null });
+      toast({ title: "Cliente criado" });
+      setNewName("");
+      setNewCnpj("");
+      setShowNew(false);
+    } catch {
+      toast({ title: "Erro ao criar", variant: "destructive" });
+    }
+  };
+
+  // Summary stats
+  const totalClients = clients?.length ?? 0;
+  const activeClients = clients?.filter((c) => c.proposal_count > 0).length ?? 0;
+  const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-muted-foreground">Gerencie seus clientes</p>
+          <p className="text-muted-foreground">Gerencie sua base de clientes</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpen()}>
-              <Plus className="h-4 w-4 mr-1" /> Novo Cliente
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Nome *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>CNPJ</Label>
-                  <Input value={form.cnpj ?? ""} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Contato</Label>
-                  <Input value={form.contact_name ?? ""} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Email</Label>
-                  <Input type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Telefone</Label>
-                  <Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Endereço</Label>
-                <Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Observações</Label>
-                <Textarea value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
+        <Button onClick={() => setShowNew(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Novo Cliente
+        </Button>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-4 flex items-center gap-3">
+            <Building2 className="h-8 w-8 text-primary opacity-60" />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+              <p className="text-xl font-bold">{totalClients}</p>
             </div>
-            <Button onClick={handleSave} disabled={createClient.isPending || updateClient.isPending}>
-              {editing ? "Salvar" : "Criar"}
-            </Button>
-          </DialogContent>
-        </Dialog>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4 flex items-center gap-3">
+            <FileText className="h-8 w-8 text-primary opacity-60" />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Ativos</p>
+              <p className="text-xl font-bold">{activeClients}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-2">
+          <CardContent className="pt-4 pb-4 flex items-center gap-3">
+            <TrendingUp className="h-8 w-8 text-primary opacity-60" />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Receita Total (Propostas Ganhas)</p>
+              <p className="text-xl font-bold">{formatCurrency(totalRevenue)}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar clientes..."
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
@@ -147,65 +144,95 @@ export default function Clientes() {
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Carregando...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="hidden md:table-cell">CNPJ</TableHead>
-                  <TableHead className="hidden md:table-cell">Contato</TableHead>
-                  <TableHead className="hidden sm:table-cell">Email</TableHead>
-                  <TableHead className="w-24">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered?.length === 0 && (
+            <div className="overflow-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Nenhum cliente encontrado
-                    </TableCell>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                      <span className="flex items-center">Cliente <SortIcon col="name" /></span>
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">CNPJ</TableHead>
+                    <TableHead className="cursor-pointer select-none text-center" onClick={() => toggleSort("proposal_count")}>
+                      <span className="flex items-center justify-center">Propostas <SortIcon col="proposal_count" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-center hidden sm:table-cell" onClick={() => toggleSort("project_count")}>
+                      <span className="flex items-center justify-center">Projetos <SortIcon col="project_count" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("won_value")}>
+                      <span className="flex items-center">Valor Ganho <SortIcon col="won_value" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hidden lg:table-cell whitespace-nowrap" onClick={() => toggleSort("last_proposal_date")}>
+                      <span className="flex items-center">Última Proposta <SortIcon col="last_proposal_date" /></span>
+                    </TableHead>
+                    <TableHead className="w-16">Ações</TableHead>
                   </TableRow>
-                )}
-                {filtered?.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{client.cnpj || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">{client.contact_name || "—"}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{client.email || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpen(client)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        Nenhum cliente encontrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filtered.map((c) => (
+                    <TableRow key={c.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${c.id}`)}>
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{c.cnpj || "—"}</TableCell>
+                      <TableCell className="text-center">{c.proposal_count}</TableCell>
+                      <TableCell className="text-center hidden sm:table-cell">{c.project_count}</TableCell>
+                      <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{c.last_proposal_date ? formatDate(c.last_proposal_date) : "—"}</TableCell>
+                      <TableCell>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Remover cliente?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
+                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(client.id)}>
-                                Remover
-                              </AlertDialogAction>
+                              <AlertDialogAction onClick={(e) => handleDelete(e, c.id)}>Remover</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* New client dialog */}
+      <Dialog open={showNew} onOpenChange={setShowNew}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Cliente</DialogTitle>
+            <DialogDescription>Adicione um novo cliente à sua base.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Nome *</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome da empresa" />
+            </div>
+            <div className="grid gap-2">
+              <Label>CNPJ</Label>
+              <Input value={newCnpj} onChange={(e) => setNewCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+            </div>
+            <Button disabled={!newName.trim() || createClient.isPending} onClick={handleCreate}>
+              Salvar Cliente
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

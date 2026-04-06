@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
+import ClienteDetail from "@/pages/ClienteDetail";
 import Propostas from "@/pages/Propostas";
 import PropostaForm from "@/pages/PropostaForm";
 import Projetos from "@/pages/Projetos";
@@ -36,6 +37,7 @@ const App = () => (
             >
               <Route path="/" element={<Dashboard />} />
               <Route path="/clientes" element={<Clientes />} />
+              <Route path="/clientes/:id" element={<ClienteDetail />} />
               <Route path="/propostas" element={<Propostas />} />
               <Route path="/propostas/nova" element={<PropostaForm />} />
               <Route path="/propostas/:id" element={<PropostaForm />} />
