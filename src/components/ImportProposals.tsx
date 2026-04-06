@@ -111,7 +111,9 @@ export default function ImportProposals() {
         setError("Erro ao ler o arquivo. Verifique o formato.");
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
+    // Reset input so same file can be re-selected
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleImport = async () => {
