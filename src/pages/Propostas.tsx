@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import ImportProposals from "@/components/ImportProposals";
 
 export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
