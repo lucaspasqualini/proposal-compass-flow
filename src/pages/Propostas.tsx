@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import ImportProposals from "@/components/ImportProposals";
 
 export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
@@ -46,9 +47,12 @@ export default function Propostas() {
           <h1 className="text-2xl font-bold">Propostas</h1>
           <p className="text-muted-foreground">Gerencie suas propostas comerciais</p>
         </div>
-        <Button onClick={() => navigate("/propostas/nova")}>
-          <Plus className="h-4 w-4 mr-1" /> Nova Proposta
-        </Button>
+        <div className="flex gap-2">
+          <ImportProposals />
+          <Button onClick={() => navigate("/propostas/nova")}>
+            <Plus className="h-4 w-4 mr-1" /> Nova Proposta
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
