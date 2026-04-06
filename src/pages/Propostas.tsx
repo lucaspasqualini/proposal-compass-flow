@@ -59,7 +59,8 @@ export default function Propostas() {
         ((p as any).empresa ?? "").toLowerCase().includes(s);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
-      return matchSearch && matchStatus && matchEmpresa;
+      const matchHide = !hidePerdida || p.status !== "perdida";
+      return matchSearch && matchStatus && matchEmpresa && matchHide;
     });
 
     list.sort((a, b) => {
