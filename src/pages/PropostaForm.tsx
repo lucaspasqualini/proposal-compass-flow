@@ -13,8 +13,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels } from "@/lib/format";
-import { ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ArrowLeft, Plus } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { useCreateClient } from "@/hooks/useClients";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
 
@@ -27,8 +29,12 @@ export default function PropostaForm() {
   const createProposal = useCreateProposal();
   const updateProposal = useUpdateProposal();
   const createProject = useCreateProject();
+  const createClient = useCreateClient();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
 
   const [form, setForm] = useState<ProposalInsert & { empresa?: string }>({
     title: "",
@@ -44,7 +50,7 @@ export default function PropostaForm() {
     data_envio: null,
     data_aprovacao: null,
     data_fup: null,
-    cliente_contato: "",
+    cliente_contato: null,
     indicador: "",
     observacoes: "",
     empresa: "",
@@ -66,7 +72,7 @@ export default function PropostaForm() {
         data_envio: existing.data_envio,
         data_aprovacao: existing.data_aprovacao,
         data_fup: existing.data_fup,
-        cliente_contato: existing.cliente_contato ?? "",
+        cliente_contato: existing.cliente_contato ?? null,
         indicador: existing.indicador ?? "",
         observacoes: existing.observacoes ?? "",
         empresa: (existing as any).empresa ?? "",
@@ -244,36 +250,26 @@ export default function PropostaForm() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Cliente (select from clients table) */}
-            <div className="grid gap-2">
-              <Label>Cliente</Label>
-              <Select value={form.client_id ?? ""} onValueChange={(v) => {
-                const client = clients?.find((c) => c.id === v);
-                setForm({
-                  ...form,
-                  client_id: v || null,
-                  cliente_contato: client?.contact_name ?? form.cliente_contato ?? "",
-                });
-              }}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {clients?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Cliente (contato) */}
-            <div className="grid gap-2">
-              <Label>Contato</Label>
-              <Input
-                value={form.cliente_contato ?? ""}
-                onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })}
-                placeholder="Nome do contato"
-              />
-            </div>
+          {/* Cliente */}
+          <div className="grid gap-2">
+            <Label>Cliente</Label>
+            <Select value={form.client_id ?? ""} onValueChange={(v) => {
+              if (v === "__new__") {
+                setShowNewClient(true);
+                return;
+              }
+              setForm({ ...form, client_id: v || null });
+            }}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__new__">
+                  <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Adicionar novo cliente</span>
+                </SelectItem>
+                {clients?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Indicador */}
@@ -304,6 +300,38 @@ export default function PropostaForm() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog para novo cliente */}
+      <Dialog open={showNewClient} onOpenChange={setShowNewClient}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Cliente</DialogTitle>
+            <DialogDescription>Adicione um novo cliente à base de dados.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Nome do Cliente *</Label>
+              <Input value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Nome da empresa" />
+            </div>
+            <Button
+              disabled={!newClientName.trim() || createClient.isPending}
+              onClick={async () => {
+                try {
+                  const created = await createClient.mutateAsync({ name: newClientName.trim() });
+                  setForm((prev) => ({ ...prev, client_id: created.id }));
+                  setNewClientName("");
+                  setShowNewClient(false);
+                  toast({ title: "Cliente criado com sucesso" });
+                } catch {
+                  toast({ title: "Erro ao criar cliente", variant: "destructive" });
+                }
+              }}
+            >
+              Salvar Cliente
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
