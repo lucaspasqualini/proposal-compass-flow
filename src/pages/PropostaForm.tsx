@@ -30,7 +30,7 @@ export default function PropostaForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [form, setForm] = useState<ProposalInsert>({
+  const [form, setForm] = useState<ProposalInsert & { empresa?: string }>({
     title: "",
     client_id: null,
     description: "",
@@ -47,6 +47,7 @@ export default function PropostaForm() {
     cliente_contato: "",
     indicador: "",
     observacoes: "",
+    empresa: "",
   });
 
   useEffect(() => {
