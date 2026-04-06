@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, ExternalLink, Trash2, FileDown } from "lucide-react";
+import { generateProposalPptx } from "@/lib/generateProposalPptx";
 import type { Database } from "@/integrations/supabase/types";
 import { useCreateClient } from "@/hooks/useClients";
 
