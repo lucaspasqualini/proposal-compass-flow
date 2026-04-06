@@ -21,9 +21,11 @@ export default function Propostas() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filtered = proposals?.filter((p) => {
+    const s = search.toLowerCase();
     const matchSearch =
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      (p.clients as any)?.name?.toLowerCase().includes(search.toLowerCase());
+      p.title.toLowerCase().includes(s) ||
+      (p as any).proposal_number?.toLowerCase().includes(s) ||
+      (p.clients as any)?.name?.toLowerCase().includes(s);
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
