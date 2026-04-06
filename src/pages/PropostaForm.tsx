@@ -29,8 +29,12 @@ export default function PropostaForm() {
   const createProposal = useCreateProposal();
   const updateProposal = useUpdateProposal();
   const createProject = useCreateProject();
+  const createClient = useCreateClient();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
 
   const [form, setForm] = useState<ProposalInsert & { empresa?: string }>({
     title: "",
