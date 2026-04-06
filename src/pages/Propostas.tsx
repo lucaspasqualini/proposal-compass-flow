@@ -186,7 +186,6 @@ export default function Propostas() {
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{(p as any).tipo_projeto || "—"}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm">{(p as any).empresa || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
                       <TableCell>
@@ -194,7 +193,8 @@ export default function Propostas() {
                           {proposalStatusLabels[p.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{formatDate(p.created_at)}</TableCell>
+                      <TableCell className="hidden md:table-cell">{(p as any).data_envio ? formatDate((p as any).data_envio) : "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{(p as any).data_aprovacao ? formatDate((p as any).data_aprovacao) : "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
