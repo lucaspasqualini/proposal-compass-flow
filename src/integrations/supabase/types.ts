@@ -324,15 +324,7 @@ export type Database = {
         | "pausado"
         | "concluido"
         | "cancelado"
-      proposal_status:
-        | "rascunho"
-        | "enviada"
-        | "em_analise"
-        | "aprovada"
-        | "rejeitada"
-        | "ganha"
-        | "perdida"
-        | "em_negociacao"
+      proposal_status: "em_elaboracao" | "em_negociacao" | "ganha" | "perdida"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -467,16 +459,7 @@ export const Constants = {
         "concluido",
         "cancelado",
       ],
-      proposal_status: [
-        "rascunho",
-        "enviada",
-        "em_analise",
-        "aprovada",
-        "rejeitada",
-        "ganha",
-        "perdida",
-        "em_negociacao",
-      ],
+      proposal_status: ["em_elaboracao", "em_negociacao", "ganha", "perdida"],
     },
   },
 } as const
