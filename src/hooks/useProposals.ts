@@ -11,7 +11,7 @@ export function useProposals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("proposals")
-        .select("*, clients(name), proposal_number")
+        .select("*, clients(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
