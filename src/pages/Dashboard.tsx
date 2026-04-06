@@ -19,7 +19,7 @@ export default function Dashboard() {
     (p) => !["aprovada", "rejeitada"].includes(p.status)
   ).length ?? 0;
   const activeProjects = projects?.filter(
-    (p) => ["planejamento", "em_andamento"].includes(p.status)
+    (p) => ["em_andamento", "em_pausa", "aguardando_retorno"].includes(p.status)
   ).length ?? 0;
   const totalProposalValue = proposals
     ?.filter((p) => p.status === "ganha")
