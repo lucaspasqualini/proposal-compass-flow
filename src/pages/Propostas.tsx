@@ -32,6 +32,7 @@ export default function Propostas() {
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [hidePerdida, setHidePerdida] = useState(false);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
