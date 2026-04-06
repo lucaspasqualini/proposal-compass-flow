@@ -191,14 +191,21 @@ export type Database = {
       proposals: {
         Row: {
           client_id: string | null
+          cliente_contato: string | null
           created_at: string
           created_by: string | null
+          data_aprovacao: string | null
+          data_envio: string | null
+          data_fup: string | null
           description: string | null
           id: string
+          indicador: string | null
+          observacoes: string | null
           payment_terms: string | null
           proposal_number: string | null
           scope: string | null
           status: Database["public"]["Enums"]["proposal_status"]
+          tipo_projeto: string | null
           title: string
           updated_at: string
           validity_date: string | null
@@ -206,14 +213,21 @@ export type Database = {
         }
         Insert: {
           client_id?: string | null
+          cliente_contato?: string | null
           created_at?: string
           created_by?: string | null
+          data_aprovacao?: string | null
+          data_envio?: string | null
+          data_fup?: string | null
           description?: string | null
           id?: string
+          indicador?: string | null
+          observacoes?: string | null
           payment_terms?: string | null
           proposal_number?: string | null
           scope?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
+          tipo_projeto?: string | null
           title: string
           updated_at?: string
           validity_date?: string | null
@@ -221,14 +235,21 @@ export type Database = {
         }
         Update: {
           client_id?: string | null
+          cliente_contato?: string | null
           created_at?: string
           created_by?: string | null
+          data_aprovacao?: string | null
+          data_envio?: string | null
+          data_fup?: string | null
           description?: string | null
           id?: string
+          indicador?: string | null
+          observacoes?: string | null
           payment_terms?: string | null
           proposal_number?: string | null
           scope?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
+          tipo_projeto?: string | null
           title?: string
           updated_at?: string
           validity_date?: string | null
