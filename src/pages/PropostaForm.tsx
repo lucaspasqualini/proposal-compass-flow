@@ -232,10 +232,22 @@ export default function PropostaForm() {
             />
           </div>
 
+          {/* Empresa (entidade) */}
+          <div className="grid gap-2">
+            <Label>Empresa</Label>
+            <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Valore Empresarial">Valore Empresarial</SelectItem>
+                <SelectItem value="Meden Goiania">Meden Goiania</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Empresa (client) */}
+            {/* Cliente (select from clients table) */}
             <div className="grid gap-2">
-              <Label>Empresa</Label>
+              <Label>Cliente</Label>
               <Select value={form.client_id ?? ""} onValueChange={(v) => {
                 const client = clients?.find((c) => c.id === v);
                 setForm({
@@ -255,7 +267,7 @@ export default function PropostaForm() {
 
             {/* Cliente (contato) */}
             <div className="grid gap-2">
-              <Label>Cliente (Contato)</Label>
+              <Label>Contato</Label>
               <Input
                 value={form.cliente_contato ?? ""}
                 onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })}
