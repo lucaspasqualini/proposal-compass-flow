@@ -215,7 +215,7 @@ export default function Projetos() {
                                       checked={isAllocated}
                                       onCheckedChange={() => handleToggleMember(p.id, member.id, allocations)}
                                     />
-                                    <span className="text-sm">{member.name}</span>
+                                    <span className="text-sm">{member.name.split(" ")[0]}</span>
                                   </label>
                                 );
                               })}
