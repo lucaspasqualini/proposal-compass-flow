@@ -51,7 +51,7 @@ export default function PropostaForm() {
     description: "",
     scope: "",
     value: null,
-    status: "rascunho",
+    status: "em_elaboracao",
     validity_date: null,
     payment_terms: "",
     created_by: null,
