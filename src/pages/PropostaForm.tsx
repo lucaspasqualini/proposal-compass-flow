@@ -72,7 +72,7 @@ export default function PropostaForm() {
         data_envio: existing.data_envio,
         data_aprovacao: existing.data_aprovacao,
         data_fup: existing.data_fup,
-        cliente_contato: existing.cliente_contato ?? "",
+        cliente_contato: existing.cliente_contato ?? null,
         indicador: existing.indicador ?? "",
         observacoes: existing.observacoes ?? "",
         empresa: (existing as any).empresa ?? "",
