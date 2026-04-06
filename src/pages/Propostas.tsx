@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useProposals, useDeleteProposal, useUpdateProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
