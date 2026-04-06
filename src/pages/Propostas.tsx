@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useProposals, useDeleteProposal, useUpdateProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export default function Propostas() {
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [hidePerdida, setHidePerdida] = useState(false);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -57,7 +59,8 @@ export default function Propostas() {
         ((p as any).empresa ?? "").toLowerCase().includes(s);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
-      return matchSearch && matchStatus && matchEmpresa;
+      const matchHide = !hidePerdida || p.status !== "perdida";
+      return matchSearch && matchStatus && matchEmpresa && matchHide;
     });
 
     list.sort((a, b) => {
@@ -161,6 +164,10 @@ export default function Propostas() {
             ))}
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2">
+          <Checkbox id="hide-perdida" checked={hidePerdida} onCheckedChange={(v) => setHidePerdida(!!v)} />
+          <label htmlFor="hide-perdida" className="text-sm text-muted-foreground cursor-pointer select-none">Ocultar perdidas</label>
+        </div>
       </div>
 
       <Card>

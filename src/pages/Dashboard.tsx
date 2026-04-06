@@ -22,7 +22,7 @@ export default function Dashboard() {
     (p) => ["planejamento", "em_andamento"].includes(p.status)
   ).length ?? 0;
   const totalProposalValue = proposals
-    ?.filter((p) => p.status === "aprovada")
+    ?.filter((p) => p.status === "ganha")
     .reduce((sum, p) => sum + (Number(p.value) || 0), 0) ?? 0;
 
   const stats = [
