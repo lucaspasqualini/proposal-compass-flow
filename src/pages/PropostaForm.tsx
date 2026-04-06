@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useProposal, useCreateProposal, useUpdateProposal } from "@/hooks/useProposals";
 import { useClients } from "@/hooks/useClients";
 import { useCreateProject } from "@/hooks/useProjects";
@@ -9,16 +9,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, ExternalLink, Trash2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { useCreateClient } from "@/hooks/useClients";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
+
+interface Parcela {
+  descricao: string;
+  valor: number | null;
+  data_vencimento: string;
+}
+
+const emptyParcela: Parcela = { descricao: "", valor: null, data_vencimento: "" };
 
 export default function PropostaForm() {
   const { id } = useParams();
@@ -35,8 +43,9 @@ export default function PropostaForm() {
 
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
+  const [parcelas, setParcelas] = useState<Parcela[]>([]);
 
-  const [form, setForm] = useState<ProposalInsert & { empresa?: string }>({
+  const [form, setForm] = useState<ProposalInsert & { empresa?: string; payment_type?: string }>({
     title: "",
     client_id: null,
     description: "",
@@ -54,6 +63,7 @@ export default function PropostaForm() {
     indicador: "",
     observacoes: "",
     empresa: "",
+    payment_type: "",
   });
 
   useEffect(() => {
@@ -76,7 +86,12 @@ export default function PropostaForm() {
         indicador: existing.indicador ?? "",
         observacoes: existing.observacoes ?? "",
         empresa: (existing as any).empresa ?? "",
+        payment_type: (existing as any).payment_type ?? "",
       });
+      const saved = (existing as any).parcelas;
+      if (Array.isArray(saved) && saved.length > 0) {
+        setParcelas(saved);
+      }
     }
   }, [existing]);
 
@@ -98,15 +113,33 @@ export default function PropostaForm() {
     fetchLastDescription();
   }, [form.client_id, isEdit]);
 
+  const addParcela = () => {
+    if (parcelas.length >= 5) return;
+    setParcelas([...parcelas, { ...emptyParcela }]);
+  };
+
+  const updateParcela = (idx: number, field: keyof Parcela, value: any) => {
+    setParcelas((prev) => prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
+  };
+
+  const removeParcela = (idx: number) => {
+    setParcelas((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSave = async () => {
     if (!form.title.trim()) {
       toast({ title: "Título é obrigatório", variant: "destructive" });
       return;
     }
     try {
+      const payload = {
+        ...form,
+        parcelas: parcelas.length > 0 ? parcelas : [],
+      } as any;
+
       if (isEdit) {
         const oldStatus = existing?.status;
-        await updateProposal.mutateAsync({ id: id!, ...form });
+        await updateProposal.mutateAsync({ id: id!, ...payload });
         toast({ title: "Proposta atualizada" });
 
         if (form.status === "aprovada" && oldStatus !== "aprovada") {
@@ -125,7 +158,7 @@ export default function PropostaForm() {
           }
         }
       } else {
-        await createProposal.mutateAsync({ ...form, created_by: user?.id ?? null });
+        await createProposal.mutateAsync({ ...payload, created_by: user?.id ?? null });
         toast({ title: "Proposta criada" });
       }
       navigate("/propostas");
@@ -156,7 +189,7 @@ export default function PropostaForm() {
 
       <Card>
         <CardContent className="grid gap-4 pt-6">
-          {/* Código (read-only, auto-generated) */}
+          {/* Código */}
           {isEdit && (
             <div className="grid gap-2">
               <Label>Código</Label>
@@ -164,7 +197,7 @@ export default function PropostaForm() {
             </div>
           )}
 
-          {/* Projeto (título) */}
+          {/* Projeto */}
           <div className="grid gap-2">
             <Label>Projeto *</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -181,30 +214,17 @@ export default function PropostaForm() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Data de Envio */}
             <div className="grid gap-2">
               <Label>Data de Envio</Label>
-              <Input
-                type="date"
-                value={form.data_envio ?? ""}
-                onChange={(e) => setForm({ ...form, data_envio: e.target.value || null })}
-              />
+              <Input type="date" value={form.data_envio ?? ""} onChange={(e) => setForm({ ...form, data_envio: e.target.value || null })} />
             </div>
-
-            {/* Valor */}
             <div className="grid gap-2">
               <Label>Valor (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.value ?? ""}
-                onChange={(e) => setForm({ ...form, value: e.target.value ? Number(e.target.value) : null })}
-              />
+              <Input type="number" step="0.01" value={form.value ?? ""} onChange={(e) => setForm({ ...form, value: e.target.value ? Number(e.target.value) : null })} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Status */}
             <div className="grid gap-2">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
@@ -216,29 +236,19 @@ export default function PropostaForm() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Data de Aprovação */}
             <div className="grid gap-2">
               <Label>Data de Aprovação</Label>
-              <Input
-                type="date"
-                value={form.data_aprovacao ?? ""}
-                onChange={(e) => setForm({ ...form, data_aprovacao: e.target.value || null })}
-              />
+              <Input type="date" value={form.data_aprovacao ?? ""} onChange={(e) => setForm({ ...form, data_aprovacao: e.target.value || null })} />
             </div>
           </div>
 
-          {/* Data de FUP */}
+          {/* Data FUP */}
           <div className="grid gap-2">
             <Label>Data de Follow-up</Label>
-            <Input
-              type="date"
-              value={form.data_fup ?? ""}
-              onChange={(e) => setForm({ ...form, data_fup: e.target.value || null })}
-            />
+            <Input type="date" value={form.data_fup ?? ""} onChange={(e) => setForm({ ...form, data_fup: e.target.value || null })} />
           </div>
 
-          {/* Empresa (entidade) */}
+          {/* Empresa */}
           <div className="grid gap-2">
             <Label>Empresa</Label>
             <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
@@ -250,58 +260,146 @@ export default function PropostaForm() {
             </Select>
           </div>
 
-          {/* Cliente */}
+          {/* Cliente + link */}
           <div className="grid gap-2">
             <Label>Cliente</Label>
-            <Select value={form.client_id ?? ""} onValueChange={(v) => {
-              if (v === "__new__") {
-                setShowNewClient(true);
-                return;
-              }
-              setForm({ ...form, client_id: v || null });
-            }}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__new__">
-                  <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Adicionar novo cliente</span>
-                </SelectItem>
-                {clients?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Select value={form.client_id ?? ""} onValueChange={(v) => {
+                  if (v === "__new__") { setShowNewClient(true); return; }
+                  setForm({ ...form, client_id: v || null });
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__new__">
+                      <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Adicionar novo cliente</span>
+                    </SelectItem>
+                    {clients?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedClient && (
+                <Button variant="outline" size="icon" asChild>
+                  <Link to={`/clientes/${selectedClient.id}`}>
+                    <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Indicador */}
           <div className="grid gap-2">
             <Label>Indicador</Label>
-            <Input
-              value={form.indicador ?? ""}
-              onChange={(e) => setForm({ ...form, indicador: e.target.value })}
-              placeholder="Quem indicou"
+            <Input value={form.indicador ?? ""} onChange={(e) => setForm({ ...form, indicador: e.target.value })} placeholder="Quem indicou" />
+          </div>
+
+          {/* Entendimento da Situação */}
+          <div className="grid gap-2">
+            <Label>Entendimento da Situação</Label>
+            <Textarea
+              rows={4}
+              value={form.description ?? ""}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Descreva o contexto e a situação identificada no cliente..."
+            />
+          </div>
+
+          {/* Escopo do Trabalho */}
+          <div className="grid gap-2">
+            <Label>Escopo do Trabalho</Label>
+            <Textarea
+              rows={4}
+              value={form.scope ?? ""}
+              onChange={(e) => setForm({ ...form, scope: e.target.value })}
+              placeholder="Detalhe o escopo dos serviços a serem prestados..."
             />
           </div>
 
           {/* Observações */}
           <div className="grid gap-2">
             <Label>Observações</Label>
-            <Textarea
-              rows={3}
-              value={form.observacoes ?? ""}
-              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} disabled={createProposal.isPending || updateProposal.isPending}>
-              {isEdit ? "Salvar" : "Criar Proposta"}
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/propostas")}>Cancelar</Button>
+            <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Dialog para novo cliente */}
+      {/* Forma de Pagamento */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Forma de Pagamento</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-2">
+            <Label>Tipo</Label>
+            <Select value={form.payment_type ?? ""} onValueChange={(v) => setForm({ ...form, payment_type: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="etapas">Por Etapas</SelectItem>
+                <SelectItem value="prazo">Por Prazo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.payment_type && (
+            <>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Parcelas ({parcelas.length}/5)</Label>
+                {parcelas.length < 5 && (
+                  <Button type="button" variant="outline" size="sm" onClick={addParcela}>
+                    <Plus className="h-3 w-3 mr-1" /> Adicionar Parcela
+                  </Button>
+                )}
+              </div>
+
+              {parcelas.map((p, idx) => (
+                <div key={idx} className="border rounded-lg p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Parcela {idx + 1}</span>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeParcela(idx)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className="text-xs">Descrição</Label>
+                    <Input
+                      value={p.descricao}
+                      onChange={(e) => updateParcela(idx, "descricao", e.target.value)}
+                      placeholder={form.payment_type === "etapas" ? "Ex: Entrega do diagnóstico" : "Ex: 30 dias após assinatura"}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label className="text-xs">Valor (R$)</Label>
+                      <Input type="number" step="0.01" value={p.valor ?? ""} onChange={(e) => updateParcela(idx, "valor", e.target.value ? Number(e.target.value) : null)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-xs">Data de Vencimento</Label>
+                      <Input type="date" value={p.data_vencimento} onChange={(e) => updateParcela(idx, "data_vencimento", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {parcelas.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela adicionada. Clique em "Adicionar Parcela" acima.</p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Ações */}
+      <div className="flex gap-3">
+        <Button onClick={handleSave} disabled={createProposal.isPending || updateProposal.isPending}>
+          {isEdit ? "Salvar" : "Criar Proposta"}
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/propostas")}>Cancelar</Button>
+      </div>
+
+      {/* Dialog novo cliente */}
       <Dialog open={showNewClient} onOpenChange={setShowNewClient}>
         <DialogContent>
           <DialogHeader>
