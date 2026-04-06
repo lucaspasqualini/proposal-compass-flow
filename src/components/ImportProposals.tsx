@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
@@ -71,7 +71,8 @@ export default function ImportProposals() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const wb = XLSX.read(evt.target?.result, { type: "binary", cellDates: true });
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array", cellDates: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<any>(ws);
 
@@ -110,7 +111,9 @@ export default function ImportProposals() {
         setError("Erro ao ler o arquivo. Verifique o formato.");
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
+    // Reset input so same file can be re-selected
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleImport = async () => {
@@ -158,6 +161,7 @@ export default function ImportProposals() {
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Importar Propostas do Excel</DialogTitle>
+          <DialogDescription>Faça upload de uma planilha para importar propostas em massa.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
