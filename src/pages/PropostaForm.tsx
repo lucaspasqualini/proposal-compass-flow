@@ -151,7 +151,7 @@ export default function PropostaForm() {
               proposal_id: id!,
               description: form.description,
               budget: form.value,
-              status: "planejamento",
+              status: "em_andamento",
             });
             toast({ title: "Projeto criado automaticamente!" });
           } catch {

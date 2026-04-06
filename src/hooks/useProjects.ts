@@ -11,7 +11,7 @@ export function useProjects() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("*, clients(name)")
+        .select("*, clients(name), proposals(proposal_number, tipo_projeto), project_allocations(team_member_id, team_members(id, name))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -26,7 +26,7 @@ export function useProject(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("*, clients(name), proposals(title)")
+        .select("*, clients(name), proposals(title, proposal_number, tipo_projeto)")
         .eq("id", id!)
         .single();
       if (error) throw error;
