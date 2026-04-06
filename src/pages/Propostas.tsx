@@ -1,16 +1,20 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { useProposals, useDeleteProposal } from "@/hooks/useProposals";
+import { useNavigate, Link } from "react-router-dom";
+import { useProposals, useDeleteProposal, useUpdateProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
 
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
@@ -19,6 +23,7 @@ type SortDir = "asc" | "desc";
 export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
   const deleteProposal = useDeleteProposal();
+  const updateProposal = useUpdateProposal();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -84,6 +89,27 @@ export default function Propostas() {
       toast({ title: "Proposta removida" });
     } catch {
       toast({ title: "Erro ao remover", variant: "destructive" });
+    }
+  };
+
+  const handleInlineStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await updateProposal.mutateAsync({ id, status: newStatus as any });
+      toast({ title: "Status atualizado" });
+    } catch {
+      toast({ title: "Erro ao atualizar status", variant: "destructive" });
+    }
+  };
+
+  const handleInlineDateChange = async (id: string, date: Date | undefined) => {
+    try {
+      await updateProposal.mutateAsync({
+        id,
+        data_aprovacao: date ? format(date, "yyyy-MM-dd") : null,
+      } as any);
+      toast({ title: "Data de aprovação atualizada" });
+    } catch {
+      toast({ title: "Erro ao atualizar data", variant: "destructive" });
     }
   };
 
@@ -176,7 +202,7 @@ export default function Propostas() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                         Nenhuma proposta encontrada
                       </TableCell>
                     </TableRow>
@@ -186,15 +212,52 @@ export default function Propostas() {
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{(p as any).tipo_projeto || "—"}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
+                        {(p.clients as any)?.name ? (
+                          <Link
+                            to={`/clientes/${p.client_id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {(p.clients as any).name}
+                          </Link>
+                        ) : "—"}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={proposalStatusColors[p.status]}>
-                          {proposalStatusLabels[p.status]}
-                        </Badge>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={p.status}
+                          onValueChange={(v) => handleInlineStatusChange(p.id, v)}
+                        >
+                          <SelectTrigger className="h-7 w-auto min-w-[120px] border-none shadow-none p-0 focus:ring-0">
+                            <Badge variant="secondary" className={proposalStatusColors[p.status]}>
+                              {proposalStatusLabels[p.status]}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(proposalStatusLabels).map(([k, v]) => (
+                              <SelectItem key={k} value={k}>{v}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{(p as any).data_envio ? formatDate((p as any).data_envio) : "—"}</TableCell>
-                      <TableCell className="hidden md:table-cell">{(p as any).data_aprovacao ? formatDate((p as any).data_aprovacao) : "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="text-sm hover:underline text-left flex items-center gap-1">
+                              {(p as any).data_aprovacao ? formatDate((p as any).data_aprovacao) : <span className="text-muted-foreground flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> Definir</span>}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              locale={ptBR}
+                              selected={(p as any).data_aprovacao ? new Date((p as any).data_aprovacao + "T00:00:00") : undefined}
+                              onSelect={(date) => handleInlineDateChange(p.id, date)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
