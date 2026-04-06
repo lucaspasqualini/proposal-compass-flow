@@ -84,7 +84,7 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, sortKey, sortDir]);
+  }, [proposals, search, statusFilter, empresaFilter, sortKey, sortDir, hidePerdida]);
 
   const handleDelete = async (id: string) => {
     try {
