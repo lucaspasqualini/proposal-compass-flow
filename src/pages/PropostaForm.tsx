@@ -40,6 +40,13 @@ export default function PropostaForm() {
     validity_date: null,
     payment_terms: "",
     created_by: null,
+    tipo_projeto: "",
+    data_envio: null,
+    data_aprovacao: null,
+    data_fup: null,
+    cliente_contato: "",
+    indicador: "",
+    observacoes: "",
   });
 
   useEffect(() => {
@@ -54,6 +61,13 @@ export default function PropostaForm() {
         validity_date: existing.validity_date,
         payment_terms: existing.payment_terms,
         created_by: existing.created_by,
+        tipo_projeto: existing.tipo_projeto ?? "",
+        data_envio: existing.data_envio,
+        data_aprovacao: existing.data_aprovacao,
+        data_fup: existing.data_fup,
+        cliente_contato: existing.cliente_contato ?? "",
+        indicador: existing.indicador ?? "",
+        observacoes: existing.observacoes ?? "",
       });
     }
   }, [existing]);
@@ -87,7 +101,6 @@ export default function PropostaForm() {
         await updateProposal.mutateAsync({ id: id!, ...form });
         toast({ title: "Proposta atualizada" });
 
-        // Auto-convert to project when status changes to aprovada
         if (form.status === "aprovada" && oldStatus !== "aprovada") {
           try {
             await createProject.mutateAsync({
@@ -117,6 +130,8 @@ export default function PropostaForm() {
     return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
   }
 
+  const selectedClient = clients?.find((c) => c.id === form.client_id);
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-4">
@@ -133,22 +148,55 @@ export default function PropostaForm() {
 
       <Card>
         <CardContent className="grid gap-4 pt-6">
+          {/* Código (read-only, auto-generated) */}
+          {isEdit && (
+            <div className="grid gap-2">
+              <Label>Código</Label>
+              <Input value={existing?.proposal_number ?? ""} disabled />
+            </div>
+          )}
+
+          {/* Projeto (título) */}
           <div className="grid gap-2">
-            <Label>Título *</Label>
+            <Label>Projeto *</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </div>
+
+          {/* Tipo de Projeto */}
+          <div className="grid gap-2">
+            <Label>Tipo de Projeto</Label>
+            <Input
+              value={form.tipo_projeto ?? ""}
+              onChange={(e) => setForm({ ...form, tipo_projeto: e.target.value })}
+              placeholder="Ex: Consultoria, Auditoria, Assessoria..."
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Data de Envio */}
             <div className="grid gap-2">
-              <Label>Cliente</Label>
-              <Select value={form.client_id ?? ""} onValueChange={(v) => setForm({ ...form, client_id: v || null })}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {clients?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Data de Envio</Label>
+              <Input
+                type="date"
+                value={form.data_envio ?? ""}
+                onChange={(e) => setForm({ ...form, data_envio: e.target.value || null })}
+              />
             </div>
+
+            {/* Valor */}
+            <div className="grid gap-2">
+              <Label>Valor (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={form.value ?? ""}
+                onChange={(e) => setForm({ ...form, value: e.target.value ? Number(e.target.value) : null })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Status */}
             <div className="grid gap-2">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
@@ -160,50 +208,80 @@ export default function PropostaForm() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Data de Aprovação */}
             <div className="grid gap-2">
-              <Label>Valor (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.value ?? ""}
-                onChange={(e) => setForm({ ...form, value: e.target.value ? Number(e.target.value) : null })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Validade</Label>
+              <Label>Data de Aprovação</Label>
               <Input
                 type="date"
-                value={form.validity_date ?? ""}
-                onChange={(e) => setForm({ ...form, validity_date: e.target.value || null })}
+                value={form.data_aprovacao ?? ""}
+                onChange={(e) => setForm({ ...form, data_aprovacao: e.target.value || null })}
               />
             </div>
           </div>
+
+          {/* Data de FUP */}
           <div className="grid gap-2">
-            <Label>Descrição</Label>
+            <Label>Data de Follow-up</Label>
+            <Input
+              type="date"
+              value={form.data_fup ?? ""}
+              onChange={(e) => setForm({ ...form, data_fup: e.target.value || null })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Empresa (client) */}
+            <div className="grid gap-2">
+              <Label>Empresa</Label>
+              <Select value={form.client_id ?? ""} onValueChange={(v) => {
+                const client = clients?.find((c) => c.id === v);
+                setForm({
+                  ...form,
+                  client_id: v || null,
+                  cliente_contato: client?.contact_name ?? form.cliente_contato ?? "",
+                });
+              }}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {clients?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Cliente (contato) */}
+            <div className="grid gap-2">
+              <Label>Cliente (Contato)</Label>
+              <Input
+                value={form.cliente_contato ?? ""}
+                onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })}
+                placeholder="Nome do contato"
+              />
+            </div>
+          </div>
+
+          {/* Indicador */}
+          <div className="grid gap-2">
+            <Label>Indicador</Label>
+            <Input
+              value={form.indicador ?? ""}
+              onChange={(e) => setForm({ ...form, indicador: e.target.value })}
+              placeholder="Quem indicou"
+            />
+          </div>
+
+          {/* Observações */}
+          <div className="grid gap-2">
+            <Label>Observações</Label>
             <Textarea
               rows={3}
-              value={form.description ?? ""}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              value={form.observacoes ?? ""}
+              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
             />
           </div>
-          <div className="grid gap-2">
-            <Label>Escopo</Label>
-            <Textarea
-              rows={3}
-              value={form.scope ?? ""}
-              onChange={(e) => setForm({ ...form, scope: e.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Condições de Pagamento</Label>
-            <Textarea
-              rows={2}
-              value={form.payment_terms ?? ""}
-              onChange={(e) => setForm({ ...form, payment_terms: e.target.value })}
-            />
-          </div>
+
           <div className="flex gap-3 pt-2">
             <Button onClick={handleSave} disabled={createProposal.isPending || updateProposal.isPending}>
               {isEdit ? "Salvar" : "Criar Proposta"}
