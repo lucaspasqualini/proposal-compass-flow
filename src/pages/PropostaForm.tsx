@@ -13,8 +13,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels } from "@/lib/format";
-import { ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ArrowLeft, Plus } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { useCreateClient } from "@/hooks/useClients";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
 
