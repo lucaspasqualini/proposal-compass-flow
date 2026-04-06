@@ -4,15 +4,16 @@ import { useProposal, useCreateProposal, useUpdateProposal } from "@/hooks/usePr
 import { useClients } from "@/hooks/useClients";
 import { useCreateProject } from "@/hooks/useProjects";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels } from "@/lib/format";
-import { ArrowLeft, FolderKanban } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
@@ -57,6 +58,24 @@ export default function PropostaForm() {
     }
   }, [existing]);
 
+  // Pre-fill description from last proposal for selected client
+  useEffect(() => {
+    if (!form.client_id || isEdit) return;
+    const fetchLastDescription = async () => {
+      const { data } = await supabase
+        .from("proposals")
+        .select("description")
+        .eq("client_id", form.client_id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.description) {
+        setForm((prev) => ({ ...prev, description: data.description }));
+      }
+    };
+    fetchLastDescription();
+  }, [form.client_id, isEdit]);
+
   const handleSave = async () => {
     if (!form.title.trim()) {
       toast({ title: "Título é obrigatório", variant: "destructive" });
@@ -64,8 +83,26 @@ export default function PropostaForm() {
     }
     try {
       if (isEdit) {
+        const oldStatus = existing?.status;
         await updateProposal.mutateAsync({ id: id!, ...form });
         toast({ title: "Proposta atualizada" });
+
+        // Auto-convert to project when status changes to aprovada
+        if (form.status === "aprovada" && oldStatus !== "aprovada") {
+          try {
+            await createProject.mutateAsync({
+              title: form.title,
+              client_id: form.client_id,
+              proposal_id: id!,
+              description: form.description,
+              budget: form.value,
+              status: "planejamento",
+            });
+            toast({ title: "Projeto criado automaticamente!" });
+          } catch {
+            toast({ title: "Erro ao criar projeto automaticamente", variant: "destructive" });
+          }
+        }
       } else {
         await createProposal.mutateAsync({ ...form, created_by: user?.id ?? null });
         toast({ title: "Proposta criada" });
@@ -73,26 +110,6 @@ export default function PropostaForm() {
       navigate("/propostas");
     } catch {
       toast({ title: "Erro ao salvar", variant: "destructive" });
-    }
-  };
-
-  const handleConvertToProject = async () => {
-    try {
-      await createProject.mutateAsync({
-        title: form.title,
-        client_id: form.client_id,
-        proposal_id: id!,
-        description: form.description,
-        budget: form.value,
-        status: "planejamento",
-      });
-      if (form.status !== "aprovada") {
-        await updateProposal.mutateAsync({ id: id!, status: "aprovada" });
-      }
-      toast({ title: "Projeto criado a partir da proposta!" });
-      navigate("/projetos");
-    } catch {
-      toast({ title: "Erro ao converter", variant: "destructive" });
     }
   };
 
@@ -108,12 +125,10 @@ export default function PropostaForm() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">{isEdit ? "Editar Proposta" : "Nova Proposta"}</h1>
+          {isEdit && existing?.proposal_number && (
+            <p className="text-sm text-muted-foreground">Código: {existing.proposal_number}</p>
+          )}
         </div>
-        {isEdit && (
-          <Button variant="outline" className="ml-auto" onClick={handleConvertToProject}>
-            <FolderKanban className="h-4 w-4 mr-1" /> Converter em Projeto
-          </Button>
-        )}
       </div>
 
       <Card>

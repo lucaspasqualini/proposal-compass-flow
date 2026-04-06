@@ -196,6 +196,7 @@ export type Database = {
           description: string | null
           id: string
           payment_terms: string | null
+          proposal_number: string | null
           scope: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           title: string
@@ -210,6 +211,7 @@ export type Database = {
           description?: string | null
           id?: string
           payment_terms?: string | null
+          proposal_number?: string | null
           scope?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           title: string
@@ -224,6 +226,7 @@ export type Database = {
           description?: string | null
           id?: string
           payment_terms?: string | null
+          proposal_number?: string | null
           scope?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           title?: string

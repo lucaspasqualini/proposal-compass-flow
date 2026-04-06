@@ -21,9 +21,11 @@ export default function Propostas() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filtered = proposals?.filter((p) => {
+    const s = search.toLowerCase();
     const matchSearch =
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      (p.clients as any)?.name?.toLowerCase().includes(search.toLowerCase());
+      p.title.toLowerCase().includes(s) ||
+      (p as any).proposal_number?.toLowerCase().includes(s) ||
+      (p.clients as any)?.name?.toLowerCase().includes(s);
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -75,6 +77,7 @@ export default function Propostas() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Código</TableHead>
                   <TableHead>Título</TableHead>
                   <TableHead className="hidden sm:table-cell">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Valor</TableHead>
@@ -86,13 +89,14 @@ export default function Propostas() {
               <TableBody>
                 {filtered?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Nenhuma proposta encontrada
                     </TableCell>
                   </TableRow>
                 )}
                 {filtered?.map((p) => (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/propostas/${p.id}`)}>
+                    <TableCell className="text-xs text-muted-foreground font-mono">{(p as any).proposal_number || "—"}</TableCell>
                     <TableCell className="font-medium">{p.title}</TableCell>
                     <TableCell className="hidden sm:table-cell">{(p.clients as any)?.name || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{formatCurrency(Number(p.value))}</TableCell>
