@@ -12,16 +12,11 @@ export function formatDate(date: string | null | undefined): string {
 }
 
 export const proposalStatusLabels: Record<string, string> = {
-  rascunho: "Rascunho",
-  enviada: "Enviada",
-  em_analise: "Em Análise",
+  em_elaboracao: "Em Elaboração",
   em_negociacao: "Em Negociação",
-  aprovada: "Aprovada",
   ganha: "Ganha",
-  rejeitada: "Rejeitada",
   perdida: "Perdida",
 };
-
 export const projectStatusLabels: Record<string, string> = {
   planejamento: "Planejamento",
   em_andamento: "Em Andamento",
