@@ -161,6 +161,7 @@ export default function ImportProposals() {
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Importar Propostas do Excel</DialogTitle>
+          <DialogDescription>Faça upload de uma planilha para importar propostas em massa.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
