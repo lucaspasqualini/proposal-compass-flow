@@ -25,7 +25,6 @@ export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
   const deleteProposal = useDeleteProposal();
   const updateProposal = useUpdateProposal();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -33,6 +32,8 @@ export default function Propostas() {
   const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [hidePerdida, setHidePerdida] = useState(false);
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [showNewDialog, setShowNewDialog] = useState(false);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
