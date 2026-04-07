@@ -14,8 +14,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
+
+type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
+type SortDir = "asc" | "desc";
+
+function getFieldValue(p: any, key: SortKey): string {
+  switch (key) {
+    case "number": return (p.proposals as any)?.proposal_number || "";
+    case "title": return p.title || "";
+    case "client": return (p.clients as any)?.name || "";
+    case "type": return (p.proposals as any)?.tipo_projeto || "";
+    case "status": return projectStatusLabels[p.status] || "";
+    case "etapa": return projectEtapaLabels[(p as any).etapa || "iniciado"] || "";
+    case "collaborators": {
+      const allocs = p.project_allocations || [];
+      return allocs.map((a: any) => a.team_members?.name || "").join(", ");
+    }
+    default: return "";
+  }
+}
 
 export default function Projetos() {
   const { data: projects, isLoading } = useProjects();
@@ -26,22 +45,43 @@ export default function Projetos() {
   const deleteAllocation = useDeleteAllocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [columnFilters, setColumnFilters] = useState<Partial<Record<SortKey, string>>>({});
+  const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const setFilter = (key: SortKey, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const filtered = useMemo(() => {
     if (!projects) return [];
-    return projects.filter((p) => {
-      const s = search.toLowerCase();
-      const matchSearch =
-        p.title.toLowerCase().includes(s) ||
-        ((p.clients as any)?.name ?? "").toLowerCase().includes(s) ||
-        ((p.proposals as any)?.proposal_number ?? "").toLowerCase().includes(s);
-      const matchStatus = statusFilter === "all" || p.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [projects, search, statusFilter]);
+    return projects
+      .filter((p) => {
+        return (Object.entries(columnFilters) as [SortKey, string][]).every(([key, val]) => {
+          if (!val) return true;
+          return getFieldValue(p, key).toLowerCase().includes(val.toLowerCase());
+        });
+      })
+      .sort((a, b) => {
+        if (!sortKey) return 0;
+        const va = getFieldValue(a, sortKey).toLowerCase();
+        const vb = getFieldValue(b, sortKey).toLowerCase();
+        const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+  }, [projects, columnFilters, sortKey, sortDir]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -55,7 +95,6 @@ export default function Projetos() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateProject.mutateAsync({ id, status: newStatus as any });
-      toast({ title: "Status atualizado" });
     } catch {
       toast({ title: "Erro ao atualizar status", variant: "destructive" });
     }
@@ -64,7 +103,6 @@ export default function Projetos() {
   const handleEtapaChange = async (id: string, newEtapa: string) => {
     try {
       await updateProject.mutateAsync({ id, etapa: newEtapa } as any);
-      toast({ title: "Etapa atualizada" });
     } catch {
       toast({ title: "Erro ao atualizar etapa", variant: "destructive" });
     }
@@ -72,9 +110,7 @@ export default function Projetos() {
 
   const getProjectAllocatedMembers = (project: any) => {
     const allocations = project.project_allocations || [];
-    return allocations
-      .map((a: any) => a.team_members)
-      .filter(Boolean);
+    return allocations.map((a: any) => a.team_members).filter(Boolean);
   };
 
   const handleToggleMember = async (projectId: string, memberId: string, allocations: any[]) => {
@@ -90,6 +126,23 @@ export default function Projetos() {
     }
   };
 
+  const columns: { key: SortKey; label: string; className?: string }[] = [
+    { key: "number", label: "Nº do Projeto", className: "whitespace-nowrap" },
+    { key: "title", label: "Nome do Projeto" },
+    { key: "client", label: "Cliente", className: "hidden sm:table-cell" },
+    { key: "type", label: "Tipo", className: "hidden md:table-cell" },
+    { key: "status", label: "Status" },
+    { key: "etapa", label: "Etapa" },
+    { key: "collaborators", label: "Colaboradores", className: "hidden md:table-cell" },
+  ];
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -102,24 +155,6 @@ export default function Projetos() {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Status</SelectItem>
-            {Object.entries(projectStatusLabels).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -129,14 +164,47 @@ export default function Projetos() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">Nº do Projeto</TableHead>
-                    <TableHead>Nome do Projeto</TableHead>
-                    <TableHead className="hidden sm:table-cell">Cliente</TableHead>
-                    <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Etapa</TableHead>
-                    <TableHead className="hidden md:table-cell">Colaboradores</TableHead>
-                    <TableHead className="w-24">Ações</TableHead>
+                    {columns.map(col => (
+                      <TableHead key={col.key} className={col.className}>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            className="flex items-center hover:text-foreground transition-colors text-xs uppercase tracking-wider font-medium"
+                            onClick={() => handleSort(col.key)}
+                          >
+                            {col.label}
+                            <SortIcon col={col.key} />
+                          </button>
+                          <Popover
+                            open={activeFilter === col.key}
+                            onOpenChange={(open) => setActiveFilter(open ? col.key : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <button className={`p-0.5 rounded hover:bg-accent ${columnFilters[col.key] ? "text-primary" : "text-muted-foreground opacity-50 hover:opacity-100"}`}>
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2" align="start">
+                              <Input
+                                placeholder={`Filtrar ${col.label.toLowerCase()}...`}
+                                value={columnFilters[col.key] || ""}
+                                onChange={(e) => setFilter(col.key, e.target.value)}
+                                className="h-8 text-sm"
+                                autoFocus
+                              />
+                              {columnFilters[col.key] && (
+                                <button
+                                  className="text-xs text-muted-foreground hover:text-foreground mt-1"
+                                  onClick={() => setFilter(col.key, "")}
+                                >
+                                  Limpar
+                                </button>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -229,9 +297,6 @@ export default function Projetos() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" onClick={() => navigate(`/projetos/${p.id}`)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon">
