@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors 
 import { ArrowLeft, Building2, FileText, FolderKanban, Save, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import CnpjLookupDialog from "@/components/CnpjLookupDialog";
+import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
 export default function ClienteDetail() {
   const { id } = useParams();

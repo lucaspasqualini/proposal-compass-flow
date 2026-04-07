@@ -43,7 +43,7 @@ export default function Dashboard() {
           <Button size="sm" onClick={() => navigate("/propostas/nova")}>
             <Plus className="h-4 w-4 mr-1" /> Proposta
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate("/projetos/novo")}>
+          <Button size="sm" variant="outline" onClick={() => navigate("/projetos")}>
             <Plus className="h-4 w-4 mr-1" /> Projeto
           </Button>
         </div>
