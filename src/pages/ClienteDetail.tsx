@@ -294,6 +294,11 @@ export default function ClienteDetail() {
         open={!!selectedProjectId}
         onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
       />
+      <ProposalDetailDialog
+        proposalId={selectedProposalId}
+        open={!!selectedProposalId}
+        onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
+      />
     </div>
   );
 }
