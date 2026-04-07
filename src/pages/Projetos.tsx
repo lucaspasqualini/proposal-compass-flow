@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search } from "lucide-react";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
 type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
@@ -65,6 +65,9 @@ export default function Projetos() {
   const [filterSearch, setFilterSearch] = useState<Partial<Record<SortKey, string>>>({});
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [hideFinalizado, setHideFinalizado] = useState(false);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -140,6 +143,21 @@ export default function Projetos() {
     if (!projects) return [];
     return projects
       .filter((p) => {
+        // Global search
+        if (search) {
+          const s = search.toLowerCase();
+          const matchSearch =
+            p.title.toLowerCase().includes(s) ||
+            ((p.proposals as any)?.proposal_number ?? "").toLowerCase().includes(s) ||
+            ((p.clients as any)?.name ?? "").toLowerCase().includes(s) ||
+            ((p.proposals as any)?.tipo_projeto ?? "").toLowerCase().includes(s);
+          if (!matchSearch) return false;
+        }
+        // Status dropdown filter
+        if (statusFilter !== "all" && p.status !== statusFilter) return false;
+        // Hide finalizado
+        if (hideFinalizado && p.status === "finalizado") return false;
+        // Column checkbox filters
         return (Object.entries(columnFilters) as [SortKey, Set<string>][]).every(([key, selectedSet]) => {
           if (!selectedSet || selectedSet.size === 0) return true;
           const values = getFieldValues(p, key);
@@ -153,7 +171,7 @@ export default function Projetos() {
         const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [projects, columnFilters, sortKey, sortDir]);
+  }, [projects, search, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -225,6 +243,28 @@ export default function Projetos() {
         <Button onClick={() => navigate("/projetos/novo")}>
           <Plus className="h-4 w-4 mr-1" /> Novo Projeto
         </Button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Status</SelectItem>
+            {Object.entries(projectStatusLabels).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2">
+          <Checkbox id="hide-finalizado" checked={hideFinalizado} onCheckedChange={(v) => setHideFinalizado(!!v)} />
+          <label htmlFor="hide-finalizado" className="text-sm text-muted-foreground cursor-pointer select-none">Ocultar finalizados</label>
+        </div>
       </div>
 
       <Card>
