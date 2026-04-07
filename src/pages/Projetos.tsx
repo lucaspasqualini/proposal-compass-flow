@@ -15,7 +15,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { projectStatusLabels as statusLabels } from "@/lib/format";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search } from "lucide-react";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
