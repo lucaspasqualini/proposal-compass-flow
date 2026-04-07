@@ -28,6 +28,7 @@ export default function Projetos() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!projects) return [];
