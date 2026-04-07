@@ -216,7 +216,7 @@ export default function Propostas() {
                     </TableRow>
                   )}
                   {filtered.map((p) => (
-                    <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/propostas/${p.id}`)}>
+                    <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedProposalId(p.id)}>
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{(p as any).tipo_projeto || "—"}</TableCell>
