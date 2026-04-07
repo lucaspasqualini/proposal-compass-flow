@@ -180,7 +180,7 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                 <>
                   <Separator />
                   <InfoBlock icon={<FileText className="h-4 w-4" />} label="Entendimento da Situação">
-                    <ScrollArea className="h-[22.5rem]">
+                    <ScrollArea className="h-[15rem]">
                       <p className="text-sm whitespace-pre-wrap leading-relaxed pr-3">{proposal?.description || project.description || "—"}</p>
                     </ScrollArea>
                   </InfoBlock>
