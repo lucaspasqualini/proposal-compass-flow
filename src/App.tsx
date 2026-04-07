@@ -13,7 +13,6 @@ import ClienteDetail from "@/pages/ClienteDetail";
 import Propostas from "@/pages/Propostas";
 import PropostaForm from "@/pages/PropostaForm";
 import Projetos from "@/pages/Projetos";
-import ProjetoForm from "@/pages/ProjetoForm";
 import Equipe from "@/pages/Equipe";
 import NotFound from "@/pages/NotFound";
 
