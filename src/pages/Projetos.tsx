@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
 import { useTeamMembers } from "@/hooks/useTeam";
-import { useProjectAllocations, useCreateAllocation, useDeleteAllocation } from "@/hooks/useTeam";
+import { useCreateAllocation, useDeleteAllocation } from "@/hooks/useTeam";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
@@ -36,6 +37,17 @@ function getFieldValue(p: any, key: SortKey): string {
   }
 }
 
+// For collaborators, return individual names so each can be filtered independently
+function getFieldValues(p: any, key: SortKey): string[] {
+  if (key === "collaborators") {
+    const allocs = p.project_allocations || [];
+    const names = allocs.map((a: any) => a.team_members?.name?.split(" ")[0] || "").filter(Boolean);
+    return names.length > 0 ? names : ["(vazio)"];
+  }
+  const v = getFieldValue(p, key);
+  return [v || "(vazio)"];
+}
+
 export default function Projetos() {
   const { data: projects, isLoading } = useProjects();
   const { data: teamMembers } = useTeamMembers();
@@ -48,7 +60,9 @@ export default function Projetos() {
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [columnFilters, setColumnFilters] = useState<Partial<Record<SortKey, string>>>({});
+  // Each column filter is a Set of selected values (empty = all selected = no filter)
+  const [columnFilters, setColumnFilters] = useState<Partial<Record<SortKey, Set<string>>>>({});
+  const [filterSearch, setFilterSearch] = useState<Partial<Record<SortKey, string>>>({});
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
@@ -61,17 +75,75 @@ export default function Projetos() {
     }
   };
 
-  const setFilter = (key: SortKey, value: string) => {
-    setColumnFilters(prev => ({ ...prev, [key]: value }));
+  // Get all unique values for a column
+  const getUniqueValues = (key: SortKey): string[] => {
+    if (!projects) return [];
+    const vals = new Set<string>();
+    projects.forEach(p => {
+      getFieldValues(p, key).forEach(v => vals.add(v));
+    });
+    return Array.from(vals).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  };
+
+  const toggleFilterValue = (key: SortKey, value: string) => {
+    setColumnFilters(prev => {
+      const allValues = getUniqueValues(key);
+      const current = prev[key];
+      let newSet: Set<string>;
+
+      if (!current || current.size === 0) {
+        // No filter active = all selected. Clicking one = deselect all others
+        newSet = new Set([value]);
+      } else if (current.has(value)) {
+        newSet = new Set(current);
+        newSet.delete(value);
+        // If nothing selected, clear filter (show all)
+        if (newSet.size === 0) {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        }
+      } else {
+        newSet = new Set(current);
+        newSet.add(value);
+        // If all selected, clear filter
+        if (newSet.size === allValues.length) {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        }
+      }
+      return { ...prev, [key]: newSet };
+    });
+  };
+
+  const selectAll = (key: SortKey) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const isFilterActive = (key: SortKey) => {
+    const f = columnFilters[key];
+    return f && f.size > 0;
+  };
+
+  const isValueSelected = (key: SortKey, value: string) => {
+    const f = columnFilters[key];
+    if (!f || f.size === 0) return true; // no filter = all selected
+    return f.has(value);
   };
 
   const filtered = useMemo(() => {
     if (!projects) return [];
     return projects
       .filter((p) => {
-        return (Object.entries(columnFilters) as [SortKey, string][]).every(([key, val]) => {
-          if (!val) return true;
-          return getFieldValue(p, key).toLowerCase().includes(val.toLowerCase());
+        return (Object.entries(columnFilters) as [SortKey, Set<string>][]).every(([key, selectedSet]) => {
+          if (!selectedSet || selectedSet.size === 0) return true;
+          const values = getFieldValues(p, key);
+          return values.some(v => selectedSet.has(v));
         });
       })
       .sort((a, b) => {
@@ -164,46 +236,78 @@ export default function Projetos() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {columns.map(col => (
-                      <TableHead key={col.key} className={col.className}>
-                        <div className="flex items-center gap-0.5">
-                          <button
-                            className="flex items-center hover:text-foreground transition-colors text-xs uppercase tracking-wider font-medium"
-                            onClick={() => handleSort(col.key)}
-                          >
-                            {col.label}
-                            <SortIcon col={col.key} />
-                          </button>
-                          <Popover
-                            open={activeFilter === col.key}
-                            onOpenChange={(open) => setActiveFilter(open ? col.key : null)}
-                          >
-                            <PopoverTrigger asChild>
-                              <button className={`p-0.5 rounded hover:bg-accent ${columnFilters[col.key] ? "text-primary" : "text-muted-foreground opacity-50 hover:opacity-100"}`}>
-                                <Filter className="h-3 w-3" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-48 p-2" align="start">
-                              <Input
-                                placeholder={`Filtrar ${col.label.toLowerCase()}...`}
-                                value={columnFilters[col.key] || ""}
-                                onChange={(e) => setFilter(col.key, e.target.value)}
-                                className="h-8 text-sm"
-                                autoFocus
-                              />
-                              {columnFilters[col.key] && (
-                                <button
-                                  className="text-xs text-muted-foreground hover:text-foreground mt-1"
-                                  onClick={() => setFilter(col.key, "")}
-                                >
-                                  Limpar
+                    {columns.map(col => {
+                      const uniqueValues = getUniqueValues(col.key);
+                      const search = filterSearch[col.key] || "";
+                      const filteredValues = uniqueValues.filter(v =>
+                        v.toLowerCase().includes(search.toLowerCase())
+                      );
+
+                      return (
+                        <TableHead key={col.key} className={col.className}>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              className="flex items-center hover:text-foreground transition-colors text-xs uppercase tracking-wider font-medium"
+                              onClick={() => handleSort(col.key)}
+                            >
+                              {col.label}
+                              <SortIcon col={col.key} />
+                            </button>
+                            <Popover
+                              open={activeFilter === col.key}
+                              onOpenChange={(open) => {
+                                setActiveFilter(open ? col.key : null);
+                                if (!open) setFilterSearch(prev => ({ ...prev, [col.key]: "" }));
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <button className={`p-0.5 rounded hover:bg-accent ${isFilterActive(col.key) ? "text-primary" : "text-muted-foreground opacity-50 hover:opacity-100"}`}>
+                                  <Filter className="h-3 w-3" />
                                 </button>
-                              )}
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </TableHead>
-                    ))}
+                              </PopoverTrigger>
+                              <PopoverContent className="w-56 p-0" align="start">
+                                <div className="p-2 border-b">
+                                  <Input
+                                    placeholder="Buscar..."
+                                    value={search}
+                                    onChange={(e) => setFilterSearch(prev => ({ ...prev, [col.key]: e.target.value }))}
+                                    className="h-8 text-sm"
+                                    autoFocus
+                                  />
+                                </div>
+                                <div className="p-1 border-b">
+                                  <button
+                                    className="text-xs text-primary hover:underline px-2 py-1"
+                                    onClick={() => selectAll(col.key)}
+                                  >
+                                    Selecionar todos
+                                  </button>
+                                </div>
+                                <ScrollArea className="max-h-[200px]">
+                                  <div className="p-1">
+                                    {filteredValues.map(value => (
+                                      <label
+                                        key={value}
+                                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                                      >
+                                        <Checkbox
+                                          checked={isValueSelected(col.key, value)}
+                                          onCheckedChange={() => toggleFilterValue(col.key, value)}
+                                        />
+                                        <span className="text-sm truncate">{value}</span>
+                                      </label>
+                                    ))}
+                                    {filteredValues.length === 0 && (
+                                      <p className="text-xs text-muted-foreground px-2 py-2">Nenhum resultado</p>
+                                    )}
+                                  </div>
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </TableHead>
+                      );
+                    })}
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
