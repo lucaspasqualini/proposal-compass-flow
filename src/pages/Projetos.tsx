@@ -65,6 +65,9 @@ export default function Projetos() {
   const [filterSearch, setFilterSearch] = useState<Partial<Record<SortKey, string>>>({});
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [hideFinalizado, setHideFinalizado] = useState(false);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
