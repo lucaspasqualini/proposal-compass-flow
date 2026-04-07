@@ -41,8 +41,8 @@ const App = () => (
               <Route path="/propostas/nova" element={<PropostaForm />} />
               <Route path="/propostas/:id" element={<PropostaForm />} />
               <Route path="/projetos" element={<Projetos />} />
-              <Route path="/projetos/novo" element={<ProjetoForm />} />
-              <Route path="/projetos/:id" element={<ProjetoForm />} />
+              <Route path="/projetos/novo" element={<Navigate to="/projetos" replace />} />
+              <Route path="/projetos/:id" element={<Navigate to="/projetos" replace />} />
               <Route path="/equipe" element={<Equipe />} />
             </Route>
             <Route path="*" element={<NotFound />} />
