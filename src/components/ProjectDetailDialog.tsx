@@ -5,13 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
 import { useTeamMembers, useCreateAllocation, useDeleteAllocation } from "@/hooks/useTeam";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { Building2, Calendar, FileText, Users, ClipboardList, Briefcase, Pencil } from "lucide-react";
+import { Building2, Calendar, FileText, Users, ClipboardList, Briefcase, Pencil, ChevronDown } from "lucide-react";
 
 interface ProjectDetailDialogProps {
   projectId: string | null;
@@ -27,6 +28,7 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
   const deleteAllocation = useDeleteAllocation();
   const { toast } = useToast();
   const [editingEndDate, setEditingEndDate] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
 
   const proposal = project?.proposals as any;
   const client = project?.clients as any;
@@ -41,6 +43,24 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
       setEditingEndDate(false);
     } catch {
       toast({ title: "Erro ao atualizar data", variant: "destructive" });
+    }
+  };
+
+  const handleStatusChange = async (value: string) => {
+    if (!projectId) return;
+    try {
+      await updateProject.mutateAsync({ id: projectId, status: value as any });
+    } catch {
+      toast({ title: "Erro ao atualizar status", variant: "destructive" });
+    }
+  };
+
+  const handleEtapaChange = async (value: string) => {
+    if (!projectId) return;
+    try {
+      await updateProject.mutateAsync({ id: projectId, etapa: value } as any);
+    } catch {
+      toast({ title: "Erro ao atualizar etapa", variant: "destructive" });
     }
   };
 
@@ -68,23 +88,49 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
         ) : (
           <>
             <DialogHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs font-mono text-muted-foreground">{proposal?.proposal_number || "—"}</p>
-                  <DialogTitle className="text-xl">{project.title}</DialogTitle>
-                </div>
-                <div className="flex gap-2 shrink-0 pt-1">
-                  <Badge variant="secondary" className={projectStatusColors[project.status]}>
-                    {projectStatusLabels[project.status]}
-                  </Badge>
-                  <Badge variant="secondary" className={projectEtapaColors[(project as any).etapa || "iniciado"]}>
-                    {projectEtapaLabels[(project as any).etapa || "iniciado"]}
-                  </Badge>
-                </div>
+              <div className="space-y-1">
+                <p className="text-xs font-mono text-muted-foreground">{proposal?.proposal_number || "—"}</p>
+                <DialogTitle className="text-xl">{project.title}</DialogTitle>
               </div>
             </DialogHeader>
 
             <div className="space-y-5 mt-2">
+              {/* Status & Etapa - editáveis */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Status</p>
+                  <Select value={project.status} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="h-8 w-full">
+                      <Badge variant="secondary" className={projectStatusColors[project.status]}>
+                        {projectStatusLabels[project.status]}
+                      </Badge>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(projectStatusLabels).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Etapa</p>
+                  <Select value={(project as any).etapa || "iniciado"} onValueChange={handleEtapaChange}>
+                    <SelectTrigger className="h-8 w-full">
+                      <Badge variant="secondary" className={projectEtapaColors[(project as any).etapa || "iniciado"]}>
+                        {projectEtapaLabels[(project as any).etapa || "iniciado"]}
+                      </Badge>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(projectEtapaLabels).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Cliente, Tipo, Datas */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <InfoBlock icon={<Building2 className="h-4 w-4" />} label="Cliente">
@@ -142,11 +188,23 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                 </InfoBlock>
               )}
 
-              {/* Colaboradores - editável */}
+              {/* Colaboradores - collapsible com scroll */}
               <Separator />
-              <InfoBlock icon={<Users className="h-4 w-4" />} label="Colaboradores">
-                <div className="flex items-start gap-3">
-                  <div className="flex flex-wrap gap-2 flex-1">
+              <Collapsible open={teamOpen} onOpenChange={setTeamOpen}>
+                <div className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                      <Users className="h-4 w-4" />
+                      Colaboradores
+                      {allocations.length > 0 && (
+                        <span className="text-foreground ml-1">({allocations.length})</span>
+                      )}
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${teamOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+
+                  {/* Badges dos alocados - sempre visíveis */}
+                  <div className="flex flex-wrap gap-2">
                     {allocations.length > 0 ? (
                       allocations.map((a: any) => (
                         <Badge key={a.id} variant="outline" className="text-sm py-1">
@@ -160,33 +218,33 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                       <p className="text-sm text-muted-foreground">Nenhum colaborador alocado</p>
                     )}
                   </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="shrink-0">
-                        <Pencil className="h-3 w-3 mr-1" /> Editar
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2" align="end">
-                      <p className="text-sm font-medium mb-2">Colaboradores</p>
-                      {teamMembers?.filter(m => m.is_active).map((member) => {
-                        const isAllocated = allocations.some((a: any) => a.team_member_id === member.id);
-                        return (
-                          <label key={member.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-accent cursor-pointer">
-                            <Checkbox
-                              checked={isAllocated}
-                              onCheckedChange={() => handleToggleMember(member.id)}
-                            />
-                            <span className="text-sm">{member.name}</span>
-                          </label>
-                        );
-                      })}
-                      {(!teamMembers || teamMembers.filter(m => m.is_active).length === 0) && (
-                        <p className="text-xs text-muted-foreground">Cadastre membros na aba Equipe</p>
-                      )}
-                    </PopoverContent>
-                  </Popover>
+
+                  <CollapsibleContent>
+                    <div className="mt-2 border rounded-md">
+                      <ScrollArea className="h-[180px]">
+                        <div className="p-2 space-y-0.5">
+                          {teamMembers?.filter(m => m.is_active).map((member) => {
+                            const isAllocated = allocations.some((a: any) => a.team_member_id === member.id);
+                            return (
+                              <label key={member.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent cursor-pointer">
+                                <Checkbox
+                                  checked={isAllocated}
+                                  onCheckedChange={() => handleToggleMember(member.id)}
+                                />
+                                <span className="text-sm flex-1">{member.name}</span>
+                                {member.role && <span className="text-xs text-muted-foreground">{member.role}</span>}
+                              </label>
+                            );
+                          })}
+                          {(!teamMembers || teamMembers.filter(m => m.is_active).length === 0) && (
+                            <p className="text-xs text-muted-foreground p-2">Cadastre membros na aba Equipe</p>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </CollapsibleContent>
                 </div>
-              </InfoBlock>
+              </Collapsible>
             </div>
           </>
         )}
