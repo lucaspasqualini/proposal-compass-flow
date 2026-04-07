@@ -80,7 +80,7 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl h-[95vh] overflow-y-auto flex flex-col [&>div]:mt-0" style={{ alignItems: 'stretch', justifyContent: 'flex-start', paddingTop: '1.5rem' }}>
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Carregando...</div>
         ) : !project ? (
