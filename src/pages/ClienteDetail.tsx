@@ -13,8 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
-import { ArrowLeft, Building2, FileText, FolderKanban, Save } from "lucide-react";
+import { ArrowLeft, Building2, FileText, FolderKanban, Save, Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import CnpjLookupDialog from "@/components/CnpjLookupDialog";
 
 export default function ClienteDetail() {
   const { id } = useParams();
