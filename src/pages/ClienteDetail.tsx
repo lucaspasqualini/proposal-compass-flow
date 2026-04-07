@@ -168,7 +168,7 @@ export default function ClienteDetail() {
                       <TableRow
                         key={p.id}
                         className="cursor-pointer"
-                        onClick={() => navigate(`/propostas/${p.id}`)}
+                        onClick={() => setSelectedProposalId(p.id)}
                       >
                         <TableCell className="font-mono text-xs">{p.proposal_number || "—"}</TableCell>
                         <TableCell className="font-medium">{p.title}</TableCell>
