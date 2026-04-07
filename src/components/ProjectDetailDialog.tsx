@@ -131,8 +131,8 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
 
               <Separator />
 
-              {/* Cliente, Tipo, Datas */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Cliente, Contato, Tipo, Datas */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 <InfoBlock icon={<Building2 className="h-4 w-4" />} label="Cliente">
                   {client?.name ? (
                     <Link to={`/clientes/${client.id}`} className="text-primary hover:underline font-medium" onClick={() => onOpenChange(false)}>
@@ -140,6 +140,9 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                     </Link>
                   ) : "—"}
                   {client?.cnpj && <p className="text-xs text-muted-foreground">{client.cnpj}</p>}
+                </InfoBlock>
+                <InfoBlock icon={<Users className="h-4 w-4" />} label="Contato">
+                  <span className="font-medium">{client?.contact_name || "—"}</span>
                 </InfoBlock>
                 <InfoBlock icon={<Briefcase className="h-4 w-4" />} label="Tipo">
                   <span className="font-medium">{proposal?.tipo_projeto || "—"}</span>
