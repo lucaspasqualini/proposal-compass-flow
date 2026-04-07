@@ -143,6 +143,21 @@ export default function Projetos() {
     if (!projects) return [];
     return projects
       .filter((p) => {
+        // Global search
+        if (search) {
+          const s = search.toLowerCase();
+          const matchSearch =
+            p.title.toLowerCase().includes(s) ||
+            ((p.proposals as any)?.proposal_number ?? "").toLowerCase().includes(s) ||
+            ((p.clients as any)?.name ?? "").toLowerCase().includes(s) ||
+            ((p.proposals as any)?.tipo_projeto ?? "").toLowerCase().includes(s);
+          if (!matchSearch) return false;
+        }
+        // Status dropdown filter
+        if (statusFilter !== "all" && p.status !== statusFilter) return false;
+        // Hide finalizado
+        if (hideFinalizado && p.status === "finalizado") return false;
+        // Column checkbox filters
         return (Object.entries(columnFilters) as [SortKey, Set<string>][]).every(([key, selectedSet]) => {
           if (!selectedSet || selectedSet.size === 0) return true;
           const values = getFieldValues(p, key);
@@ -156,7 +171,7 @@ export default function Projetos() {
         const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [projects, columnFilters, sortKey, sortDir]);
+  }, [projects, search, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
 
   const handleDelete = async (id: string) => {
     try {
