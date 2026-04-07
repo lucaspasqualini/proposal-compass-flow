@@ -40,7 +40,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Visão geral do seu negócio</p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => navigate("/propostas/nova")}>
+          <Button size="sm" onClick={() => navigate("/propostas")}>
             <Plus className="h-4 w-4 mr-1" /> Proposta
           </Button>
           <Button size="sm" variant="outline" onClick={() => navigate("/projetos")}>
