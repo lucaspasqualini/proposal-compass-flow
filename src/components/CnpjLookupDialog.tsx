@@ -61,14 +61,6 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
     setResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("search-cnpj", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        body: null,
-      });
-
-      // supabase.functions.invoke doesn't support query params well for GET,
-      // so let's use fetch directly
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const url = `https://${projectId}.supabase.co/functions/v1/search-cnpj?cnpj=${digits}`;
       
