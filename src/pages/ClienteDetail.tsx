@@ -287,6 +287,11 @@ export default function ClienteDetail() {
           }));
         }}
       />
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+      />
     </div>
   );
 }
