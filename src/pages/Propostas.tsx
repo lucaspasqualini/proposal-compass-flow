@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useProposals, useDeleteProposal, useUpdateProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
-
+import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
@@ -25,7 +25,6 @@ export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
   const deleteProposal = useDeleteProposal();
   const updateProposal = useUpdateProposal();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -33,6 +32,8 @@ export default function Propostas() {
   const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [hidePerdida, setHidePerdida] = useState(false);
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [showNewDialog, setShowNewDialog] = useState(false);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -131,7 +132,7 @@ export default function Propostas() {
         </div>
         <div className="flex gap-2">
           <ImportProposals />
-          <Button onClick={() => navigate("/propostas/nova")}>
+          <Button onClick={() => setShowNewDialog(true)}>
             <Plus className="h-4 w-4 mr-1" /> Nova Proposta
           </Button>
         </div>
@@ -215,7 +216,7 @@ export default function Propostas() {
                     </TableRow>
                   )}
                   {filtered.map((p) => (
-                    <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/propostas/${p.id}`)}>
+                    <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedProposalId(p.id)}>
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{(p as any).tipo_projeto || "—"}</TableCell>
@@ -267,7 +268,7 @@ export default function Propostas() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
+                          <Button variant="ghost" size="icon" onClick={() => setSelectedProposalId(p.id)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
@@ -297,6 +298,19 @@ export default function Propostas() {
           )}
         </CardContent>
       </Card>
+
+      <ProposalDetailDialog
+        proposalId={selectedProposalId}
+        open={!!selectedProposalId}
+        onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
+      />
+
+      <ProposalDetailDialog
+        proposalId={null}
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+        isNew
+      />
     </div>
   );
 }

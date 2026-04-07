@@ -11,7 +11,6 @@ import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import ClienteDetail from "@/pages/ClienteDetail";
 import Propostas from "@/pages/Propostas";
-import PropostaForm from "@/pages/PropostaForm";
 import Projetos from "@/pages/Projetos";
 import Equipe from "@/pages/Equipe";
 import NotFound from "@/pages/NotFound";
@@ -38,8 +37,8 @@ const App = () => (
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/clientes/:id" element={<ClienteDetail />} />
               <Route path="/propostas" element={<Propostas />} />
-              <Route path="/propostas/nova" element={<PropostaForm />} />
-              <Route path="/propostas/:id" element={<PropostaForm />} />
+              <Route path="/propostas/nova" element={<Navigate to="/propostas" replace />} />
+              <Route path="/propostas/:id" element={<Navigate to="/propostas" replace />} />
               <Route path="/projetos" element={<Projetos />} />
               <Route path="/projetos/novo" element={<Navigate to="/projetos" replace />} />
               <Route path="/projetos/:id" element={<Navigate to="/projetos" replace />} />
