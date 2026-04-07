@@ -209,7 +209,7 @@ export default function ClienteDetail() {
                       <TableRow
                         key={p.id}
                         className="cursor-pointer"
-                        onClick={() => navigate(`/projetos/${p.id}`)}
+                        onClick={() => setSelectedProjectId(p.id)}
                       >
                         <TableCell className="font-medium">{p.title}</TableCell>
                         <TableCell>
