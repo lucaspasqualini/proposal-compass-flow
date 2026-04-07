@@ -245,6 +245,28 @@ export default function Projetos() {
         </Button>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Status</SelectItem>
+            {Object.entries(projectStatusLabels).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2">
+          <Checkbox id="hide-finalizado" checked={hideFinalizado} onCheckedChange={(v) => setHideFinalizado(!!v)} />
+          <label htmlFor="hide-finalizado" className="text-sm text-muted-foreground cursor-pointer select-none">Ocultar finalizados</label>
+        </div>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
