@@ -51,6 +51,7 @@ export default function ClienteDetail() {
     notes: "",
   });
   const [cnpjDialogOpen, setCnpjDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     if (client) {
