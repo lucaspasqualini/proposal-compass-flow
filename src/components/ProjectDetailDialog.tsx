@@ -80,7 +80,7 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl h-[95vh] overflow-y-auto flex flex-col [&>div]:mt-0" style={{ alignItems: 'stretch', justifyContent: 'flex-start', paddingTop: '1.5rem' }}>
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Carregando...</div>
         ) : !project ? (
@@ -131,8 +131,8 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
 
               <Separator />
 
-              {/* Cliente, Tipo, Datas */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Cliente, Contato, Tipo, Datas */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 <InfoBlock icon={<Building2 className="h-4 w-4" />} label="Cliente">
                   {client?.name ? (
                     <Link to={`/clientes/${client.id}`} className="text-primary hover:underline font-medium" onClick={() => onOpenChange(false)}>
@@ -140,6 +140,9 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                     </Link>
                   ) : "—"}
                   {client?.cnpj && <p className="text-xs text-muted-foreground">{client.cnpj}</p>}
+                </InfoBlock>
+                <InfoBlock icon={<Users className="h-4 w-4" />} label="Contato">
+                  <span className="font-medium">{client?.contact_name || "—"}</span>
                 </InfoBlock>
                 <InfoBlock icon={<Briefcase className="h-4 w-4" />} label="Tipo">
                   <span className="font-medium">{proposal?.tipo_projeto || "—"}</span>
@@ -177,14 +180,18 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                 <>
                   <Separator />
                   <InfoBlock icon={<FileText className="h-4 w-4" />} label="Entendimento da Situação">
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{proposal?.description || project.description || "—"}</p>
+                    <ScrollArea className="h-[22.5rem]">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed pr-3">{proposal?.description || project.description || "—"}</p>
+                    </ScrollArea>
                   </InfoBlock>
                 </>
               )}
 
               {proposal?.scope && (
                 <InfoBlock icon={<ClipboardList className="h-4 w-4" />} label="Escopo do Trabalho">
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{proposal.scope}</p>
+                  <ScrollArea className="h-[22.5rem]">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed pr-3">{proposal.scope}</p>
+                  </ScrollArea>
                 </InfoBlock>
               )}
 
