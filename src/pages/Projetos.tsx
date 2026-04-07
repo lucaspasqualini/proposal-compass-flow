@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
 import { Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
 export default function Projetos() {
   const { data: projects, isLoading } = useProjects();
