@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
 import { Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
 export default function Projetos() {
   const { data: projects, isLoading } = useProjects();
@@ -27,6 +28,7 @@ export default function Projetos() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!projects) return [];
@@ -150,7 +152,7 @@ export default function Projetos() {
                     const allocations = (p as any).project_allocations || [];
 
                     return (
-                      <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projetos/${p.id}`)}>
+                      <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedProjectId(p.id)}>
                         <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">
                           {(p.proposals as any)?.proposal_number || "—"}
                         </TableCell>
@@ -258,6 +260,12 @@ export default function Projetos() {
           )}
         </CardContent>
       </Card>
+
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+      />
     </div>
   );
 }
