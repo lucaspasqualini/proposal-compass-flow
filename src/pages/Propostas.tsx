@@ -132,7 +132,7 @@ export default function Propostas() {
         </div>
         <div className="flex gap-2">
           <ImportProposals />
-          <Button onClick={() => navigate("/propostas/nova")}>
+          <Button onClick={() => setShowNewDialog(true)}>
             <Plus className="h-4 w-4 mr-1" /> Nova Proposta
           </Button>
         </div>
