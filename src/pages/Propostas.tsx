@@ -268,7 +268,7 @@ export default function Propostas() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" onClick={() => navigate(`/propostas/${p.id}`)}>
+                          <Button variant="ghost" size="icon" onClick={() => setSelectedProposalId(p.id)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
