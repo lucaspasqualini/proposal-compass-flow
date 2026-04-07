@@ -49,6 +49,7 @@ export default function ClienteDetail() {
     address: "",
     notes: "",
   });
+  const [cnpjDialogOpen, setCnpjDialogOpen] = useState(false);
 
   useEffect(() => {
     if (client) {
