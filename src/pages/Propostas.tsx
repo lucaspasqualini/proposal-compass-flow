@@ -298,6 +298,19 @@ export default function Propostas() {
           )}
         </CardContent>
       </Card>
+
+      <ProposalDetailDialog
+        proposalId={selectedProposalId}
+        open={!!selectedProposalId}
+        onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
+      />
+
+      <ProposalDetailDialog
+        proposalId={null}
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+        isNew
+      />
     </div>
   );
 }
