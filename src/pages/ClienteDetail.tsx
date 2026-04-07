@@ -17,6 +17,7 @@ import { ArrowLeft, Building2, FileText, FolderKanban, Save, Search } from "luci
 import { useState, useEffect } from "react";
 import CnpjLookupDialog from "@/components/CnpjLookupDialog";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
+import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 
 export default function ClienteDetail() {
   const { id } = useParams();
