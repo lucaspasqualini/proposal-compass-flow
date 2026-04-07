@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors 
 import { ArrowLeft, Building2, FileText, FolderKanban, Save, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import CnpjLookupDialog from "@/components/CnpjLookupDialog";
+import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
 export default function ClienteDetail() {
   const { id } = useParams();
@@ -50,6 +51,7 @@ export default function ClienteDetail() {
     notes: "",
   });
   const [cnpjDialogOpen, setCnpjDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     if (client) {
@@ -207,7 +209,7 @@ export default function ClienteDetail() {
                       <TableRow
                         key={p.id}
                         className="cursor-pointer"
-                        onClick={() => navigate(`/projetos/${p.id}`)}
+                        onClick={() => setSelectedProjectId(p.id)}
                       >
                         <TableCell className="font-medium">{p.title}</TableCell>
                         <TableCell>
@@ -284,6 +286,11 @@ export default function ClienteDetail() {
             contact_name: data.contact_name || prev.contact_name,
           }));
         }}
+      />
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
       />
     </div>
   );
