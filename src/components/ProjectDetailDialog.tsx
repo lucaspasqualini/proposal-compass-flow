@@ -180,14 +180,18 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                 <>
                   <Separator />
                   <InfoBlock icon={<FileText className="h-4 w-4" />} label="Entendimento da Situação">
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{proposal?.description || project.description || "—"}</p>
+                    <ScrollArea className="h-[22.5rem]">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed pr-3">{proposal?.description || project.description || "—"}</p>
+                    </ScrollArea>
                   </InfoBlock>
                 </>
               )}
 
               {proposal?.scope && (
                 <InfoBlock icon={<ClipboardList className="h-4 w-4" />} label="Escopo do Trabalho">
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{proposal.scope}</p>
+                  <ScrollArea className="h-[22.5rem]">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed pr-3">{proposal.scope}</p>
+                  </ScrollArea>
                 </InfoBlock>
               )}
 
