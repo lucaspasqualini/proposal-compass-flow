@@ -260,6 +260,12 @@ export default function Projetos() {
           )}
         </CardContent>
       </Card>
+
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+      />
     </div>
   );
 }
