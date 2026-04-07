@@ -152,7 +152,7 @@ export default function Projetos() {
                     const allocations = (p as any).project_allocations || [];
 
                     return (
-                      <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/projetos/${p.id}`)}>
+                      <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedProjectId(p.id)}>
                         <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">
                           {(p.proposals as any)?.proposal_number || "—"}
                         </TableCell>
