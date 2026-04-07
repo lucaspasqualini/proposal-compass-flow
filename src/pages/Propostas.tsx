@@ -17,7 +17,7 @@ import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
-
+import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
