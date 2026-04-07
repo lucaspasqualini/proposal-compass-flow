@@ -233,7 +233,13 @@ export default function ClienteDetail() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>CNPJ</Label>
-                  <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+                  <div className="flex gap-2">
+                    <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+                    <Button type="button" variant="outline" size="icon" onClick={() => setCnpjDialogOpen(true)} title="Consultar CNPJ">
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
                 </div>
                 <div className="grid gap-2">
                   <Label>Contato</Label>
