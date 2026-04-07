@@ -1,10 +1,17 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useProject } from "@/hooks/useProjects";
-import { formatCurrency, formatDate, projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { Building2, Calendar, FileText, Users, DollarSign, ClipboardList, Briefcase } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { useProject, useUpdateProject } from "@/hooks/useProjects";
+import { useTeamMembers, useCreateAllocation, useDeleteAllocation } from "@/hooks/useTeam";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate, projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
+import { Building2, Calendar, FileText, Users, ClipboardList, Briefcase, Pencil } from "lucide-react";
 
 interface ProjectDetailDialogProps {
   projectId: string | null;
@@ -14,15 +21,46 @@ interface ProjectDetailDialogProps {
 
 export default function ProjectDetailDialog({ projectId, open, onOpenChange }: ProjectDetailDialogProps) {
   const { data: project, isLoading } = useProject(projectId ?? undefined);
+  const { data: teamMembers } = useTeamMembers();
+  const updateProject = useUpdateProject();
+  const createAllocation = useCreateAllocation();
+  const deleteAllocation = useDeleteAllocation();
+  const { toast } = useToast();
+  const [editingEndDate, setEditingEndDate] = useState(false);
 
   const proposal = project?.proposals as any;
   const client = project?.clients as any;
   const allocations = (project?.project_allocations as any[]) || [];
-  const parcelas = (proposal?.parcelas as any[]) || [];
+
+  const startDate = proposal?.data_aprovacao || project?.start_date;
+
+  const handleEndDateChange = async (value: string) => {
+    if (!projectId) return;
+    try {
+      await updateProject.mutateAsync({ id: projectId, end_date: value || null });
+      setEditingEndDate(false);
+    } catch {
+      toast({ title: "Erro ao atualizar data", variant: "destructive" });
+    }
+  };
+
+  const handleToggleMember = async (memberId: string) => {
+    if (!projectId) return;
+    const existing = allocations.find((a: any) => a.team_member_id === memberId);
+    try {
+      if (existing) {
+        await deleteAllocation.mutateAsync(existing.id);
+      } else {
+        await createAllocation.mutateAsync({ project_id: projectId, team_member_id: memberId });
+      }
+    } catch {
+      toast({ title: "Erro ao atualizar colaboradores", variant: "destructive" });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Carregando...</div>
         ) : !project ? (
@@ -47,8 +85,8 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
             </DialogHeader>
 
             <div className="space-y-5 mt-2">
-              {/* Cliente & Tipo */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Cliente, Tipo, Datas */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <InfoBlock icon={<Building2 className="h-4 w-4" />} label="Cliente">
                   {client?.name ? (
                     <Link to={`/clientes/${client.id}`} className="text-primary hover:underline font-medium" onClick={() => onOpenChange(false)}>
@@ -57,21 +95,34 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                   ) : "—"}
                   {client?.cnpj && <p className="text-xs text-muted-foreground">{client.cnpj}</p>}
                 </InfoBlock>
-                <InfoBlock icon={<Briefcase className="h-4 w-4" />} label="Tipo de Projeto">
+                <InfoBlock icon={<Briefcase className="h-4 w-4" />} label="Tipo">
                   <span className="font-medium">{proposal?.tipo_projeto || "—"}</span>
                 </InfoBlock>
-              </div>
-
-              {/* Datas & Orçamento */}
-              <div className="grid grid-cols-3 gap-4">
                 <InfoBlock icon={<Calendar className="h-4 w-4" />} label="Início">
-                  <span className="font-medium">{formatDate(project.start_date)}</span>
+                  <span className="font-medium">{formatDate(startDate)}</span>
                 </InfoBlock>
                 <InfoBlock icon={<Calendar className="h-4 w-4" />} label="Fim">
-                  <span className="font-medium">{formatDate(project.end_date)}</span>
-                </InfoBlock>
-                <InfoBlock icon={<DollarSign className="h-4 w-4" />} label="Valor">
-                  <span className="font-medium">{formatCurrency(project.budget ?? proposal?.value)}</span>
+                  {editingEndDate ? (
+                    <Input
+                      type="date"
+                      defaultValue={project.end_date ?? ""}
+                      className="h-7 w-36 text-sm"
+                      autoFocus
+                      onBlur={(e) => handleEndDateChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleEndDateChange((e.target as HTMLInputElement).value);
+                        if (e.key === "Escape") setEditingEndDate(false);
+                      }}
+                    />
+                  ) : (
+                    <button
+                      className="font-medium flex items-center gap-1 hover:text-primary transition-colors"
+                      onClick={() => setEditingEndDate(true)}
+                    >
+                      {formatDate(project.end_date)}
+                      <Pencil className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  )}
                 </InfoBlock>
               </div>
 
@@ -91,45 +142,50 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                 </InfoBlock>
               )}
 
-              {/* Forma de pagamento */}
-              {(proposal?.payment_type || parcelas.length > 0) && (
-                <>
-                  <Separator />
-                  <InfoBlock icon={<DollarSign className="h-4 w-4" />} label="Forma de Pagamento">
-                    <p className="text-sm font-medium mb-1">
-                      {proposal?.payment_type === "etapas" ? "Por Etapas" : proposal?.payment_type === "prazo" ? "Por Prazo" : proposal?.payment_type || "—"}
-                    </p>
-                    {parcelas.length > 0 && (
-                      <div className="space-y-1">
-                        {parcelas.map((p: any, i: number) => (
-                          <div key={i} className="flex justify-between text-sm text-muted-foreground border-b border-border/50 pb-1 last:border-0">
-                            <span>{p.descricao || `Parcela ${i + 1}`}</span>
-                            <span className="font-medium text-foreground">{formatCurrency(p.valor)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </InfoBlock>
-                </>
-              )}
-
-              {/* Colaboradores */}
+              {/* Colaboradores - editável */}
               <Separator />
               <InfoBlock icon={<Users className="h-4 w-4" />} label="Colaboradores">
-                {allocations.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {allocations.map((a: any) => (
-                      <Badge key={a.id} variant="outline" className="text-sm py-1">
-                        {a.team_members?.name || "—"}
-                        {a.team_members?.role && (
-                          <span className="ml-1 text-muted-foreground font-normal">· {a.team_members.role}</span>
-                        )}
-                      </Badge>
-                    ))}
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-wrap gap-2 flex-1">
+                    {allocations.length > 0 ? (
+                      allocations.map((a: any) => (
+                        <Badge key={a.id} variant="outline" className="text-sm py-1">
+                          {a.team_members?.name || "—"}
+                          {a.team_members?.role && (
+                            <span className="ml-1 text-muted-foreground font-normal">· {a.team_members.role}</span>
+                          )}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum colaborador alocado</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Nenhum colaborador alocado</p>
-                )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="shrink-0">
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="end">
+                      <p className="text-sm font-medium mb-2">Colaboradores</p>
+                      {teamMembers?.filter(m => m.is_active).map((member) => {
+                        const isAllocated = allocations.some((a: any) => a.team_member_id === member.id);
+                        return (
+                          <label key={member.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-accent cursor-pointer">
+                            <Checkbox
+                              checked={isAllocated}
+                              onCheckedChange={() => handleToggleMember(member.id)}
+                            />
+                            <span className="text-sm">{member.name}</span>
+                          </label>
+                        );
+                      })}
+                      {(!teamMembers || teamMembers.filter(m => m.is_active).length === 0) && (
+                        <p className="text-xs text-muted-foreground">Cadastre membros na aba Equipe</p>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </InfoBlock>
             </div>
           </>
