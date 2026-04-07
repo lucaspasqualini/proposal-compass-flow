@@ -11,7 +11,6 @@ import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import ClienteDetail from "@/pages/ClienteDetail";
 import Propostas from "@/pages/Propostas";
-import PropostaForm from "@/pages/PropostaForm";
 import Projetos from "@/pages/Projetos";
 import Equipe from "@/pages/Equipe";
 import NotFound from "@/pages/NotFound";
