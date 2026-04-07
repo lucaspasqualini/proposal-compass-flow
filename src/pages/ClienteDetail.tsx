@@ -240,7 +240,6 @@ export default function ClienteDetail() {
                     </Button>
                   </div>
                 </div>
-                </div>
                 <div className="grid gap-2">
                   <Label>Contato</Label>
                   <Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
@@ -271,6 +270,21 @@ export default function ClienteDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CnpjLookupDialog
+        open={cnpjDialogOpen}
+        onOpenChange={setCnpjDialogOpen}
+        onConfirm={(data) => {
+          setForm((prev) => ({
+            ...prev,
+            cnpj: data.cnpj,
+            address: data.address || prev.address,
+            phone: data.phone || prev.phone,
+            email: data.email || prev.email,
+            contact_name: data.contact_name || prev.contact_name,
+          }));
+        }}
+      />
     </div>
   );
 }
