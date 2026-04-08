@@ -164,19 +164,42 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
 
   useEffect(() => {
     if (!form.client_id || isEdit) return;
-    const fetchLastDescription = async () => {
+    const fetchLastProposalData = async () => {
       const { data } = await supabase
         .from("proposals")
-        .select("description")
+        .select("description, about_company, payment_type, parcelas")
         .eq("client_id", form.client_id!)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
-      if (data?.description) {
-        setForm((prev) => ({ ...prev, description: data.description }));
+      if (data) {
+        setForm((prev) => ({
+          ...prev,
+          ...(data.description ? { description: data.description } : {}),
+          ...((data as any).about_company ? { about_company: (data as any).about_company } : {}),
+          ...((data as any).payment_type ? { payment_type: (data as any).payment_type } : {}),
+        }));
+        // Auto-fill parcelas/etapas
+        const savedParcelas = (data as any).parcelas;
+        const paymentType = (data as any).payment_type;
+        if (Array.isArray(savedParcelas) && savedParcelas.length > 0) {
+          const isEtapasFormat = savedParcelas.some((p: any) => ["inicio", "minuta", "assinatura"].includes(p.descricao));
+          if (isEtapasFormat && paymentType === "etapas") {
+            setEtapas([
+              { descricao: "inicio", valor: savedParcelas.find((p: any) => p.descricao === "inicio")?.valor ?? null },
+              { descricao: "minuta", valor: savedParcelas.find((p: any) => p.descricao === "minuta")?.valor ?? null },
+              { descricao: "assinatura", valor: savedParcelas.find((p: any) => p.descricao === "assinatura")?.valor ?? null },
+            ]);
+            const sum = savedParcelas.reduce((s: number, e: any) => s + (e.valor ?? 0), 0);
+            setEtapasMode(sum > 0 && sum <= 100 ? "percent" : "value");
+            setParcelas([]);
+          } else {
+            setParcelas(savedParcelas);
+          }
+        }
       }
     };
-    fetchLastDescription();
+    fetchLastProposalData();
   }, [form.client_id, isEdit]);
 
   const etapasSum = useMemo(() => etapas.reduce((s, e) => s + (e.valor ?? 0), 0), [etapas]);
