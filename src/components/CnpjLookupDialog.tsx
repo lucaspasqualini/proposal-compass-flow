@@ -171,104 +171,106 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
           </div>
 
           {result && (
-            <ScrollArea className="max-h-[60vh]">
-              <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <h4 className="font-semibold">Resultado encontrado</h4>
+            <>
+              <ScrollArea className="max-h-[50vh]">
+                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Resultado encontrado</h4>
+                    </div>
+                    <Badge variant={result.situacao_cadastral === "ATIVA" ? "default" : "destructive"}>
+                      {result.situacao_cadastral}
+                    </Badge>
                   </div>
-                  <Badge variant={result.situacao_cadastral === "ATIVA" ? "default" : "destructive"}>
-                    {result.situacao_cadastral}
-                  </Badge>
-                </div>
 
-                {/* Company Info */}
-                <div className="grid gap-2 text-sm">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Razão Social</Label>
-                    <p className="font-medium">{result.razao_social}</p>
-                  </div>
-                  {result.nome_fantasia && (
+                  {/* Company Info */}
+                  <div className="grid gap-2 text-sm">
                     <div>
-                      <Label className="text-xs text-muted-foreground">Nome Fantasia</Label>
-                      <p>{result.nome_fantasia}</p>
+                      <Label className="text-xs text-muted-foreground">Razão Social</Label>
+                      <p className="font-medium">{result.razao_social}</p>
                     </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">CNPJ</Label>
-                      <p className="font-mono">{formatCnpjInput(result.cnpj)}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Natureza Jurídica</Label>
-                      <p>{result.natureza_juridica || "—"}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Capital Social</Label>
-                      <p>{result.capital_social != null ? formatCurrency(result.capital_social) : "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Porte</Label>
-                      <p>{result.porte || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Data Abertura</Label>
-                      <p>{result.data_abertura || "—"}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Atividade Principal (CNAE)</Label>
-                    <p>{result.cnae_principal ? `${result.cnae_principal} - ${result.cnae_descricao}` : "—"}</p>
-                  </div>
-                  {result.logradouro && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Endereço</Label>
-                      <p>{[result.descricao_tipo_logradouro, result.logradouro, result.numero, result.complemento, result.bairro, result.municipio ? `${result.municipio}/${result.uf}` : "", result.cep].filter(Boolean).join(", ")}</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    {result.telefone && (
+                    {result.nome_fantasia && (
                       <div>
-                        <Label className="text-xs text-muted-foreground">Telefone</Label>
-                        <p>{result.telefone}</p>
+                        <Label className="text-xs text-muted-foreground">Nome Fantasia</Label>
+                        <p>{result.nome_fantasia}</p>
                       </div>
                     )}
-                    {result.email && (
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs text-muted-foreground">Email</Label>
-                        <p>{result.email}</p>
+                        <Label className="text-xs text-muted-foreground">CNPJ</Label>
+                        <p className="font-mono">{formatCnpjInput(result.cnpj)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Natureza Jurídica</Label>
+                        <p>{result.natureza_juridica || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Capital Social</Label>
+                        <p>{result.capital_social != null ? formatCurrency(result.capital_social) : "—"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Porte</Label>
+                        <p>{result.porte || "—"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Data Abertura</Label>
+                        <p>{result.data_abertura || "—"}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Atividade Principal (CNAE)</Label>
+                      <p>{result.cnae_principal ? `${result.cnae_principal} - ${result.cnae_descricao}` : "—"}</p>
+                    </div>
+                    {result.logradouro && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Endereço</Label>
+                        <p>{[result.descricao_tipo_logradouro, result.logradouro, result.numero, result.complemento, result.bairro, result.municipio ? `${result.municipio}/${result.uf}` : "", result.cep].filter(Boolean).join(", ")}</p>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* QSA */}
-                {result.qsa && result.qsa.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1 mb-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <Label className="text-xs text-muted-foreground">Quadro Societário ({result.qsa.length})</Label>
-                    </div>
-                    <div className="space-y-1">
-                      {result.qsa.map((s, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0">
-                          <span className="font-medium">{s.nome}</span>
-                          <Badge variant="outline" className="text-xs">{s.qualificacao}</Badge>
+                    <div className="grid grid-cols-2 gap-3">
+                      {result.telefone && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Telefone</Label>
+                          <p>{result.telefone}</p>
                         </div>
-                      ))}
+                      )}
+                      {result.email && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Email</Label>
+                          <p>{result.email}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
 
-                <Button onClick={handleConfirm} className="w-full">
-                  <Check className="h-4 w-4 mr-1" /> Confirmar e Preencher Dados
-                </Button>
-              </div>
-            </ScrollArea>
+                  {/* QSA */}
+                  {result.qsa && result.qsa.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-xs text-muted-foreground">Quadro Societário ({result.qsa.length})</Label>
+                      </div>
+                      <div className="space-y-1">
+                        {result.qsa.map((s, i) => (
+                          <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0">
+                            <span className="font-medium">{s.nome}</span>
+                            <Badge variant="outline" className="text-xs">{s.qualificacao}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+
+              <Button onClick={handleConfirm} className="w-full">
+                <Check className="h-4 w-4 mr-1" /> Confirmar e Preencher Dados
+              </Button>
+            </>
           )}
         </div>
       </DialogContent>

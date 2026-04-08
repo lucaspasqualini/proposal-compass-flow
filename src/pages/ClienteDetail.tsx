@@ -46,6 +46,7 @@ export default function ClienteDetail() {
   const proposals = allProposals?.filter((p) => p.client_id === id) ?? [];
 
   const [form, setForm] = useState({
+    name: "",
     cnpj: "",
     razao_social: "",
     nome_fantasia: "",
@@ -76,6 +77,7 @@ export default function ClienteDetail() {
   useEffect(() => {
     if (client) {
       setForm({
+        name: client.name ?? "",
         cnpj: client.cnpj ?? "",
         razao_social: (client as any).razao_social ?? "",
         nome_fantasia: (client as any).nome_fantasia ?? "",
@@ -124,6 +126,7 @@ export default function ClienteDetail() {
     try {
       await updateClient.mutateAsync({
         id: id!,
+        name: form.name,
         cnpj: form.cnpj,
         razao_social: form.razao_social,
         nome_fantasia: form.nome_fantasia,
@@ -150,6 +153,7 @@ export default function ClienteDetail() {
   const handleCnpjConfirm = (data: CnpjConfirmData) => {
     setForm((prev) => ({
       ...prev,
+      name: data.nome_fantasia || data.razao_social || prev.name,
       cnpj: data.cnpj,
       razao_social: data.razao_social || prev.razao_social,
       nome_fantasia: data.nome_fantasia || prev.nome_fantasia,
@@ -376,6 +380,12 @@ export default function ClienteDetail() {
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Nome do Cliente (usado no sistema)</Label>
+                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome exibido no sistema" />
+                  <p className="text-xs text-muted-foreground">Preenchido automaticamente pelo Nome Fantasia ao consultar CNPJ, mas pode ser editado manualmente.</p>
+                </div>
+                <Separator />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label className="flex items-center gap-1"><Hash className="h-3 w-3" /> CNPJ</Label>
