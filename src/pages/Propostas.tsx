@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon, TrendingUp, TrendingDown, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
@@ -29,6 +29,7 @@ export default function Propostas() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [hidePerdida, setHidePerdida] = useState(false);
@@ -49,6 +50,19 @@ export default function Propostas() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
+  const availableYears = useMemo(() => {
+    if (!proposals) return [];
+    const years = new Set<string>();
+    proposals.forEach((p) => {
+      const d = (p as any).data_envio;
+      if (d) {
+        const y = d.substring(0, 4);
+        years.add(y);
+      }
+    });
+    return Array.from(years).sort().reverse();
+  }, [proposals]);
+
   const filtered = useMemo(() => {
     if (!proposals) return [];
     let list = proposals.filter((p) => {
@@ -60,8 +74,9 @@ export default function Propostas() {
         ((p as any).empresa ?? "").toLowerCase().includes(s);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
+      const matchYear = yearFilter === "all" || ((p as any).data_envio ?? "").startsWith(yearFilter);
       const matchHide = !hidePerdida || p.status !== "perdida";
-      return matchSearch && matchStatus && matchEmpresa && matchHide;
+      return matchSearch && matchStatus && matchEmpresa && matchYear && matchHide;
     });
 
     list.sort((a, b) => {
@@ -101,7 +116,18 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, sortKey, sortDir, hidePerdida]);
+  }, [proposals, search, statusFilter, empresaFilter, yearFilter, sortKey, sortDir, hidePerdida]);
+
+  const stats = useMemo(() => {
+    const ganhas = filtered.filter((p) => p.status === "ganha");
+    const perdidas = filtered.filter((p) => p.status === "perdida");
+    const negociacao = filtered.filter((p) => p.status === "em_negociacao");
+    return {
+      ganhas: { count: ganhas.length, value: ganhas.reduce((s, p) => s + (Number(p.value) || 0), 0) },
+      perdidas: { count: perdidas.length, value: perdidas.reduce((s, p) => s + (Number(p.value) || 0), 0) },
+      negociacao: { count: negociacao.length, value: negociacao.reduce((s, p) => s + (Number(p.value) || 0), 0) },
+    };
+  }, [filtered]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -154,7 +180,44 @@ export default function Propostas() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Dashboard de subtotais */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-full p-2 bg-success/10">
+              <TrendingUp className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Ganhas</p>
+              <p className="text-lg font-bold">{stats.ganhas.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.ganhas.value)}</span></p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-full p-2 bg-destructive/10">
+              <TrendingDown className="h-5 w-5 text-destructive" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Perdidas</p>
+              <p className="text-lg font-bold">{stats.perdidas.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.perdidas.value)}</span></p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-full p-2 bg-warning/10">
+              <Clock className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Em Negociação</p>
+              <p className="text-lg font-bold">{stats.negociacao.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.negociacao.value)}</span></p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -172,12 +235,23 @@ export default function Propostas() {
         </Select>
         <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
           <SelectTrigger className="w-52">
-            <SelectValue placeholder="Empresa" />
+            <SelectValue placeholder="Centro de Custo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas as Empresas</SelectItem>
+            <SelectItem value="all">Todos os Centros de Custo</SelectItem>
             {empresas.map((e) => (
               <SelectItem key={e} value={e}>{e}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={yearFilter} onValueChange={setYearFilter}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Anos</SelectItem>
+            {availableYears.map((y) => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
             ))}
           </SelectContent>
         </Select>
