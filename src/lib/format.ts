@@ -49,4 +49,5 @@ export const projectEtapaColors: Record<string, string> = {
   iniciado: "bg-info/10 text-info",
   minuta: "bg-warning/10 text-warning",
   assinado: "bg-success/10 text-success",
+  cancelado: "bg-destructive/10 text-destructive",
 };

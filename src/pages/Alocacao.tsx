@@ -217,6 +217,12 @@ export default function Alocacao() {
           </TableBody>
         </Table>
       </div>
+
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+      />
     </div>
   );
 }
