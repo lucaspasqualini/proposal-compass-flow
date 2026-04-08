@@ -1,60 +1,75 @@
 
 
-# Página "Alocação" — Tabela com filtros dropdown
+# Ajustes na Aba de Propostas
 
-## Visão geral
-Nova página `/alocacao` com dois filtros dropdown no topo (Colaborador e Status) e uma tabela abaixo listando os projetos filtrados. Sem dados financeiros expostos.
+## 1. Ordenação inteligente do Nº do Projeto
 
-## Layout
+**Arquivo:** `src/pages/Propostas.tsx`
+
+Alterar o comparador do `sortKey === "proposal_number"` para extrair ano (últimos 2 dígitos) e sequência (4 dígitos centrais) do padrão `MA_XXXX_YY`, ordenando primeiro por ano, depois por sequência.
 
 ```text
-┌─────────────────────────────────────────────────┐
-│  Alocação                                       │
-│                                                 │
-│  [Colaborador ▼]        [Status ▼]              │
-│                                                 │
-│  ┌───────────┬──────────┬────────┬──────────┬───┐
-│  │ Proposta  │ Projeto  │ Status │  Etapa   │Eq.│
-│  ├───────────┼──────────┼────────┼──────────┼───┤
-│  │ MA_001_25 │ Laudo... │ Ativo  │ Assinado │👤👤│
-│  │ MA_002_25 │ Perí...  │ Ativo  │ Minuta   │👤 │
-│  └───────────┴──────────┴────────┴──────────┴───┘
-└─────────────────────────────────────────────────┘
+MA_0070_26 → (26, 70)
+MA_0309_25 → (25, 309)
+MA_0040_27 → (27, 40)
+Desc: 27/40 > 26/70 > 25/309
 ```
 
-## Filtro hierárquico de Status
-Cada opção inclui os anteriores na hierarquia:
-- **Ativo** → só `em_andamento`
-- **Aguardando Retorno** → `em_andamento` + `aguardando_retorno`
-- **Em Pausa** → os dois acima + `em_pausa`
-- **Finalizado** → todos (inclui `finalizado`)
+## 2. Rediagramação do Card de Proposta
 
-Default: "Ativo" (mostra apenas projetos ativos).
+**Arquivo:** `src/components/ProposalDetailDialog.tsx`
 
-## Colunas da tabela
-| Coluna | Fonte |
+Reorganizar o layout em seções visuais com grid mais estruturado:
+
+```text
+┌─ IDENTIFICAÇÃO ──────────────────────────────┐
+│  Código (mono)    Status (badge)              │
+│  Projeto *        Tipo de Projeto (dropdown)  │
+│  Empresa          Cliente                     │
+│  Indicador        Contato                     │
+├─ DATAS ──────────────────────────────────────┤
+│  Data Envio    Data Aprovação    Follow-up    │
+├─ VALOR E PAGAMENTO ─────────────────────────┤
+│  Valor (R$)    Forma de Pagamento (tipo)     │
+│  [Se "Por Etapas": linhas Início/Minuta/Ass.]│
+│  [Se "Por Prazo": parcelas livres como hoje] │
+├─ DESCRIÇÃO ──────────────────────────────────┤
+│  Entendimento da Situação                    │
+│  Escopo do Trabalho                          │
+│  Observações                                 │
+├─ AÇÕES ──────────────────────────────────────┤
+│  [Salvar]  [Gerar PPT]  [Cancelar]          │
+└──────────────────────────────────────────────┘
+```
+
+Cada seção terá um título (`h4` ou label de grupo) com `Separator` entre elas.
+
+## 3. Valor e Forma de Pagamento juntos
+
+Mover o bloco de pagamento para logo abaixo do campo Valor, dentro da mesma seção visual "Valor e Pagamento".
+
+## 4. Pagamento "Por Etapas" — linhas fixas
+
+Quando `payment_type === "etapas"`, em vez de parcelas livres, exibir 3 linhas fixas:
+- **Início** — campo valor (R$ ou %)
+- **Minuta** — campo valor (R$ ou %)
+- **Assinatura** — campo valor (R$ ou %)
+
+Adicionar um toggle ou select para o usuário escolher entre "%" e "R$". Exibir validação visual (soma deve ser 100% ou igual ao valor total). Os dados serão salvos no campo `parcelas` (jsonb) com `descricao: "inicio" | "minuta" | "assinatura"`.
+
+Quando `payment_type === "prazo"`, manter o sistema atual de parcelas livres.
+
+## 5. Tipo de Projeto — Dropdown com lista fixa
+
+Substituir o `<Input>` por um `<Select>` com as opções:
+Ass. Perícia, CI/GAI, Contábil, CPC 04, Criminal, Gerencial, Impairment, Interno, Inventário, LSA, M&A, Marcação de Cotas, OPA, Perícia, Planejamento, PPA, RJ Laudos, RJ Advisor, RVU, SAF, Outros
+
+## Arquivos a alterar
+
+| Arquivo | Alteração |
 |---|---|
-| Proposta | `proposals.proposal_number` |
-| Projeto | `projects.title` |
-| Cliente | `clients.name` |
-| Status | `projects.status` (badge colorido) |
-| Etapa | `projects.etapa` (badge colorido) |
-| Equipe | avatares/nomes dos colaboradores alocados |
+| `src/pages/Propostas.tsx` | Comparador de ordenação para `proposal_number` |
+| `src/components/ProposalDetailDialog.tsx` | Layout completo: seções, dropdown tipo, pagamento por etapas |
 
-## Arquivos a criar/editar
-
-1. **`src/pages/Alocacao.tsx`** — Nova página com:
-   - Query: `projects` com joins em `clients`, `proposals`, `project_allocations → team_members`
-   - Dois `<Select>` (shadcn) para Colaborador e Status
-   - Tabela (shadcn `<Table>`) com as colunas acima
-   - Filtragem client-side baseada nos selects
-
-2. **`src/App.tsx`** — Adicionar rota `/alocacao`
-
-3. **`src/components/AppSidebar.tsx`** — Adicionar link "Alocação" no menu
-
-4. **`src/lib/format.ts`** — Já tem os labels/colors de status e etapa, sem alteração necessária
-
-## Sem alterações no banco
-Todos os dados necessários já existem nas tabelas `projects`, `project_allocations`, `team_members`, `proposals` e `clients`.
+Sem alterações no banco de dados — todos os campos já existem.
 
