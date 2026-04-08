@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +15,19 @@ import { useCreateProject } from "@/hooks/useProjects";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { proposalStatusLabels, proposalStatusColors } from "@/lib/format";
+import { proposalStatusLabels, proposalStatusColors, formatCurrency } from "@/lib/format";
 import { generateProposalPptx } from "@/lib/generateProposalPptx";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
+
+const TIPOS_PROJETO = [
+  "Ass. Perícia", "CI/GAI", "Contábil", "CPC 04", "Criminal", "Gerencial",
+  "Impairment", "Interno", "Inventário", "LSA", "M&A", "Marcação de Cotas",
+  "OPA", "Perícia", "Planejamento", "PPA", "RJ Laudos", "RJ Advisor",
+  "RVU", "SAF", "Outros",
+];
 
 interface Parcela {
   descricao: string;
@@ -29,6 +36,11 @@ interface Parcela {
 }
 
 const emptyParcela: Parcela = { descricao: "", valor: null, data_vencimento: "" };
+
+interface EtapaParcela {
+  descricao: "inicio" | "minuta" | "assinatura";
+  valor: number | null;
+}
 
 interface ProposalDetailDialogProps {
   proposalId: string | null;
@@ -51,6 +63,12 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
+  const [etapasMode, setEtapasMode] = useState<"percent" | "value">("percent");
+  const [etapas, setEtapas] = useState<EtapaParcela[]>([
+    { descricao: "inicio", valor: null },
+    { descricao: "minuta", valor: null },
+    { descricao: "assinatura", valor: null },
+  ]);
 
   const [form, setForm] = useState<ProposalInsert & { empresa?: string; payment_type?: string }>({
     title: "",
@@ -97,14 +115,33 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
       });
       const saved = (existing as any).parcelas;
       if (Array.isArray(saved) && saved.length > 0) {
-        setParcelas(saved);
+        // Check if saved parcelas are etapas format
+        const isEtapasFormat = saved.some((p: any) => ["inicio", "minuta", "assinatura"].includes(p.descricao));
+        if (isEtapasFormat && (existing as any).payment_type === "etapas") {
+          const mapped: EtapaParcela[] = [
+            { descricao: "inicio", valor: saved.find((p: any) => p.descricao === "inicio")?.valor ?? null },
+            { descricao: "minuta", valor: saved.find((p: any) => p.descricao === "minuta")?.valor ?? null },
+            { descricao: "assinatura", valor: saved.find((p: any) => p.descricao === "assinatura")?.valor ?? null },
+          ];
+          setEtapas(mapped);
+          // Detect if values are percentages (all <= 100 and sum ~100)
+          const sum = mapped.reduce((s, e) => s + (e.valor ?? 0), 0);
+          setEtapasMode(sum > 0 && sum <= 100 ? "percent" : "value");
+          setParcelas([]);
+        } else {
+          setParcelas(saved);
+          setEtapas([
+            { descricao: "inicio", valor: null },
+            { descricao: "minuta", valor: null },
+            { descricao: "assinatura", valor: null },
+          ]);
+        }
       } else {
         setParcelas([]);
       }
     }
   }, [existing, isEdit]);
 
-  // Reset form when opening for new proposal
   useEffect(() => {
     if (isNew && open) {
       setForm({
@@ -115,10 +152,14 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         empresa: "", payment_type: "",
       });
       setParcelas([]);
+      setEtapas([
+        { descricao: "inicio", valor: null },
+        { descricao: "minuta", valor: null },
+        { descricao: "assinatura", valor: null },
+      ]);
     }
   }, [isNew, open]);
 
-  // Pre-fill description from last proposal for selected client
   useEffect(() => {
     if (!form.client_id || isEdit) return;
     const fetchLastDescription = async () => {
@@ -136,6 +177,12 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     fetchLastDescription();
   }, [form.client_id, isEdit]);
 
+  const etapasSum = useMemo(() => etapas.reduce((s, e) => s + (e.valor ?? 0), 0), [etapas]);
+  const etapasValid = useMemo(() => {
+    if (etapasMode === "percent") return Math.abs(etapasSum - 100) < 0.01;
+    return form.value ? Math.abs(etapasSum - form.value) < 0.01 : true;
+  }, [etapasMode, etapasSum, form.value]);
+
   const addParcela = () => {
     if (parcelas.length >= 5) return;
     setParcelas([...parcelas, { ...emptyParcela }]);
@@ -149,15 +196,30 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     setParcelas((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const updateEtapa = (idx: number, valor: number | null) => {
+    setEtapas((prev) => prev.map((e, i) => (i === idx ? { ...e, valor } : e)));
+  };
+
   const handleSave = async () => {
     if (!form.title.trim()) {
       toast({ title: "Título é obrigatório", variant: "destructive" });
       return;
     }
     try {
+      let savedParcelas: any[] = [];
+      if (form.payment_type === "etapas") {
+        savedParcelas = etapas.map((e) => ({
+          descricao: e.descricao,
+          valor: e.valor,
+          mode: etapasMode,
+        }));
+      } else if (form.payment_type === "prazo") {
+        savedParcelas = parcelas;
+      }
+
       const payload = {
         ...form,
-        parcelas: parcelas.length > 0 ? parcelas : [],
+        parcelas: savedParcelas,
       } as any;
 
       if (isEdit) {
@@ -192,15 +254,28 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
 
   const selectedClient = clients?.find((c) => c.id === form.client_id);
 
+  const etapaLabels: Record<string, string> = {
+    inicio: "Início",
+    minuta: "Minuta",
+    assinatura: "Assinatura",
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[95vh] overflow-hidden flex flex-col" style={{ paddingTop: '1.5rem' }}>
         <DialogHeader>
-          <div className="space-y-1">
-            {isEdit && existing?.proposal_number && (
-              <p className="text-xs font-mono text-muted-foreground">{existing.proposal_number}</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 space-y-1">
+              {isEdit && existing?.proposal_number && (
+                <p className="text-xs font-mono text-muted-foreground">{existing.proposal_number}</p>
+              )}
+              <DialogTitle className="text-xl">{isEdit ? "Editar Proposta" : "Nova Proposta"}</DialogTitle>
+            </div>
+            {isEdit && (
+              <Badge variant="secondary" className={proposalStatusColors[form.status]}>
+                {proposalStatusLabels[form.status]}
+              </Badge>
             )}
-            <DialogTitle className="text-xl">{isEdit ? "Editar Proposta" : "Nova Proposta"}</DialogTitle>
           </div>
           <DialogDescription className="sr-only">Formulário de proposta comercial</DialogDescription>
         </DialogHeader>
@@ -209,160 +284,178 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
           <div className="py-12 text-center text-muted-foreground">Carregando...</div>
         ) : (
           <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-5 pb-4">
-              {/* Código (edit only) */}
-              {isEdit && (
-                <div className="grid gap-2">
-                  <Label>Código</Label>
-                  <Input value={existing?.proposal_number ?? ""} disabled />
-                </div>
-              )}
+            <div className="space-y-6 pb-4">
 
-              {/* Projeto */}
-              <div className="grid gap-2">
-                <Label>Projeto *</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              </div>
-
-              {/* Tipo de Projeto */}
-              <div className="grid gap-2">
-                <Label>Tipo de Projeto</Label>
-                <Input
-                  value={form.tipo_projeto ?? ""}
-                  onChange={(e) => setForm({ ...form, tipo_projeto: e.target.value })}
-                  placeholder="Ex: Consultoria, Auditoria, Assessoria..."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Data de Envio</Label>
-                  <Input type="date" value={form.data_envio ?? ""} onChange={(e) => setForm({ ...form, data_envio: e.target.value || null })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Valor (R$)</Label>
-                  <Input type="number" step="0.01" value={form.value ?? ""} onChange={(e) => setForm({ ...form, value: e.target.value ? Number(e.target.value) : null })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(proposalStatusLabels).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Data de Aprovação</Label>
-                  <Input type="date" value={form.data_aprovacao ?? ""} onChange={(e) => setForm({ ...form, data_aprovacao: e.target.value || null })} />
-                </div>
-              </div>
-
-              {/* Data FUP */}
-              <div className="grid gap-2">
-                <Label>Data de Follow-up</Label>
-                <Input type="date" value={form.data_fup ?? ""} onChange={(e) => setForm({ ...form, data_fup: e.target.value || null })} />
-              </div>
-
-              {/* Empresa */}
-              <div className="grid gap-2">
-                <Label>Empresa</Label>
-                <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Valore Empresarial">Valore Empresarial</SelectItem>
-                    <SelectItem value="Meden Goiania">Meden Goiania</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Cliente */}
-              <div className="grid gap-2">
-                <Label>Cliente</Label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <Select value={form.client_id ?? ""} onValueChange={(v) => {
-                      if (v === "__new__") { setShowNewClient(true); return; }
-                      setForm({ ...form, client_id: v || null });
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              {/* ── IDENTIFICAÇÃO ── */}
+              <section>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Identificação</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Projeto *</Label>
+                    <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Tipo de Projeto</Label>
+                    <Select value={form.tipo_projeto ?? ""} onValueChange={(v) => setForm({ ...form, tipo_projeto: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__new__">
-                          <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Adicionar novo cliente</span>
-                        </SelectItem>
-                        {clients?.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        {TIPOS_PROJETO.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  {selectedClient && (
-                    <Button variant="outline" size="icon" asChild onClick={() => onOpenChange(false)}>
-                      <Link to={`/clientes/${selectedClient.id}`}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  )}
+                  <div className="grid gap-2">
+                    <Label>Empresa</Label>
+                    <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Valore Empresarial">Valore Empresarial</SelectItem>
+                        <SelectItem value="Meden Goiania">Meden Goiania</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Cliente</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <Select value={form.client_id ?? ""} onValueChange={(v) => {
+                          if (v === "__new__") { setShowNewClient(true); return; }
+                          setForm({ ...form, client_id: v || null });
+                        }}>
+                          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__new__">
+                              <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Novo cliente</span>
+                            </SelectItem>
+                            {clients?.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {selectedClient && (
+                        <Button variant="outline" size="icon" asChild onClick={() => onOpenChange(false)}>
+                          <Link to={`/clientes/${selectedClient.id}`}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Indicador</Label>
+                    <Input value={form.indicador ?? ""} onChange={(e) => setForm({ ...form, indicador: e.target.value })} placeholder="Quem indicou" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Contato do Cliente</Label>
+                    <Input value={form.cliente_contato ?? ""} onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })} placeholder="Nome do contato" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Status</Label>
+                    <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(proposalStatusLabels).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-
-              {/* Indicador */}
-              <div className="grid gap-2">
-                <Label>Indicador</Label>
-                <Input value={form.indicador ?? ""} onChange={(e) => setForm({ ...form, indicador: e.target.value })} placeholder="Quem indicou" />
-              </div>
-
-              {/* Entendimento da Situação */}
-              <div className="grid gap-2">
-                <Label>Entendimento da Situação</Label>
-                <Textarea
-                  rows={4}
-                  value={form.description ?? ""}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Descreva o contexto e a situação identificada no cliente..."
-                />
-              </div>
-
-              {/* Escopo do Trabalho */}
-              <div className="grid gap-2">
-                <Label>Escopo do Trabalho</Label>
-                <Textarea
-                  rows={4}
-                  value={form.scope ?? ""}
-                  onChange={(e) => setForm({ ...form, scope: e.target.value })}
-                  placeholder="Detalhe o escopo dos serviços a serem prestados..."
-                />
-              </div>
-
-              {/* Observações */}
-              <div className="grid gap-2">
-                <Label>Observações</Label>
-                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-              </div>
+              </section>
 
               <Separator />
 
-              {/* Forma de Pagamento */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Forma de Pagamento</h3>
-                <div className="grid gap-2">
-                  <Label>Tipo</Label>
-                  <Select value={form.payment_type ?? ""} onValueChange={(v) => setForm({ ...form, payment_type: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="etapas">Por Etapas</SelectItem>
-                      <SelectItem value="prazo">Por Prazo</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* ── DATAS ── */}
+              <section>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Datas</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Data de Envio</Label>
+                    <Input type="date" value={form.data_envio ?? ""} onChange={(e) => setForm({ ...form, data_envio: e.target.value || null })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Data de Aprovação</Label>
+                    <Input type="date" value={form.data_aprovacao ?? ""} onChange={(e) => setForm({ ...form, data_aprovacao: e.target.value || null })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Follow-up</Label>
+                    <Input type="date" value={form.data_fup ?? ""} onChange={(e) => setForm({ ...form, data_fup: e.target.value || null })} />
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
+              {/* ── VALOR E PAGAMENTO ── */}
+              <section>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Valor e Pagamento</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="grid gap-2">
+                    <Label>Valor (R$)</Label>
+                    <Input type="number" step="0.01" value={form.value ?? ""} onChange={(e) => setForm({ ...form, value: e.target.value ? Number(e.target.value) : null })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Forma de Pagamento</Label>
+                    <Select value={form.payment_type ?? ""} onValueChange={(v) => setForm({ ...form, payment_type: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="etapas">Por Etapas</SelectItem>
+                        <SelectItem value="prazo">Por Prazo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                {form.payment_type && (
-                  <>
+                {/* Por Etapas */}
+                {form.payment_type === "etapas" && (
+                  <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Distribuição por Etapas</span>
+                      <Select value={etapasMode} onValueChange={(v: any) => setEtapasMode(v)}>
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percent">Percentual (%)</SelectItem>
+                          <SelectItem value="value">Valor (R$)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      {etapas.map((e, idx) => (
+                        <div key={e.descricao} className="flex items-center gap-3">
+                          <span className="text-sm w-24 font-medium">{etapaLabels[e.descricao]}</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            className="flex-1"
+                            placeholder={etapasMode === "percent" ? "%" : "R$"}
+                            value={e.valor ?? ""}
+                            onChange={(ev) => updateEtapa(idx, ev.target.value ? Number(ev.target.value) : null)}
+                          />
+                          {etapasMode === "percent" && e.valor != null && form.value != null && (
+                            <span className="text-xs text-muted-foreground w-28 text-right">
+                              = {formatCurrency((e.valor / 100) * form.value)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={`text-sm font-medium text-right ${etapasValid ? "text-green-600" : "text-destructive"}`}>
+                      Total: {etapasMode === "percent" ? `${etapasSum.toFixed(1)}%` : formatCurrency(etapasSum)}
+                      {etapasMode === "percent" && !etapasValid && " (deve somar 100%)"}
+                      {etapasMode === "value" && !etapasValid && form.value && ` (deve somar ${formatCurrency(form.value)})`}
+                    </div>
+                  </div>
+                )}
+
+                {/* Por Prazo */}
+                {form.payment_type === "prazo" && (
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">Parcelas ({parcelas.length}/5)</Label>
                       {parcelas.length < 5 && (
@@ -382,11 +475,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                         </div>
                         <div className="grid gap-2">
                           <Label className="text-xs">Descrição</Label>
-                          <Input
-                            value={p.descricao}
-                            onChange={(e) => updateParcela(idx, "descricao", e.target.value)}
-                            placeholder={form.payment_type === "etapas" ? "Ex: Entrega do diagnóstico" : "Ex: 30 dias após assinatura"}
-                          />
+                          <Input value={p.descricao} onChange={(e) => updateParcela(idx, "descricao", e.target.value)} placeholder="Ex: 30 dias após assinatura" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="grid gap-2">
@@ -404,13 +493,44 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                     {parcelas.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela adicionada.</p>
                     )}
-                  </>
+                  </div>
                 )}
-              </div>
+              </section>
 
               <Separator />
 
-              {/* Ações */}
+              {/* ── DESCRIÇÃO ── */}
+              <section>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Descrição</h4>
+                <div className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label>Entendimento da Situação</Label>
+                    <Textarea
+                      rows={4}
+                      value={form.description ?? ""}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Descreva o contexto e a situação identificada no cliente..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Escopo do Trabalho</Label>
+                    <Textarea
+                      rows={4}
+                      value={form.scope ?? ""}
+                      onChange={(e) => setForm({ ...form, scope: e.target.value })}
+                      placeholder="Detalhe o escopo dos serviços a serem prestados..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Observações</Label>
+                    <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
+              {/* ── AÇÕES ── */}
               <div className="flex gap-3 pt-2">
                 <Button onClick={handleSave} disabled={createProposal.isPending || updateProposal.isPending}>
                   {isEdit ? "Salvar" : "Criar Proposta"}
@@ -428,7 +548,9 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                           description: form.description ?? null,
                           scope: form.scope ?? null,
                           value: form.value ?? null,
-                          parcelas: parcelas,
+                          parcelas: form.payment_type === "etapas"
+                            ? etapas.map(e => ({ descricao: e.descricao, valor: e.valor, data_vencimento: "" }))
+                            : parcelas,
                           payment_type: form.payment_type ?? null,
                           data_envio: form.data_envio ?? null,
                           empresa: form.empresa ?? null,

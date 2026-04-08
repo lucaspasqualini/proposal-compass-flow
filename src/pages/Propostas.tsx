@@ -67,7 +67,20 @@ export default function Propostas() {
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
-        case "proposal_number": va = a.proposal_number ?? ""; vb = b.proposal_number ?? ""; break;
+        case "proposal_number": {
+          const parsePN = (pn: string | null) => {
+            if (!pn) return { year: 0, seq: 0 };
+            const parts = pn.split("_");
+            if (parts.length >= 3) {
+              return { year: parseInt(parts[parts.length - 1]) || 0, seq: parseInt(parts[parts.length - 2]) || 0 };
+            }
+            return { year: 0, seq: 0 };
+          };
+          const pa = parsePN(a.proposal_number);
+          const pb = parsePN(b.proposal_number);
+          const cmp = pa.year !== pb.year ? pa.year - pb.year : pa.seq - pb.seq;
+          return sortDir === "asc" ? cmp : -cmp;
+        }
         case "title": va = a.title; vb = b.title; break;
         case "client": va = (a.clients as any)?.name ?? ""; vb = (b.clients as any)?.name ?? ""; break;
         case "value": va = Number(a.value) || 0; vb = Number(b.value) || 0; break;
