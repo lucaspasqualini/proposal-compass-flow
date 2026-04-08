@@ -1,52 +1,60 @@
 
 
-# Importar propostas do Excel e gerar projetos para as "Ganhas"
+# Página "Alocação" — Tabela com filtros dropdown
 
-## Entendimento da tarefa
+## Visão geral
+Nova página `/alocacao` com dois filtros dropdown no topo (Colaborador e Status) e uma tabela abaixo listando os projetos filtrados. Sem dados financeiros expostos.
 
-A base está limpa (0 propostas, 0 projetos). Vou importar **apenas a aba "Propostas"** do Excel. Para cada proposta com status **"Ganha"**, um projeto será criado automaticamente — replicando o comportamento do app.
+## Layout
 
-## Mapeamento de colunas (Aba "Propostas")
+```text
+┌─────────────────────────────────────────────────┐
+│  Alocação                                       │
+│                                                 │
+│  [Colaborador ▼]        [Status ▼]              │
+│                                                 │
+│  ┌───────────┬──────────┬────────┬──────────┬───┐
+│  │ Proposta  │ Projeto  │ Status │  Etapa   │Eq.│
+│  ├───────────┼──────────┼────────┼──────────┼───┤
+│  │ MA_001_25 │ Laudo... │ Ativo  │ Assinado │👤👤│
+│  │ MA_002_25 │ Perí...  │ Ativo  │ Minuta   │👤 │
+│  └───────────┴──────────┴────────┴──────────┴───┘
+└─────────────────────────────────────────────────┘
+```
 
-| Coluna Excel | Campo no banco (`proposals`) |
+## Filtro hierárquico de Status
+Cada opção inclui os anteriores na hierarquia:
+- **Ativo** → só `em_andamento`
+- **Aguardando Retorno** → `em_andamento` + `aguardando_retorno`
+- **Em Pausa** → os dois acima + `em_pausa`
+- **Finalizado** → todos (inclui `finalizado`)
+
+Default: "Ativo" (mostra apenas projetos ativos).
+
+## Colunas da tabela
+| Coluna | Fonte |
 |---|---|
-| A — Proposta (ex: MA_0081_25) | `proposal_number` |
-| B — Projeto | `title` |
-| C — Tipo de Projeto | `tipo_projeto` |
-| D — Data de Envio | `data_envio` |
-| E — Valor | `value` |
-| F — Status | `status` (mapeado abaixo) |
-| G — Data Aprovação | `data_aprovacao` |
-| H — Status / FUP | `data_fup` (se for data) ou ignorar |
-| I — EMPRESA | `empresa` |
-| J — Cliente | usado para vincular `client_id` |
-| K — Indicador | `indicador` |
-| L — Observação | `observacoes` |
+| Proposta | `proposals.proposal_number` |
+| Projeto | `projects.title` |
+| Cliente | `clients.name` |
+| Status | `projects.status` (badge colorido) |
+| Etapa | `projects.etapa` (badge colorido) |
+| Equipe | avatares/nomes dos colaboradores alocados |
 
-## Mapeamento de status
+## Arquivos a criar/editar
 
-- "Ganha" → `ganha`
-- "Perdida" → `perdida`
-- "Em Negociação" → `em_negociacao`
-- "Em Elaboração" → `em_elaboracao`
-- Qualquer outro → `em_elaboracao`
+1. **`src/pages/Alocacao.tsx`** — Nova página com:
+   - Query: `projects` com joins em `clients`, `proposals`, `project_allocations → team_members`
+   - Dois `<Select>` (shadcn) para Colaborador e Status
+   - Tabela (shadcn `<Table>`) com as colunas acima
+   - Filtragem client-side baseada nos selects
 
-## Passos da execução
+2. **`src/App.tsx`** — Adicionar rota `/alocacao`
 
-1. **Ler a planilha** com Python/openpyxl, aba "Propostas" (Page 1), extraindo todas as linhas válidas
-2. **Criar/vincular clientes**: Para cada nome na coluna J (Cliente), buscar na tabela `clients` existente (já há 1.215). Se não existir, criar
-3. **Inserir propostas**: INSERT de todas as linhas na tabela `proposals`, com os campos mapeados acima
-4. **Criar projetos para "Ganhas"**: Para cada proposta com status `ganha`, inserir um registro na tabela `projects` com:
-   - `title` = título da proposta
-   - `client_id` = mesmo da proposta
-   - `proposal_id` = id da proposta recém-criada
-   - `budget` = valor da proposta
-   - `status` = `em_andamento`
-5. **Relatório final**: Quantas propostas inseridas, quantos projetos criados, eventuais erros
+3. **`src/components/AppSidebar.tsx`** — Adicionar link "Alocação" no menu
 
-## Observações
-- Nenhuma alteração de código do app — apenas dados via script Python + SQL
-- A aba "Projetos" será **ignorada** conforme solicitado
-- Valores em "R$" serão parseados para numérico
-- Datas no formato M/D/YY serão convertidas para YYYY-MM-DD
+4. **`src/lib/format.ts`** — Já tem os labels/colors de status e etapa, sem alteração necessária
+
+## Sem alterações no banco
+Todos os dados necessários já existem nas tabelas `projects`, `project_allocations`, `team_members`, `proposals` e `clients`.
 
