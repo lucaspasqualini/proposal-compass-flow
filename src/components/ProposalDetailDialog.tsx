@@ -70,7 +70,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     { descricao: "assinatura", valor: null },
   ]);
 
-  const [form, setForm] = useState<ProposalInsert & { empresa?: string; payment_type?: string }>({
+  const [form, setForm] = useState<ProposalInsert & { empresa?: string; payment_type?: string; about_company?: string }>({
     title: "",
     client_id: null,
     description: "",
@@ -89,6 +89,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     observacoes: "",
     empresa: "",
     payment_type: "",
+    about_company: "",
   });
 
   useEffect(() => {
