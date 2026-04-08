@@ -579,6 +579,9 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                           proposal_number: existing?.proposal_number || form.title,
                           title: form.title,
                           client_name: clientName,
+                          client_razao_social: selectedClient?.name || null,
+                          client_cnpj: selectedClient?.cnpj || null,
+                          client_contato: form.cliente_contato ?? null,
                           about_company: form.about_company ?? null,
                           description: form.description ?? null,
                           scope: form.scope ?? null,
@@ -590,6 +593,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                           data_envio: form.data_envio ?? null,
                           empresa: form.empresa ?? null,
                           tipo_projeto: form.tipo_projeto ?? null,
+                          etapas: etapas,
                         });
                         toast({ title: "PPT gerado com sucesso!" });
                       } catch {
