@@ -69,16 +69,19 @@ export default function Propostas() {
       switch (sortKey) {
         case "proposal_number": {
           const parsePN = (pn: string | null) => {
-            if (!pn) return { year: 0, seq: 0 };
+            if (!pn) return { year: 0, seq: 0, sub: 0 };
             const parts = pn.split("_");
-            if (parts.length >= 3) {
-              return { year: parseInt(parts[parts.length - 1]) || 0, seq: parseInt(parts[parts.length - 2]) || 0 };
+            if (parts.length === 4) {
+              return { year: parseInt(parts[2]) || 0, seq: parseInt(parts[1]) || 0, sub: parseInt(parts[3]) || 0 };
             }
-            return { year: 0, seq: 0 };
+            if (parts.length === 3) {
+              return { year: parseInt(parts[2]) || 0, seq: parseInt(parts[1]) || 0, sub: 0 };
+            }
+            return { year: 0, seq: 0, sub: 0 };
           };
           const pa = parsePN(a.proposal_number);
           const pb = parsePN(b.proposal_number);
-          const cmp = pa.year !== pb.year ? pa.year - pb.year : pa.seq - pb.seq;
+          const cmp = pa.year !== pb.year ? pa.year - pb.year : pa.seq !== pb.seq ? pa.seq - pb.seq : pa.sub - pb.sub;
           return sortDir === "asc" ? cmp : -cmp;
         }
         case "title": va = a.title; vb = b.title; break;
