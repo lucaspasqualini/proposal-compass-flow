@@ -44,6 +44,7 @@ const App = () => (
               <Route path="/projetos/novo" element={<Navigate to="/projetos" replace />} />
               <Route path="/projetos/:id" element={<Navigate to="/projetos" replace />} />
               <Route path="/equipe" element={<Equipe />} />
+              <Route path="/alocacao" element={<Alocacao />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
