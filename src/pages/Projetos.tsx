@@ -281,6 +281,32 @@ export default function Projetos() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Ativos</p>
+            <p className="text-lg font-bold">{stats.ativos.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.ativos.value)}</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Em Pausa</p>
+            <p className="text-lg font-bold">{stats.pausa.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.pausa.value)}</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Aguardando Retorno</p>
+            <p className="text-lg font-bold">{stats.aguardando.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.aguardando.value)}</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Finalizados</p>
+            <p className="text-lg font-bold">{stats.finalizados.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.finalizados.value)}</span></p>
+          </CardContent>
+        </Card>
+      </div>
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
