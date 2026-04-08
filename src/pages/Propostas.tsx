@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useProposals, useDeleteProposal, useUpdateProposal } from "@/hooks/useProposals";
@@ -13,6 +14,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
+import { compareProjectNumbers } from "@/lib/projectNumber";
+import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
 import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon, TrendingUp, TrendingDown, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +26,7 @@ type SortDir = "asc" | "desc";
 
 export default function Propostas() {
   const { data: proposals, isLoading } = useProposals();
+  const queryClient = useQueryClient();
   const deleteProposal = useDeleteProposal();
   const updateProposal = useUpdateProposal();
   const { toast } = useToast();
@@ -83,20 +87,7 @@ export default function Propostas() {
       let va: any, vb: any;
       switch (sortKey) {
         case "proposal_number": {
-          const parsePN = (pn: string | null) => {
-            if (!pn) return { year: 0, seq: 0, sub: 0 };
-            const parts = pn.split("_");
-            if (parts.length === 4) {
-              return { year: parseInt(parts[2]) || 0, seq: parseInt(parts[1]) || 0, sub: parseInt(parts[3]) || 0 };
-            }
-            if (parts.length === 3) {
-              return { year: parseInt(parts[2]) || 0, seq: parseInt(parts[1]) || 0, sub: 0 };
-            }
-            return { year: 0, seq: 0, sub: 0 };
-          };
-          const pa = parsePN(a.proposal_number);
-          const pb = parsePN(b.proposal_number);
-          const cmp = pa.year !== pb.year ? pa.year - pb.year : pa.seq !== pb.seq ? pa.seq - pb.seq : pa.sub - pb.sub;
+          const cmp = compareProjectNumbers(a.proposal_number, b.proposal_number);
           return sortDir === "asc" ? cmp : -cmp;
         }
         case "title": va = a.title; vb = b.title; break;
@@ -140,8 +131,27 @@ export default function Propostas() {
 
   const handleInlineStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateProposal.mutateAsync({ id, status: newStatus as any });
-      toast({ title: "Status atualizado" });
+      const currentProposal = proposals?.find((proposal) => proposal.id === id);
+      const updatedProposal = await updateProposal.mutateAsync({ id, status: newStatus as any });
+      const syncAction = await syncProposalProjectStatus({
+        proposal: updatedProposal,
+        previousStatus: currentProposal?.status,
+      });
+
+      if (syncAction) {
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+      }
+
+      toast({
+        title:
+          syncAction === "created"
+            ? "Status atualizado e projeto criado"
+            : syncAction === "reactivated"
+              ? "Status atualizado e projeto reativado"
+              : syncAction === "cancelled"
+                ? "Status atualizado e projeto cancelado"
+                : "Status atualizado",
+      });
     } catch {
       toast({ title: "Erro ao atualizar status", variant: "destructive" });
     }

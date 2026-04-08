@@ -12,12 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProposal, useUpdateProposal, useCreateProposal } from "@/hooks/useProposals";
 import { useClients, useCreateClient } from "@/hooks/useClients";
-import { useCreateProject } from "@/hooks/useProjects";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels, proposalStatusColors, formatCurrency } from "@/lib/format";
 import { generateProposalPptx } from "@/lib/generateProposalPptx";
+import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -58,7 +58,6 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const { user } = useAuth();
   const updateProposal = useUpdateProposal();
   const createProposal = useCreateProposal();
-  const createProject = useCreateProject();
   const createClient = useCreateClient();
   const { toast } = useToast();
 
@@ -251,57 +250,45 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
 
       if (isEdit) {
         const oldStatus = existing?.status;
-        await updateProposal.mutateAsync({ id: proposalId!, ...payload });
+        const updatedProposal = await updateProposal.mutateAsync({ id: proposalId!, ...payload });
         toast({ title: "Proposta atualizada" });
 
-        // Mudou PARA "ganha"
-        if (form.status === "ganha" && oldStatus !== "ganha") {
-          try {
-            const { data: existingProject } = await supabase
-              .from("projects")
-              .select("id")
-              .eq("proposal_id", proposalId!)
-              .maybeSingle();
+        const syncAction = await syncProposalProjectStatus({
+          proposal: updatedProposal,
+          previousStatus: oldStatus,
+        });
 
-            if (existingProject) {
-              await supabase
-                .from("projects")
-                .update({ status: "em_andamento" })
-                .eq("id", existingProject.id);
-              toast({ title: "Projeto reativado automaticamente!" });
-            } else {
-              await createProject.mutateAsync({
-                title: form.title,
-                client_id: form.client_id,
-                proposal_id: proposalId!,
-                description: form.description,
-                budget: form.value,
-                status: "em_andamento",
-              });
-              toast({ title: "Projeto criado automaticamente!" });
-            }
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
-          } catch {
-            toast({ title: "Erro ao criar/reativar projeto", variant: "destructive" });
-          }
-        }
-
-        // Saiu DE "ganha"
-        if (oldStatus === "ganha" && form.status !== "ganha") {
-          try {
-            await supabase
-              .from("projects")
-              .update({ status: "cancelado" as any })
-              .eq("proposal_id", proposalId!);
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
-            toast({ title: "Projeto cancelado automaticamente" });
-          } catch {
-            toast({ title: "Erro ao cancelar projeto", variant: "destructive" });
-          }
+        if (syncAction) {
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
+          toast({
+            title:
+              syncAction === "created"
+                ? "Projeto criado automaticamente!"
+                : syncAction === "reactivated"
+                  ? "Projeto reativado automaticamente!"
+                  : "Projeto cancelado automaticamente",
+          });
         }
       } else {
-        await createProposal.mutateAsync({ ...payload, created_by: user?.id ?? null });
+        const createdProposal = await createProposal.mutateAsync({ ...payload, created_by: user?.id ?? null });
+        const syncAction = await syncProposalProjectStatus({
+          proposal: createdProposal,
+          previousStatus: null,
+        });
+
+        if (syncAction) {
+          try {
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
+          } catch {
+            toast({ title: "Erro ao atualizar lista de projetos", variant: "destructive" });
+          }
+        }
+
         toast({ title: "Proposta criada" });
+
+        if (syncAction) {
+          toast({ title: "Projeto criado automaticamente!" });
+        }
       }
       onOpenChange(false);
     } catch {
