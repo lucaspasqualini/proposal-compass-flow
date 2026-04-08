@@ -18,7 +18,7 @@ export const proposalStatusLabels: Record<string, string> = {
   perdida: "Perdida",
 };
 export const projectStatusLabels: Record<string, string> = {
-  em_andamento: "Em Andamento",
+  em_andamento: "Ativo",
   em_pausa: "Em Pausa",
   aguardando_retorno: "Aguardando Retorno",
   finalizado: "Finalizado",
@@ -28,6 +28,7 @@ export const projectEtapaLabels: Record<string, string> = {
   iniciado: "Iniciado",
   minuta: "Minuta",
   assinado: "Assinado",
+  cancelado: "Cancelado",
 };
 
 export const proposalStatusColors: Record<string, string> = {
@@ -48,4 +49,5 @@ export const projectEtapaColors: Record<string, string> = {
   iniciado: "bg-info/10 text-info",
   minuta: "bg-warning/10 text-warning",
   assinado: "bg-success/10 text-success",
+  cancelado: "bg-destructive/10 text-destructive",
 };

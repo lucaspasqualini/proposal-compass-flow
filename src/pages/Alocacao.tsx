@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 import {
   Select,
   SelectContent,
@@ -91,6 +92,8 @@ export default function Alocacao() {
       .join("")
       .toUpperCase();
 
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">Alocação</h1>
@@ -170,7 +173,10 @@ export default function Alocacao() {
                     <TableCell className="font-mono text-xs">
                       {(p.proposals as any)?.proposal_number ?? "—"}
                     </TableCell>
-                    <TableCell className="font-medium max-w-[250px] truncate">
+                    <TableCell
+                      className="font-medium max-w-[250px] truncate cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => setSelectedProjectId(p.id)}
+                    >
                       {p.title}
                     </TableCell>
                     <TableCell>{(p.clients as any)?.name ?? "—"}</TableCell>
@@ -211,6 +217,12 @@ export default function Alocacao() {
           </TableBody>
         </Table>
       </div>
+
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+      />
     </div>
   );
 }
