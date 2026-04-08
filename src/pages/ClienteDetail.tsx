@@ -77,6 +77,7 @@ export default function ClienteDetail() {
   useEffect(() => {
     if (client) {
       setForm({
+        name: client.name ?? "",
         cnpj: client.cnpj ?? "",
         razao_social: (client as any).razao_social ?? "",
         nome_fantasia: (client as any).nome_fantasia ?? "",
