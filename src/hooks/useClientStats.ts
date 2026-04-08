@@ -16,6 +16,7 @@ export interface ClientWithStats {
   total_value: number;
   won_value: number;
   last_proposal_date: string | null;
+  is_active: boolean;
 }
 
 export function useClientsWithStats() {
