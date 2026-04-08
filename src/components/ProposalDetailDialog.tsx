@@ -51,6 +51,7 @@ interface ProposalDetailDialogProps {
 }
 
 export default function ProposalDetailDialog({ proposalId, open, onOpenChange, isNew }: ProposalDetailDialogProps) {
+  const queryClient = useQueryClient();
   const isEdit = !!proposalId && !isNew;
   const { data: existing, isLoading } = useProposal(isEdit ? proposalId! : undefined);
   const { data: clients } = useClients();
