@@ -252,19 +252,49 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         await updateProposal.mutateAsync({ id: proposalId!, ...payload });
         toast({ title: "Proposta atualizada" });
 
+        // Mudou PARA "ganha"
         if (form.status === "ganha" && oldStatus !== "ganha") {
           try {
-            await createProject.mutateAsync({
-              title: form.title,
-              client_id: form.client_id,
-              proposal_id: proposalId!,
-              description: form.description,
-              budget: form.value,
-              status: "em_andamento",
-            });
-            toast({ title: "Projeto criado automaticamente!" });
+            const { data: existingProject } = await supabase
+              .from("projects")
+              .select("id")
+              .eq("proposal_id", proposalId!)
+              .maybeSingle();
+
+            if (existingProject) {
+              await supabase
+                .from("projects")
+                .update({ status: "em_andamento" })
+                .eq("id", existingProject.id);
+              toast({ title: "Projeto reativado automaticamente!" });
+            } else {
+              await createProject.mutateAsync({
+                title: form.title,
+                client_id: form.client_id,
+                proposal_id: proposalId!,
+                description: form.description,
+                budget: form.value,
+                status: "em_andamento",
+              });
+              toast({ title: "Projeto criado automaticamente!" });
+            }
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
           } catch {
-            toast({ title: "Erro ao criar projeto automaticamente", variant: "destructive" });
+            toast({ title: "Erro ao criar/reativar projeto", variant: "destructive" });
+          }
+        }
+
+        // Saiu DE "ganha"
+        if (oldStatus === "ganha" && form.status !== "ganha") {
+          try {
+            await supabase
+              .from("projects")
+              .update({ status: "cancelado" as any })
+              .eq("proposal_id", proposalId!);
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
+            toast({ title: "Projeto cancelado automaticamente" });
+          } catch {
+            toast({ title: "Erro ao cancelar projeto", variant: "destructive" });
           }
         }
       } else {
