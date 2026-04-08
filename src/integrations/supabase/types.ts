@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      bonus_history: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          payment_date: string | null
+          reference_year: number
+          team_member_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          reference_year: number
+          team_member_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          reference_year?: number
+          team_member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_history_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -191,6 +232,53 @@ export type Database = {
           },
         ]
       }
+      promotion_history: {
+        Row: {
+          created_at: string
+          effective_date: string
+          id: string
+          new_role: string
+          new_salary: number | null
+          notes: string | null
+          previous_role: string | null
+          previous_salary: number | null
+          team_member_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_role: string
+          new_salary?: number | null
+          notes?: string | null
+          previous_role?: string | null
+          previous_salary?: number | null
+          team_member_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_role?: string
+          new_salary?: number | null
+          notes?: string | null
+          previous_role?: string | null
+          previous_salary?: number | null
+          team_member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_history_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposals: {
         Row: {
           client_id: string | null
@@ -279,35 +367,35 @@ export type Database = {
       }
       team_members: {
         Row: {
+          area: string | null
           created_at: string
-          hourly_rate: number | null
           id: string
           is_active: boolean
           name: string
           role: string | null
-          specialty: string | null
+          salary: number | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          area?: string | null
           created_at?: string
-          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name: string
           role?: string | null
-          specialty?: string | null
+          salary?: number | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          area?: string | null
           created_at?: string
-          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name?: string
           role?: string | null
-          specialty?: string | null
+          salary?: number | null
           updated_at?: string
           user_id?: string | null
         }
