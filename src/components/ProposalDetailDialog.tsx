@@ -151,7 +151,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         status: "em_elaboracao", validity_date: null, payment_terms: "",
         created_by: null, tipo_projeto: "", data_envio: null, data_aprovacao: null,
         data_fup: null, cliente_contato: null, indicador: "", observacoes: "",
-        empresa: "", payment_type: "",
+        empresa: "", payment_type: "", about_company: "",
       });
       setParcelas([]);
       setEtapas([
