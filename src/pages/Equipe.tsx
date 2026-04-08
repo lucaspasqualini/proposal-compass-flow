@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useTeamMembers, useCreateTeamMember, useUpdateTeamMember, useDeleteTeamMember, useProjectAllocations } from "@/hooks/useTeam";
+import { useTeamMembers, useCreateTeamMember, useUpdateTeamMember, useDeleteTeamMember } from "@/hooks/useTeam";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -12,16 +12,16 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/format";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import TeamMemberDetailDialog from "@/components/TeamMemberDetailDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type TeamMember = Database["public"]["Tables"]["team_members"]["Row"];
 type TeamMemberInsert = Database["public"]["Tables"]["team_members"]["Insert"];
 
-const emptyMember: TeamMemberInsert = { name: "", role: "", specialty: "", hourly_rate: null, is_active: true };
+const emptyMember: TeamMemberInsert = { name: "", role: "", area: "", salary: null, is_active: true };
 
 export default function Equipe() {
   const { data: members, isLoading } = useTeamMembers();
-  const { data: allocations } = useProjectAllocations();
   const createMember = useCreateTeamMember();
   const updateMember = useUpdateTeamMember();
   const deleteMember = useDeleteTeamMember();
@@ -29,6 +29,8 @@ export default function Equipe() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [form, setForm] = useState<TeamMemberInsert>(emptyMember);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const handleOpen = (member?: TeamMember) => {
     if (member) {
@@ -69,8 +71,9 @@ export default function Equipe() {
     }
   };
 
-  const getAllocationsForMember = (memberId: string) => {
-    return allocations?.filter((a) => a.team_member_id === memberId) ?? [];
+  const handleRowClick = (member: TeamMember) => {
+    setSelectedMember(member);
+    setDetailOpen(true);
   };
 
   return (
@@ -78,7 +81,7 @@ export default function Equipe() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Equipe</h1>
-          <p className="text-muted-foreground">Gerencie membros da equipe e alocações</p>
+          <p className="text-muted-foreground">Gerencie membros da equipe</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -101,18 +104,18 @@ export default function Equipe() {
                   <Input value={form.role ?? ""} onChange={(e) => setForm({ ...form, role: e.target.value })} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Especialidade</Label>
-                  <Input value={form.specialty ?? ""} onChange={(e) => setForm({ ...form, specialty: e.target.value })} />
+                  <Label>Área</Label>
+                  <Input value={form.area ?? ""} onChange={(e) => setForm({ ...form, area: e.target.value })} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Valor/Hora (R$)</Label>
+                  <Label>Salário (R$)</Label>
                   <Input
                     type="number"
                     step="0.01"
-                    value={form.hourly_rate ?? ""}
-                    onChange={(e) => setForm({ ...form, hourly_rate: e.target.value ? Number(e.target.value) : null })}
+                    value={form.salary ?? ""}
+                    onChange={(e) => setForm({ ...form, salary: e.target.value ? Number(e.target.value) : null })}
                   />
                 </div>
                 <div className="flex items-center gap-2 pt-6">
@@ -141,71 +144,64 @@ export default function Equipe() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead className="hidden sm:table-cell">Cargo</TableHead>
-                  <TableHead className="hidden md:table-cell">Especialidade</TableHead>
-                  <TableHead className="hidden md:table-cell">Valor/Hora</TableHead>
+                  <TableHead className="hidden md:table-cell">Área</TableHead>
+                  <TableHead className="hidden md:table-cell">Salário</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Projetos</TableHead>
                   <TableHead className="w-24">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {members?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       Nenhum membro cadastrado
                     </TableCell>
                   </TableRow>
                 )}
-                {members?.map((m) => {
-                  const memberAllocations = getAllocationsForMember(m.id);
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">{m.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{m.role || "—"}</TableCell>
-                      <TableCell className="hidden md:table-cell">{m.specialty || "—"}</TableCell>
-                      <TableCell className="hidden md:table-cell">{formatCurrency(Number(m.hourly_rate))}</TableCell>
-                      <TableCell>
-                        <Badge variant={m.is_active ? "default" : "secondary"}>
-                          {m.is_active ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {memberAllocations.length > 0
-                          ? memberAllocations.map((a) => (a as any).projects?.title).filter(Boolean).join(", ") || "—"
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleOpen(m)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Remover membro?</AlertDialogTitle>
-                                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(m.id)}>Remover</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {members?.map((m) => (
+                  <TableRow key={m.id} className="cursor-pointer" onClick={() => handleRowClick(m)}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{m.role || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{m.area || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatCurrency(Number(m.salary))}</TableCell>
+                    <TableCell>
+                      <Badge variant={m.is_active ? "default" : "secondary"}>
+                        {m.is_active ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" onClick={() => handleOpen(m)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover membro?</AlertDialogTitle>
+                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(m.id)}>Remover</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
+
+      <TeamMemberDetailDialog member={selectedMember} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 }
