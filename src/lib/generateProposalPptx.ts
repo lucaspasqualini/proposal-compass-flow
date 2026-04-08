@@ -197,7 +197,36 @@ export async function generateProposalPptx(data: ProposalPptxData) {
   });
   addFooter(slide2, 2, empresaLabel);
 
-  // ===== SLIDE 3: Section Divider - Entendimento =====
+  // ===== SLIDE 3: Section Divider - A Empresa =====
+  if (data.about_company) {
+    const slideEmpresaDivider = pptx.addSlide();
+    slideEmpresaDivider.addImage({ data: sectionBgB64, x: 0, y: 0, w: 13.33, h: 7.5 });
+    slideEmpresaDivider.addShape("rect", { x: 4.5, y: 2.8, w: 5.5, h: 1.8, fill: { color: "000000" }, rectRadius: 0 });
+    slideEmpresaDivider.addShape("rect", { x: 4.55, y: 2.85, w: 0.06, h: 1.0, fill: { color: GOLD } });
+    slideEmpresaDivider.addText("A EMPRESA", {
+      x: 4.7, y: 2.8, w: 5.2, h: 1.0,
+      fontSize: 22, color: WHITE, fontFace: "Arial", bold: true, valign: "middle",
+    });
+    slideEmpresaDivider.addText("APRESENTAÇÃO E CONTEXTO DA ORGANIZAÇÃO", {
+      x: 4.7, y: 3.7, w: 5.2, h: 0.6,
+      fontSize: 9, color: "CCCCCC", fontFace: "Arial", valign: "top",
+    });
+
+    // ===== A Empresa Content =====
+    const slideEmpresaContent = pptx.addSlide();
+    slideEmpresaContent.addShape("rect", { x: 0, y: 0, w: 0.08, h: 0.6, fill: { color: GOLD } });
+    slideEmpresaContent.addText("A EMPRESA", {
+      x: 0.15, y: 0.1, w: 5, h: 0.5,
+      fontSize: 22, color: TEAL, fontFace: "Arial", bold: true,
+    });
+    slideEmpresaContent.addText(data.about_company, {
+      x: 0.5, y: 1.0, w: 9, h: 5.5,
+      fontSize: 12, color: "333333", fontFace: "Arial", lineSpacingMultiple: 1.5, align: "justify",
+    });
+    addFooter(slideEmpresaContent, 3, empresaLabel);
+  }
+
+  // ===== Section Divider - Entendimento =====
   const slide3 = pptx.addSlide();
   slide3.addImage({ data: sectionBgB64, x: 0, y: 0, w: 13.33, h: 7.5 });
   slide3.addShape("rect", { x: 4.5, y: 2.8, w: 5.5, h: 1.8, fill: { color: "000000" }, rectRadius: 0 });
