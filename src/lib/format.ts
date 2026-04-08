@@ -28,6 +28,7 @@ export const projectEtapaLabels: Record<string, string> = {
   iniciado: "Iniciado",
   minuta: "Minuta",
   assinado: "Assinado",
+  cancelado: "Cancelado",
 };
 
 export const proposalStatusColors: Record<string, string> = {
