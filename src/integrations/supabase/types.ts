@@ -447,6 +447,7 @@ export type Database = {
         | "em_pausa"
         | "aguardando_retorno"
         | "finalizado"
+        | "cancelado"
       proposal_status: "em_elaboracao" | "em_negociacao" | "ganha" | "perdida"
     }
     CompositeTypes: {
@@ -580,6 +581,7 @@ export const Constants = {
         "em_pausa",
         "aguardando_retorno",
         "finalizado",
+        "cancelado",
       ],
       proposal_status: ["em_elaboracao", "em_negociacao", "ganha", "perdida"],
     },
