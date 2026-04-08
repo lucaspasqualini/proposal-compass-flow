@@ -529,6 +529,15 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                 <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Descrição</h4>
                 <div className="space-y-4">
                   <div className="grid gap-2">
+                    <Label>A Empresa</Label>
+                    <Textarea
+                      rows={4}
+                      value={form.about_company ?? ""}
+                      onChange={(e) => setForm({ ...form, about_company: e.target.value })}
+                      placeholder="Descreva a empresa do cliente..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
                     <Label>Entendimento da Situação</Label>
                     <Textarea
                       rows={4}
