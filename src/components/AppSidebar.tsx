@@ -4,7 +4,7 @@ import {
   FolderKanban,
   Users,
   Building,
-  Settings,
+  CalendarRange,
   LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -30,6 +30,7 @@ const mainItems = [
   { title: "Projetos", url: "/projetos", icon: FolderKanban },
   { title: "Equipe", url: "/equipe", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Building },
+  { title: "Alocação", url: "/alocacao", icon: CalendarRange },
 ];
 
 export function AppSidebar() {
