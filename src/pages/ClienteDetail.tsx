@@ -126,6 +126,7 @@ export default function ClienteDetail() {
     try {
       await updateClient.mutateAsync({
         id: id!,
+        name: form.name,
         cnpj: form.cnpj,
         razao_social: form.razao_social,
         nome_fantasia: form.nome_fantasia,
