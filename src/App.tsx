@@ -13,6 +13,7 @@ import ClienteDetail from "@/pages/ClienteDetail";
 import Propostas from "@/pages/Propostas";
 import Projetos from "@/pages/Projetos";
 import Equipe from "@/pages/Equipe";
+import Alocacao from "@/pages/Alocacao";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
