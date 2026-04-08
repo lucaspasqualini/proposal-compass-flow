@@ -331,9 +331,9 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Empresa</Label>
+                    <Label>Centro de Custo</Label>
                     <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione o centro de custo" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Valore Empresarial">Valore Empresarial</SelectItem>
                         <SelectItem value="Meden Goiania">Meden Goiania</SelectItem>
