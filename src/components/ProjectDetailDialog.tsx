@@ -58,7 +58,13 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
   const handleEtapaChange = async (value: string) => {
     if (!projectId) return;
     try {
-      await updateProject.mutateAsync({ id: projectId, etapa: value } as any);
+      const updates: any = { id: projectId, etapa: value };
+      if (value === "assinado") {
+        updates.etapa_assinado_at = new Date().toISOString();
+      } else if ((project as any)?.etapa === "assinado") {
+        updates.etapa_assinado_at = null;
+      }
+      await updateProject.mutateAsync(updates);
     } catch {
       toast({ title: "Erro ao atualizar etapa", variant: "destructive" });
     }

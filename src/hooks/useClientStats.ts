@@ -56,18 +56,28 @@ export function useClientsWithStats() {
 
       return (clients ?? []).map((c): ClientWithStats => {
         const cp = proposalsByClient.get(c.id) ?? [];
+        const cProjects = projectsByClient.get(c.id) ?? [];
         const wonValues = cp
           .filter((p) => p.status === "ganha")
           .reduce((sum, p) => sum + (Number(p.value) || 0), 0);
         const totalValue = cp.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
         const dates = cp.map((p) => p.created_at).sort();
+
+        const hasActiveProposal = cp.some((p) => p.status === "em_elaboracao" || p.status === "em_negociacao");
+        const hasActiveProject = cProjects.some((p) => p.etapa === "iniciado" || p.etapa === "minuta");
+        const hasRecentSigned = cProjects.some((p) => {
+          if (p.etapa !== "assinado" || !(p as any).etapa_assinado_at) return false;
+          return new Date((p as any).etapa_assinado_at) >= threeMonthsAgo;
+        });
+
         return {
           ...c,
           proposal_count: cp.length,
-          project_count: projectsByClient.get(c.id) ?? 0,
+          project_count: cProjects.length,
           total_value: totalValue,
           won_value: wonValues,
           last_proposal_date: dates.length ? dates[dates.length - 1] : null,
+          is_active: hasActiveProposal || hasActiveProject || hasRecentSigned,
         };
       });
     },
