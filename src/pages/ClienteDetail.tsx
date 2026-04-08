@@ -46,6 +46,7 @@ export default function ClienteDetail() {
   const proposals = allProposals?.filter((p) => p.client_id === id) ?? [];
 
   const [form, setForm] = useState({
+    name: "",
     cnpj: "",
     razao_social: "",
     nome_fantasia: "",
