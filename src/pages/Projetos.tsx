@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
+import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors, formatCurrency } from "@/lib/format";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search } from "lucide-react";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
@@ -173,6 +173,20 @@ export default function Projetos() {
       });
   }, [projects, search, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
 
+  const stats = useMemo(() => {
+    const ativos = filtered.filter((p) => p.status === "em_andamento");
+    const pausa = filtered.filter((p) => p.status === "em_pausa");
+    const aguardando = filtered.filter((p) => p.status === "aguardando_retorno");
+    const finalizados = filtered.filter((p) => p.status === "finalizado");
+    const sumBudget = (arr: typeof filtered) => arr.reduce((s, p) => s + (Number(p.budget) || 0), 0);
+    return {
+      ativos: { count: ativos.length, value: sumBudget(ativos) },
+      pausa: { count: pausa.length, value: sumBudget(pausa) },
+      aguardando: { count: aguardando.length, value: sumBudget(aguardando) },
+      finalizados: { count: finalizados.length, value: sumBudget(finalizados) },
+    };
+  }, [filtered]);
+
   const handleDelete = async (id: string) => {
     try {
       await deleteProject.mutateAsync(id);
@@ -267,6 +281,32 @@ export default function Projetos() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Ativos</p>
+            <p className="text-lg font-bold">{stats.ativos.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.ativos.value)}</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Em Pausa</p>
+            <p className="text-lg font-bold">{stats.pausa.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.pausa.value)}</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Aguardando Retorno</p>
+            <p className="text-lg font-bold">{stats.aguardando.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.aguardando.value)}</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Finalizados</p>
+            <p className="text-lg font-bold">{stats.finalizados.count} <span className="text-sm font-normal text-muted-foreground">• {formatCurrency(stats.finalizados.value)}</span></p>
+          </CardContent>
+        </Card>
+      </div>
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
