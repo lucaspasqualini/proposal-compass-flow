@@ -29,6 +29,16 @@ export function useCreatePromotion() {
     mutationFn: async (promo: PromotionInsert) => {
       const { data, error } = await supabase.from("promotion_history").insert(promo).select().single();
       if (error) throw error;
+
+      // Update team member's current role and salary
+      const updates: Record<string, unknown> = { role: promo.new_role };
+      if (promo.new_salary != null) updates.salary = promo.new_salary;
+      const { error: updateErr } = await supabase
+        .from("team_members")
+        .update(updates)
+        .eq("id", promo.team_member_id);
+      if (updateErr) throw updateErr;
+
       return data;
     },
     onSuccess: (_, vars) => {
