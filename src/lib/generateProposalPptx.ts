@@ -103,10 +103,7 @@ function escapeXml(str: string): string {
 function formatEtapaLabel(val: number | null, mode: "percent" | "value", total: number | null): string {
   if (val == null) return "#N/A#";
   if (mode === "percent") {
-    const monetary = total ? (val / 100) * total : null;
-    const base = `${val}%`;
-    if (monetary != null) return `${base} - ${formatCurrency(monetary)} (${valorPorExtenso(monetary)})`;
-    return base;
+    return `${val}% (${numberToWords(val)} por cento)`;
   }
   return `${formatCurrency(val)} (${valorPorExtenso(val)})`;
 }
