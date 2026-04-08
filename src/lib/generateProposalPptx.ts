@@ -151,11 +151,11 @@ export async function generateProposalPptx(data: ProposalPptxData) {
       const escaped = escapeXml(placeholder);
       // Try both raw and XML-escaped versions of the placeholder
       if (content.includes(placeholder)) {
-        content = content.replaceAll(placeholder, escapeXml(value));
+        content = content.split(placeholder).join(escapeXml(value));
         changed = true;
       }
       if (content.includes(escaped)) {
-        content = content.replaceAll(escaped, escapeXml(value));
+        content = content.split(escaped).join(escapeXml(value));
         changed = true;
       }
     }
