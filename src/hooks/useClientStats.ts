@@ -44,11 +44,15 @@ export function useClientsWithStats() {
         proposalsByClient.get(p.client_id)!.push(p);
       }
 
-      const projectsByClient = new Map<string, number>();
+      const projectsByClient = new Map<string, typeof projects>();
       for (const p of projects ?? []) {
         if (!p.client_id) continue;
-        projectsByClient.set(p.client_id, (projectsByClient.get(p.client_id) ?? 0) + 1);
+        if (!projectsByClient.has(p.client_id)) projectsByClient.set(p.client_id, []);
+        projectsByClient.get(p.client_id)!.push(p);
       }
+
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
       return (clients ?? []).map((c): ClientWithStats => {
         const cp = proposalsByClient.get(c.id) ?? [];
