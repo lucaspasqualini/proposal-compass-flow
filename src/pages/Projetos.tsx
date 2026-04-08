@@ -173,6 +173,20 @@ export default function Projetos() {
       });
   }, [projects, search, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
 
+  const stats = useMemo(() => {
+    const ativos = filtered.filter((p) => p.status === "em_andamento");
+    const pausa = filtered.filter((p) => p.status === "em_pausa");
+    const aguardando = filtered.filter((p) => p.status === "aguardando_retorno");
+    const finalizados = filtered.filter((p) => p.status === "finalizado");
+    const sumBudget = (arr: typeof filtered) => arr.reduce((s, p) => s + (Number(p.budget) || 0), 0);
+    return {
+      ativos: { count: ativos.length, value: sumBudget(ativos) },
+      pausa: { count: pausa.length, value: sumBudget(pausa) },
+      aguardando: { count: aguardando.length, value: sumBudget(aguardando) },
+      finalizados: { count: finalizados.length, value: sumBudget(finalizados) },
+    };
+  }, [filtered]);
+
   const handleDelete = async (id: string) => {
     try {
       await deleteProject.mutateAsync(id);
