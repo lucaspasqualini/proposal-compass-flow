@@ -1,36 +1,47 @@
 
 
-# Corrigir duplicação de projetos ao mudar status da proposta
+# Ajustar lógica de "Clientes Ativos" e adicionar campo `etapa_assinado_at` nos projetos
 
-## Problema
-Quando uma proposta muda para "ganha", um projeto é criado. Porém:
-1. Se o status muda de "ganha" para outro, o projeto permanece
-2. Se voltar para "ganha", um novo projeto duplicado é criado
+## Contexto
 
-## Solução
+Hoje, "cliente ativo" = qualquer cliente com pelo menos 1 proposta. A nova regra considera ativo se:
+1. Tem proposta com status `em_elaboracao` ou `em_negociacao`; ou
+2. Tem projeto com etapa `iniciado` ou `minuta`; ou
+3. Tem projeto com etapa `assinado` cuja data de mudança para essa etapa foi há menos de 3 meses.
 
-**Arquivo:** `src/components/ProposalDetailDialog.tsx` (linhas ~250-269)
+## Alterações
 
-### Ao mudar status PARA "ganha"
-Antes de criar um novo projeto, verificar se já existe um projeto vinculado a esta proposta (`proposal_id`). Se existir, reativar o projeto existente (status → `em_andamento`) ao invés de criar um novo.
+### 1. Migração — adicionar coluna `etapa_assinado_at` na tabela `projects`
 
-### Ao mudar status DE "ganha" para outro
-Quando `oldStatus === "ganha"` e o novo status não é "ganha", buscar o projeto vinculado via `proposal_id` e atualizar seu status para `cancelado`.
-
-### Lógica resumida
-
-```text
-if (mudou para ganha) {
-  projeto_existente = buscar projeto com proposal_id
-  if (existe) → atualizar status para "em_andamento"
-  else → criar novo projeto
-}
-
-if (saiu de ganha) {
-  projeto_existente = buscar projeto com proposal_id
-  if (existe) → atualizar status para "cancelado"
-}
+```sql
+ALTER TABLE public.projects ADD COLUMN etapa_assinado_at timestamptz;
+UPDATE public.projects SET etapa_assinado_at = '2026-04-04T00:00:00Z' WHERE etapa = 'assinado';
 ```
 
-Nenhuma alteração no banco de dados necessária — a tabela `projects` já possui `proposal_id` e `status` com o enum que inclui `cancelado`.
+### 2. `src/components/ProjectDetailDialog.tsx` — registrar data ao mudar etapa para "assinado"
+
+Na função `handleEtapaChange`, ao detectar que o novo valor é `assinado`, incluir `etapa_assinado_at: new Date().toISOString()` no update. Se mudar de `assinado` para outra etapa, limpar o campo (`etapa_assinado_at: null`).
+
+### 3. `src/hooks/useClientStats.ts` — nova lógica de "ativo"
+
+- Alterar a query de projects para incluir `client_id, etapa, etapa_assinado_at`
+- Agrupar projetos por client_id
+- Um cliente é ativo se:
+  - Tem proposta com status `em_elaboracao` ou `em_negociacao`; ou
+  - Tem projeto com etapa `iniciado` ou `minuta`; ou
+  - Tem projeto com etapa `assinado` e `etapa_assinado_at` nos últimos 3 meses
+- Adicionar campo `is_active: boolean` ao `ClientWithStats`
+
+### 4. `src/pages/Clientes.tsx` — usar o novo campo
+
+Substituir `clients?.filter((c) => c.proposal_count > 0)` por `clients?.filter((c) => c.is_active)`.
+
+## Arquivos a alterar
+
+| Arquivo | Alteração |
+|---|---|
+| Migração SQL | Adicionar coluna `etapa_assinado_at` + popular projetos assinados com 04/04/2026 |
+| `src/components/ProjectDetailDialog.tsx` | Setar/limpar `etapa_assinado_at` ao mudar etapa |
+| `src/hooks/useClientStats.ts` | Nova lógica de cliente ativo com as 3 condições |
+| `src/pages/Clientes.tsx` | Usar `is_active` no card de resumo |
 
