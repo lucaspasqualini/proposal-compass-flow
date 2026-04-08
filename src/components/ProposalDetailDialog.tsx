@@ -548,7 +548,9 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                           description: form.description ?? null,
                           scope: form.scope ?? null,
                           value: form.value ?? null,
-                          parcelas: form.payment_type === "etapas" ? etapas : parcelas,
+                          parcelas: form.payment_type === "etapas"
+                            ? etapas.map(e => ({ descricao: e.descricao, valor: e.valor, data_vencimento: "" }))
+                            : parcelas,
                           payment_type: form.payment_type ?? null,
                           data_envio: form.data_envio ?? null,
                           empresa: form.empresa ?? null,
