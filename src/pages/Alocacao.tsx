@@ -92,6 +92,8 @@ export default function Alocacao() {
       .join("")
       .toUpperCase();
 
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">Alocação</h1>
