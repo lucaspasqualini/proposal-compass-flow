@@ -153,6 +153,7 @@ export default function ClienteDetail() {
   const handleCnpjConfirm = (data: CnpjConfirmData) => {
     setForm((prev) => ({
       ...prev,
+      name: data.nome_fantasia || data.razao_social || prev.name,
       cnpj: data.cnpj,
       razao_social: data.razao_social || prev.razao_social,
       nome_fantasia: data.nome_fantasia || prev.nome_fantasia,
