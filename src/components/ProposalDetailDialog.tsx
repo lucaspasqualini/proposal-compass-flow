@@ -171,7 +171,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         .eq("client_id", form.client_id!)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (data) {
         setForm((prev) => ({
           ...prev,
