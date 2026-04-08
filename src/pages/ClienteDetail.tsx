@@ -380,6 +380,12 @@ export default function ClienteDetail() {
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Nome do Cliente (usado no sistema)</Label>
+                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome exibido no sistema" />
+                  <p className="text-xs text-muted-foreground">Preenchido automaticamente pelo Nome Fantasia ao consultar CNPJ, mas pode ser editado manualmente.</p>
+                </div>
+                <Separator />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label className="flex items-center gap-1"><Hash className="h-3 w-3" /> CNPJ</Label>
