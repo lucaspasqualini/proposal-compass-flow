@@ -173,7 +173,10 @@ export default function Alocacao() {
                     <TableCell className="font-mono text-xs">
                       {(p.proposals as any)?.proposal_number ?? "—"}
                     </TableCell>
-                    <TableCell className="font-medium max-w-[250px] truncate">
+                    <TableCell
+                      className="font-medium max-w-[250px] truncate cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => setSelectedProjectId(p.id)}
+                    >
                       {p.title}
                     </TableCell>
                     <TableCell>{(p.clients as any)?.name ?? "—"}</TableCell>
