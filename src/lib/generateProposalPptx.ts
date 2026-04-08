@@ -19,6 +19,7 @@ export interface ProposalPptxData {
   proposal_number: string;
   title: string;
   client_name: string;
+  about_company: string | null;
   description: string | null;
   scope: string | null;
   value: number | null;

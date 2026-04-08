@@ -579,6 +579,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                           proposal_number: existing?.proposal_number || form.title,
                           title: form.title,
                           client_name: clientName,
+                          about_company: form.about_company ?? null,
                           description: form.description ?? null,
                           scope: form.scope ?? null,
                           value: form.value ?? null,
