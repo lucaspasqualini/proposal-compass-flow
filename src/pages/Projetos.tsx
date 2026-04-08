@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors, formatCurrency } from "@/lib/format";
+import { compareProjectNumbers } from "@/lib/projectNumber";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search } from "lucide-react";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
@@ -85,7 +86,9 @@ export default function Projetos() {
     projects.forEach(p => {
       getFieldValues(p, key).forEach(v => vals.add(v));
     });
-    return Array.from(vals).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    return Array.from(vals).sort((a, b) => key === "number"
+      ? compareProjectNumbers(a, b)
+      : a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
   };
 
   const toggleFilterValue = (key: SortKey, value: string) => {
@@ -166,6 +169,10 @@ export default function Projetos() {
       })
       .sort((a, b) => {
         if (!sortKey) return 0;
+        if (sortKey === "number") {
+          const cmp = compareProjectNumbers(getFieldValue(a, sortKey), getFieldValue(b, sortKey));
+          return sortDir === "asc" ? cmp : -cmp;
+        }
         const va = getFieldValue(a, sortKey).toLowerCase();
         const vb = getFieldValue(b, sortKey).toLowerCase();
         const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
