@@ -18,7 +18,7 @@ export const proposalStatusLabels: Record<string, string> = {
   perdida: "Perdida",
 };
 export const projectStatusLabels: Record<string, string> = {
-  em_andamento: "Em Andamento",
+  em_andamento: "Ativo",
   em_pausa: "Em Pausa",
   aguardando_retorno: "Aguardando Retorno",
   finalizado: "Finalizado",
