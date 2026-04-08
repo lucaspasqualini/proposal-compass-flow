@@ -35,7 +35,7 @@ export function useClientsWithStats() {
 
       const { data: projects } = await supabase
         .from("projects")
-        .select("client_id");
+        .select("client_id, etapa, etapa_assinado_at");
 
       const proposalsByClient = new Map<string, typeof proposals>();
       for (const p of proposals ?? []) {
