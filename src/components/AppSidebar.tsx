@@ -4,7 +4,7 @@ import {
   FolderKanban,
   Users,
   Building,
-  Settings,
+  CalendarRange,
   LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
