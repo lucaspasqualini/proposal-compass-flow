@@ -113,6 +113,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         observacoes: existing.observacoes ?? "",
         empresa: (existing as any).empresa ?? "",
         payment_type: (existing as any).payment_type ?? "",
+        about_company: (existing as any).about_company ?? "",
       });
       const saved = (existing as any).parcelas;
       if (Array.isArray(saved) && saved.length > 0) {
