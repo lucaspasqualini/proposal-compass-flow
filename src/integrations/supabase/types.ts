@@ -210,6 +210,7 @@ export type Database = {
           description: string | null
           end_date: string | null
           etapa: string | null
+          etapa_assinado_at: string | null
           id: string
           proposal_id: string | null
           start_date: string | null
@@ -224,6 +225,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           etapa?: string | null
+          etapa_assinado_at?: string | null
           id?: string
           proposal_id?: string | null
           start_date?: string | null
@@ -238,6 +240,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           etapa?: string | null
+          etapa_assinado_at?: string | null
           id?: string
           proposal_id?: string | null
           start_date?: string | null

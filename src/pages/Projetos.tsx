@@ -206,7 +206,14 @@ export default function Projetos() {
 
   const handleEtapaChange = async (id: string, newEtapa: string) => {
     try {
-      await updateProject.mutateAsync({ id, etapa: newEtapa } as any);
+      const proj = projects?.find((p) => p.id === id);
+      const updates: any = { id, etapa: newEtapa };
+      if (newEtapa === "assinado") {
+        updates.etapa_assinado_at = new Date().toISOString();
+      } else if ((proj as any)?.etapa === "assinado") {
+        updates.etapa_assinado_at = null;
+      }
+      await updateProject.mutateAsync(updates);
     } catch {
       toast({ title: "Erro ao atualizar etapa", variant: "destructive" });
     }

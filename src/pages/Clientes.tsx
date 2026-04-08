@@ -88,7 +88,7 @@ export default function Clientes() {
 
   // Summary stats
   const totalClients = clients?.length ?? 0;
-  const activeClients = clients?.filter((c) => c.proposal_count > 0).length ?? 0;
+  const activeClients = clients?.filter((c) => c.is_active).length ?? 0;
   const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
 
   return (
