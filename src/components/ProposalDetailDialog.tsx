@@ -70,7 +70,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     { descricao: "assinatura", valor: null },
   ]);
 
-  const [form, setForm] = useState<ProposalInsert & { empresa?: string; payment_type?: string }>({
+  const [form, setForm] = useState<ProposalInsert & { empresa?: string; payment_type?: string; about_company?: string }>({
     title: "",
     client_id: null,
     description: "",
@@ -89,6 +89,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     observacoes: "",
     empresa: "",
     payment_type: "",
+    about_company: "",
   });
 
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         observacoes: existing.observacoes ?? "",
         empresa: (existing as any).empresa ?? "",
         payment_type: (existing as any).payment_type ?? "",
+        about_company: (existing as any).about_company ?? "",
       });
       const saved = (existing as any).parcelas;
       if (Array.isArray(saved) && saved.length > 0) {
@@ -149,7 +151,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         status: "em_elaboracao", validity_date: null, payment_terms: "",
         created_by: null, tipo_projeto: "", data_envio: null, data_aprovacao: null,
         data_fup: null, cliente_contato: null, indicador: "", observacoes: "",
-        empresa: "", payment_type: "",
+        empresa: "", payment_type: "", about_company: "",
       });
       setParcelas([]);
       setEtapas([
@@ -162,19 +164,42 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
 
   useEffect(() => {
     if (!form.client_id || isEdit) return;
-    const fetchLastDescription = async () => {
+    const fetchLastProposalData = async () => {
       const { data } = await supabase
         .from("proposals")
-        .select("description")
+        .select("description, about_company, payment_type, parcelas")
         .eq("client_id", form.client_id!)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
-      if (data?.description) {
-        setForm((prev) => ({ ...prev, description: data.description }));
+      if (data) {
+        setForm((prev) => ({
+          ...prev,
+          ...(data.description ? { description: data.description } : {}),
+          ...((data as any).about_company ? { about_company: (data as any).about_company } : {}),
+          ...((data as any).payment_type ? { payment_type: (data as any).payment_type } : {}),
+        }));
+        // Auto-fill parcelas/etapas
+        const savedParcelas = (data as any).parcelas;
+        const paymentType = (data as any).payment_type;
+        if (Array.isArray(savedParcelas) && savedParcelas.length > 0) {
+          const isEtapasFormat = savedParcelas.some((p: any) => ["inicio", "minuta", "assinatura"].includes(p.descricao));
+          if (isEtapasFormat && paymentType === "etapas") {
+            setEtapas([
+              { descricao: "inicio", valor: savedParcelas.find((p: any) => p.descricao === "inicio")?.valor ?? null },
+              { descricao: "minuta", valor: savedParcelas.find((p: any) => p.descricao === "minuta")?.valor ?? null },
+              { descricao: "assinatura", valor: savedParcelas.find((p: any) => p.descricao === "assinatura")?.valor ?? null },
+            ]);
+            const sum = savedParcelas.reduce((s: number, e: any) => s + (e.valor ?? 0), 0);
+            setEtapasMode(sum > 0 && sum <= 100 ? "percent" : "value");
+            setParcelas([]);
+          } else {
+            setParcelas(savedParcelas);
+          }
+        }
       }
     };
-    fetchLastDescription();
+    fetchLastProposalData();
   }, [form.client_id, isEdit]);
 
   const etapasSum = useMemo(() => etapas.reduce((s, e) => s + (e.valor ?? 0), 0), [etapas]);
@@ -503,6 +528,15 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
               <section>
                 <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Descrição</h4>
                 <div className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label>A Empresa</Label>
+                    <Textarea
+                      rows={4}
+                      value={form.about_company ?? ""}
+                      onChange={(e) => setForm({ ...form, about_company: e.target.value })}
+                      placeholder="Descreva a empresa do cliente..."
+                    />
+                  </div>
                   <div className="grid gap-2">
                     <Label>Entendimento da Situação</Label>
                     <Textarea
