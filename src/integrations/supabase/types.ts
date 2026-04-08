@@ -58,38 +58,68 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          capital_social: number | null
+          cnae_descricao: string | null
+          cnae_principal: string | null
           cnpj: string | null
           contact_name: string | null
           created_at: string
+          data_abertura: string | null
           email: string | null
           id: string
           name: string
+          natureza_juridica: string | null
+          nome_fantasia: string | null
           notes: string | null
           phone: string | null
+          porte: string | null
+          qsa: Json | null
+          razao_social: string | null
+          situacao_cadastral: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          capital_social?: number | null
+          cnae_descricao?: string | null
+          cnae_principal?: string | null
           cnpj?: string | null
           contact_name?: string | null
           created_at?: string
+          data_abertura?: string | null
           email?: string | null
           id?: string
           name: string
+          natureza_juridica?: string | null
+          nome_fantasia?: string | null
           notes?: string | null
           phone?: string | null
+          porte?: string | null
+          qsa?: Json | null
+          razao_social?: string | null
+          situacao_cadastral?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          capital_social?: number | null
+          cnae_descricao?: string | null
+          cnae_principal?: string | null
           cnpj?: string | null
           contact_name?: string | null
           created_at?: string
+          data_abertura?: string | null
           email?: string | null
           id?: string
           name?: string
+          natureza_juridica?: string | null
+          nome_fantasia?: string | null
           notes?: string | null
           phone?: string | null
+          porte?: string | null
+          qsa?: Json | null
+          razao_social?: string | null
+          situacao_cadastral?: string | null
           updated_at?: string
         }
         Relationships: []

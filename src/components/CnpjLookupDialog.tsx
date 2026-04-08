@@ -3,10 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Loader2, Check } from "lucide-react";
+import { Search, Loader2, Check, Users, Building2 } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
 
-interface CnpjData {
+export interface CnpjFullData {
   cnpj: string;
   razao_social: string;
   nome_fantasia: string;
@@ -20,18 +23,43 @@ interface CnpjData {
   telefone: string;
   email: string;
   situacao_cadastral: string;
+  capital_social: number | null;
+  natureza_juridica: string;
+  cnae_principal: string;
+  cnae_descricao: string;
+  porte: string;
+  data_abertura: string;
+  descricao_tipo_logradouro: string;
+  qsa: Array<{
+    nome: string;
+    qualificacao: string;
+    data_entrada: string;
+    faixa_etaria: string;
+  }>;
+}
+
+export interface CnpjConfirmData {
+  cnpj: string;
+  razao_social: string;
+  nome_fantasia: string;
+  address: string;
+  phone: string;
+  email: string;
+  contact_name: string;
+  capital_social: number | null;
+  natureza_juridica: string;
+  cnae_principal: string;
+  cnae_descricao: string;
+  porte: string;
+  data_abertura: string;
+  situacao_cadastral: string;
+  qsa: CnpjFullData["qsa"];
 }
 
 interface CnpjLookupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: {
-    cnpj: string;
-    address: string;
-    phone: string;
-    email: string;
-    contact_name: string;
-  }) => void;
+  onConfirm: (data: CnpjConfirmData) => void;
 }
 
 function formatCnpjInput(value: string): string {
@@ -46,7 +74,7 @@ function formatCnpjInput(value: string): string {
 export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: CnpjLookupDialogProps) {
   const [cnpjInput, setCnpjInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<CnpjData | null>(null);
+  const [result, setResult] = useState<CnpjFullData | null>(null);
   const { toast } = useToast();
 
   const handleSearch = async () => {
@@ -62,11 +90,9 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const url = `https://${projectId}.supabase.co/functions/v1/search-cnpj?cnpj=${digits}`;
-      
+
       const response = await fetch(url, {
-        headers: {
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
+        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
 
       if (!response.ok) {
@@ -74,8 +100,7 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
         throw new Error(err.error || "Erro ao consultar");
       }
 
-      const cnpjData: CnpjData = await response.json();
-      setResult(cnpjData);
+      setResult(await response.json());
     } catch (err: any) {
       toast({ title: err.message || "Erro ao consultar CNPJ", variant: "destructive" });
     } finally {
@@ -87,6 +112,7 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
     if (!result) return;
 
     const addressParts = [
+      result.descricao_tipo_logradouro,
       result.logradouro,
       result.numero,
       result.complemento,
@@ -97,10 +123,20 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
 
     onConfirm({
       cnpj: formatCnpjInput(result.cnpj),
+      razao_social: result.razao_social || "",
+      nome_fantasia: result.nome_fantasia || "",
       address: addressParts.join(", "),
       phone: result.telefone || "",
       email: result.email || "",
       contact_name: "",
+      capital_social: result.capital_social,
+      natureza_juridica: result.natureza_juridica || "",
+      cnae_principal: result.cnae_principal || "",
+      cnae_descricao: result.cnae_descricao || "",
+      porte: result.porte || "",
+      data_abertura: result.data_abertura || "",
+      situacao_cadastral: result.situacao_cadastral || "",
+      qsa: result.qsa || [],
     });
 
     onOpenChange(false);
@@ -110,7 +146,7 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setResult(null); setCnpjInput(""); } }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Consultar CNPJ</DialogTitle>
           <DialogDescription>
@@ -135,53 +171,104 @@ export default function CnpjLookupDialog({ open, onOpenChange, onConfirm }: Cnpj
           </div>
 
           {result && (
-            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm">Resultado encontrado</h4>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${result.situacao_cadastral === "ATIVA" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                  {result.situacao_cadastral}
-                </span>
-              </div>
-
-              <div className="grid gap-2 text-sm">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Razão Social</Label>
-                  <p className="font-medium">{result.razao_social}</p>
+            <ScrollArea className="max-h-[60vh]">
+              <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <h4 className="font-semibold">Resultado encontrado</h4>
+                  </div>
+                  <Badge variant={result.situacao_cadastral === "ATIVA" ? "default" : "destructive"}>
+                    {result.situacao_cadastral}
+                  </Badge>
                 </div>
-                {result.nome_fantasia && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Nome Fantasia</Label>
-                    <p>{result.nome_fantasia}</p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-xs text-muted-foreground">CNPJ</Label>
-                  <p className="font-mono">{formatCnpjInput(result.cnpj)}</p>
-                </div>
-                {result.logradouro && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Endereço</Label>
-                    <p>{[result.logradouro, result.numero, result.complemento, result.bairro, result.municipio ? `${result.municipio}/${result.uf}` : ""].filter(Boolean).join(", ")}</p>
-                  </div>
-                )}
-                {result.telefone && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Telefone</Label>
-                    <p>{result.telefone}</p>
-                  </div>
-                )}
-                {result.email && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Email</Label>
-                    <p>{result.email}</p>
-                  </div>
-                )}
-              </div>
 
-              <Button onClick={handleConfirm} className="w-full">
-                <Check className="h-4 w-4 mr-1" /> Confirmar e Preencher Dados
-              </Button>
-            </div>
+                {/* Company Info */}
+                <div className="grid gap-2 text-sm">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Razão Social</Label>
+                    <p className="font-medium">{result.razao_social}</p>
+                  </div>
+                  {result.nome_fantasia && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Nome Fantasia</Label>
+                      <p>{result.nome_fantasia}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">CNPJ</Label>
+                      <p className="font-mono">{formatCnpjInput(result.cnpj)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Natureza Jurídica</Label>
+                      <p>{result.natureza_juridica || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Capital Social</Label>
+                      <p>{result.capital_social != null ? formatCurrency(result.capital_social) : "—"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Porte</Label>
+                      <p>{result.porte || "—"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Data Abertura</Label>
+                      <p>{result.data_abertura || "—"}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Atividade Principal (CNAE)</Label>
+                    <p>{result.cnae_principal ? `${result.cnae_principal} - ${result.cnae_descricao}` : "—"}</p>
+                  </div>
+                  {result.logradouro && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Endereço</Label>
+                      <p>{[result.descricao_tipo_logradouro, result.logradouro, result.numero, result.complemento, result.bairro, result.municipio ? `${result.municipio}/${result.uf}` : "", result.cep].filter(Boolean).join(", ")}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    {result.telefone && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Telefone</Label>
+                        <p>{result.telefone}</p>
+                      </div>
+                    )}
+                    {result.email && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Email</Label>
+                        <p>{result.email}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* QSA */}
+                {result.qsa && result.qsa.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1 mb-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <Label className="text-xs text-muted-foreground">Quadro Societário ({result.qsa.length})</Label>
+                    </div>
+                    <div className="space-y-1">
+                      {result.qsa.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0">
+                          <span className="font-medium">{s.nome}</span>
+                          <Badge variant="outline" className="text-xs">{s.qualificacao}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={handleConfirm} className="w-full">
+                  <Check className="h-4 w-4 mr-1" /> Confirmar e Preencher Dados
+                </Button>
+              </div>
+            </ScrollArea>
           )}
         </div>
       </DialogContent>

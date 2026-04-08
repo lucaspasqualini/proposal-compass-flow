@@ -22,7 +22,6 @@ Deno.serve(async (req) => {
     const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
 
     if (!response.ok) {
-      const text = await response.text();
       return new Response(
         JSON.stringify({ error: "CNPJ não encontrado" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -45,6 +44,19 @@ Deno.serve(async (req) => {
       telefone: data.ddd_telefone_1,
       email: data.email,
       situacao_cadastral: data.descricao_situacao_cadastral,
+      capital_social: data.capital_social,
+      natureza_juridica: data.natureza_juridica,
+      cnae_principal: String(data.cnae_fiscal || ""),
+      cnae_descricao: data.cnae_fiscal_descricao,
+      porte: data.porte,
+      data_abertura: data.data_inicio_atividade,
+      descricao_tipo_logradouro: data.descricao_tipo_de_logradouro,
+      qsa: (data.qsa || []).map((s: any) => ({
+        nome: s.nome_socio,
+        qualificacao: s.qualificacao_socio,
+        data_entrada: s.data_entrada_sociedade,
+        faixa_etaria: s.faixa_etaria,
+      })),
     };
 
     return new Response(JSON.stringify(result), {
