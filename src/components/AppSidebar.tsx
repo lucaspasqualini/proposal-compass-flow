@@ -6,6 +6,7 @@ import {
   Building,
   CalendarRange,
   LogOut,
+  Receipt,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -31,6 +32,7 @@ const mainItems = [
   { title: "Equipe", url: "/equipe", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Building },
   { title: "Alocação", url: "/alocacao", icon: CalendarRange },
+  { title: "Contas a Receber", url: "/contas-a-receber", icon: Receipt },
 ];
 
 export function AppSidebar() {

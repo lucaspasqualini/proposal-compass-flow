@@ -1,12 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { generateReceivables, deleteReceivables } from "@/lib/syncReceivables";
 
 type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
 type ProjectStatus = Database["public"]["Enums"]["project_status"];
 
 type ProjectSyncAction = "created" | "reactivated" | "cancelled" | null;
 
-type ProposalForSync = Pick<Proposal, "id" | "status" | "title" | "client_id" | "description" | "value">;
+type ProposalForSync = Pick<Proposal, "id" | "status" | "title" | "client_id" | "description" | "value"> & {
+  parcelas?: any;
+  payment_type?: string | null;
+};
 
 export async function syncProposalProjectStatus({
   proposal,
@@ -33,6 +37,17 @@ export async function syncProposalProjectStatus({
         .eq("proposal_id", proposal.id);
 
       if (updateError) throw updateError;
+
+      // Regenerate receivables on reactivation
+      await deleteReceivables(proposal.id);
+      await generateReceivables({
+        id: proposal.id,
+        client_id: proposal.client_id,
+        value: proposal.value,
+        parcelas: proposal.parcelas,
+        payment_type: proposal.payment_type ?? null,
+      });
+
       return "reactivated";
     }
 
@@ -46,6 +61,16 @@ export async function syncProposalProjectStatus({
     });
 
     if (createError) throw createError;
+
+    // Generate receivables
+    await generateReceivables({
+      id: proposal.id,
+      client_id: proposal.client_id,
+      value: proposal.value,
+      parcelas: proposal.parcelas,
+      payment_type: proposal.payment_type ?? null,
+    });
+
     return "created";
   }
 
@@ -56,6 +81,10 @@ export async function syncProposalProjectStatus({
       .eq("proposal_id", proposal.id);
 
     if (deleteError) throw deleteError;
+
+    // Delete receivables
+    await deleteReceivables(proposal.id);
+
     return "cancelled";
   }
 

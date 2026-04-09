@@ -14,6 +14,7 @@ import Propostas from "@/pages/Propostas";
 import Projetos from "@/pages/Projetos";
 import Equipe from "@/pages/Equipe";
 import Alocacao from "@/pages/Alocacao";
+import ContasReceber from "@/pages/ContasReceber";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/projetos/:id" element={<Navigate to="/projetos" replace />} />
               <Route path="/equipe" element={<Equipe />} />
               <Route path="/alocacao" element={<Alocacao />} />
+              <Route path="/contas-a-receber" element={<ContasReceber />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
