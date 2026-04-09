@@ -1,0 +1,1 @@
+ALTER TABLE public.receivables ADD COLUMN invoice_date date DEFAULT NULL;

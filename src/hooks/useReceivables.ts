@@ -18,7 +18,7 @@ export function useReceivables() {
 export function useUpdateReceivable() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; status?: string; paid_at?: string | null; notes?: string | null }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; status?: string; paid_at?: string | null; notes?: string | null; invoice_date?: string | null }) => {
       const { data, error } = await supabase
         .from("receivables")
         .update(updates)
