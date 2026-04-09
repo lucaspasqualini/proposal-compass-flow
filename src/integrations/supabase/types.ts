@@ -405,14 +405,19 @@ export type Database = {
         Row: {
           amount: number | null
           client_id: string | null
+          cofins: number | null
           created_at: string
+          csll: number | null
           description: string | null
           due_date: string | null
           id: string
           invoice_date: string | null
+          irpj: number | null
+          nfe_number: string | null
           notes: string | null
           paid_at: string | null
           parcela_index: number
+          pis: number | null
           proposal_id: string
           status: string
           updated_at: string
@@ -420,14 +425,19 @@ export type Database = {
         Insert: {
           amount?: number | null
           client_id?: string | null
+          cofins?: number | null
           created_at?: string
+          csll?: number | null
           description?: string | null
           due_date?: string | null
           id?: string
           invoice_date?: string | null
+          irpj?: number | null
+          nfe_number?: string | null
           notes?: string | null
           paid_at?: string | null
           parcela_index?: number
+          pis?: number | null
           proposal_id: string
           status?: string
           updated_at?: string
@@ -435,14 +445,19 @@ export type Database = {
         Update: {
           amount?: number | null
           client_id?: string | null
+          cofins?: number | null
           created_at?: string
+          csll?: number | null
           description?: string | null
           due_date?: string | null
           id?: string
           invoice_date?: string | null
+          irpj?: number | null
+          nfe_number?: string | null
           notes?: string | null
           paid_at?: string | null
           parcela_index?: number
+          pis?: number | null
           proposal_id?: string
           status?: string
           updated_at?: string
