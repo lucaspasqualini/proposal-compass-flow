@@ -13,21 +13,36 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
+import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
 import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const receivableStatusLabels: Record<string, string> = {
   pendente: "Pendente",
+  lancado: "Lançado",
   pago: "Pago",
   atrasado: "Atrasado",
+  cancelado: "Cancelado",
+  pdd: "PDD",
 };
 
 const receivableStatusColors: Record<string, string> = {
   pendente: "bg-warning/10 text-warning",
+  lancado: "bg-info/10 text-info",
   pago: "bg-success/10 text-success",
   atrasado: "bg-destructive/10 text-destructive",
+  cancelado: "bg-muted text-muted-foreground",
+  pdd: "bg-destructive/20 text-destructive",
 };
+
+const editableStatuses = [
+  { value: "pendente", label: "Pendente" },
+  { value: "lancado", label: "Lançado" },
+  { value: "pago", label: "Pago" },
+  { value: "cancelado", label: "Cancelado" },
+  { value: "pdd", label: "PDD" },
+];
 
 export default function ContasReceber() {
   const { data: receivables, isLoading } = useReceivables();
@@ -39,6 +54,17 @@ export default function ContasReceber() {
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [selectedReceivable, setSelectedReceivable] = useState<any | null>(null);
+
+  // Count total parcelas per proposal for X/Y format
+  const parcelaTotals = useMemo(() => {
+    if (!receivables) return new Map<string, number>();
+    const map = new Map<string, number>();
+    receivables.forEach((r) => {
+      map.set(r.proposal_id, (map.get(r.proposal_id) || 0) + 1);
+    });
+    return map;
+  }, [receivables]);
 
   // Derive effective status (overdue check)
   const enriched = useMemo(() => {
@@ -77,7 +103,7 @@ export default function ContasReceber() {
   }, [enriched]);
 
   const filtered = useMemo(() => {
-    const statusPriority: Record<string, number> = { atrasado: 0, pendente: 1, pago: 2 };
+    const statusPriority: Record<string, number> = { atrasado: 0, pendente: 1, lancado: 2, pago: 3, cancelado: 4, pdd: 5 };
     return enriched
       .filter((r) => {
         const pn = (r.proposals as any)?.proposal_number || "";
@@ -117,8 +143,9 @@ export default function ContasReceber() {
       const amt = r.amount || 0;
       if (r.effectiveStatus === "pago") totalPago += amt;
       else if (r.effectiveStatus === "atrasado") { totalAtrasado += amt; countAtrasado++; totalPendente += amt; }
+      else if (r.effectiveStatus === "cancelado" || r.effectiveStatus === "pdd") { /* skip */ }
       else { totalPendente += amt; }
-      if (r.effectiveStatus !== "pago" && r.due_date) {
+      if (r.effectiveStatus !== "pago" && r.effectiveStatus !== "cancelado" && r.effectiveStatus !== "pdd" && r.due_date) {
         const d = new Date(r.due_date);
         if (d >= monthStart && d <= monthEnd) previsaoMes += amt;
       }
@@ -171,6 +198,25 @@ export default function ContasReceber() {
     } catch {
       toast({ title: "Erro ao atualizar", variant: "destructive" });
     }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const updates: any = { id, status: newStatus };
+      if (newStatus !== "pago") {
+        updates.paid_at = null;
+      }
+      await updateReceivable.mutateAsync(updates);
+      toast({ title: `Status alterado para ${receivableStatusLabels[newStatus]}` });
+    } catch {
+      toast({ title: "Erro ao atualizar status", variant: "destructive" });
+    }
+  };
+
+  const getParcelaLabel = (r: any) => {
+    const total = parcelaTotals.get(r.proposal_id) || 1;
+    const index = r.parcela_index + 1;
+    return `${index}/${total}`;
   };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
@@ -226,8 +272,11 @@ export default function ContasReceber() {
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
+            <SelectItem value="lancado">Lançado</SelectItem>
             <SelectItem value="pago">Pago</SelectItem>
             <SelectItem value="atrasado">Atrasado</SelectItem>
+            <SelectItem value="cancelado">Cancelado</SelectItem>
+            <SelectItem value="pdd">PDD</SelectItem>
           </SelectContent>
         </Select>
         <Select value={yearFilter} onValueChange={setYearFilter}>
@@ -304,55 +353,78 @@ export default function ContasReceber() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nº Projeto</TableHead>
+                    <TableHead>Nome do Projeto</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Parcela</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Previsão de Faturamento</TableHead>
+                    <TableHead>Emissão Fatura</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Recebimento</TableHead>
                     <TableHead className="w-[100px]">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs">{(r.proposals as any)?.proposal_number || "—"}</TableCell>
-                      <TableCell>{(r.clients as any)?.name || "—"}</TableCell>
-                      <TableCell>{r.description || "—"}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(r.amount)}</TableCell>
-                      <TableCell>{formatDate(r.due_date)}</TableCell>
-                      <TableCell>
-                        <Badge className={receivableStatusColors[r.effectiveStatus] || ""}>
-                          {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{r.paid_at ? formatDate(r.paid_at) : "—"}</TableCell>
-                      <TableCell>
-                        {r.effectiveStatus === "pago" ? (
-                          <Button variant="ghost" size="sm" onClick={() => handleUnmarkPaid(r.id)} title="Reverter">
-                            ↩
-                          </Button>
-                        ) : (
-                          <Popover open={payingId === r.id} onOpenChange={(open) => { setPayingId(open ? r.id : null); setPayDate(new Date()); }}>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Check className="h-3 w-3 mr-1" /> Pagar
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-3" align="end">
-                              <p className="text-sm font-medium mb-2">Data de recebimento:</p>
-                              <Calendar mode="single" selected={payDate} onSelect={setPayDate} locale={ptBR} />
-                              <Button className="w-full mt-2" size="sm" onClick={() => handleMarkPaid(r.id)} disabled={!payDate}>
-                                Confirmar Pagamento
-                              </Button>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filtered.map((r) => {
+                    const parcelaLabel = getParcelaLabel(r);
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedReceivable(r)}
+                      >
+                        <TableCell className="font-mono text-xs">{(r.proposals as any)?.proposal_number || "—"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{(r.proposals as any)?.title || "—"}</TableCell>
+                        <TableCell>{(r.clients as any)?.name || "—"}</TableCell>
+                        <TableCell className="font-mono text-sm">{parcelaLabel}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(r.amount)}</TableCell>
+                        <TableCell>{formatDate(r.due_date)}</TableCell>
+                        <TableCell>{formatDate(r.invoice_date)}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
+                            onValueChange={(val) => handleStatusChange(r.id, val)}
+                          >
+                            <SelectTrigger className="h-7 w-[120px] text-xs">
+                              <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
+                                {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
+                              </Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {editableStatuses.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>{r.paid_at ? formatDate(r.paid_at) : "—"}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {r.effectiveStatus === "pago" ? (
+                            <Button variant="ghost" size="sm" onClick={() => handleUnmarkPaid(r.id)} title="Reverter">
+                              ↩
+                            </Button>
+                          ) : (
+                            <Popover open={payingId === r.id} onOpenChange={(open) => { setPayingId(open ? r.id : null); setPayDate(new Date()); }}>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Check className="h-3 w-3 mr-1" /> Pagar
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-3" align="end">
+                                <p className="text-sm font-medium mb-2">Data de recebimento:</p>
+                                <Calendar mode="single" selected={payDate} onSelect={setPayDate} locale={ptBR} />
+                                <Button className="w-full mt-2" size="sm" onClick={() => handleMarkPaid(r.id)} disabled={!payDate}>
+                                  Confirmar Pagamento
+                                </Button>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -360,6 +432,13 @@ export default function ContasReceber() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ReceivableDetailDialog
+        receivable={selectedReceivable}
+        parcelaLabel={selectedReceivable ? getParcelaLabel(selectedReceivable) : ""}
+        open={!!selectedReceivable}
+        onOpenChange={(open) => { if (!open) setSelectedReceivable(null); }}
+      />
     </div>
   );
 }
