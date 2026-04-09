@@ -59,8 +59,8 @@ export default function Projetos() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortKey, setSortKey] = useState<SortKey | null>("number");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   // Each column filter is a Set of selected values (empty = all selected = no filter)
   const [columnFilters, setColumnFilters] = useState<Partial<Record<SortKey, Set<string>>>>({});
   const [filterSearch, setFilterSearch] = useState<Partial<Record<SortKey, string>>>({});
