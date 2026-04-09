@@ -34,7 +34,7 @@ export default function Propostas() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("proposal_number");
+  const [sortKey, setSortKey] = useState<SortKey>("data_envio");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [hidePerdida, setHidePerdida] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
