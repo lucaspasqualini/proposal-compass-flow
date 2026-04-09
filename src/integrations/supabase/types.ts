@@ -401,6 +401,66 @@ export type Database = {
           },
         ]
       }
+      receivables: {
+        Row: {
+          amount: number | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          parcela_index: number
+          proposal_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          parcela_index?: number
+          proposal_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          parcela_index?: number
+          proposal_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivables_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           area: string | null
