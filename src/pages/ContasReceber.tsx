@@ -146,7 +146,7 @@ export default function ContasReceber() {
       else entry.pending += amt;
       entry.items.push(r);
     });
-    return Array.from(map.values()).sort((a, b) => a.proposalNumber.localeCompare(b.proposalNumber));
+    return Array.from(map.values()).sort((a, b) => -compareProjectNumbers(a.proposalNumber, b.proposalNumber));
   }, [filtered]);
 
   const handleMarkPaid = async (id: string) => {
