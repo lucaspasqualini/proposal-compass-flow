@@ -213,6 +213,14 @@ export default function ContasReceber() {
     }
   };
 
+  const handleDateInline = async (id: string, field: string, date: Date) => {
+    try {
+      await updateReceivable.mutateAsync({ id, [field]: format(date, "yyyy-MM-dd") } as any);
+      toast({ title: "Data atualizada" });
+    } catch {
+      toast({ title: "Erro ao atualizar", variant: "destructive" });
+    }
+
   const getParcelaLabel = (r: any) => {
     const total = parcelaTotals.get(r.proposal_id) || 1;
     const index = r.parcela_index + 1;
