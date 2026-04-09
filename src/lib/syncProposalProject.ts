@@ -37,6 +37,17 @@ export async function syncProposalProjectStatus({
         .eq("proposal_id", proposal.id);
 
       if (updateError) throw updateError;
+
+      // Regenerate receivables on reactivation
+      await deleteReceivables(proposal.id);
+      await generateReceivables({
+        id: proposal.id,
+        client_id: proposal.client_id,
+        value: proposal.value,
+        parcelas: proposal.parcelas,
+        payment_type: proposal.payment_type ?? null,
+      });
+
       return "reactivated";
     }
 
