@@ -220,6 +220,7 @@ export default function ContasReceber() {
     } catch {
       toast({ title: "Erro ao atualizar", variant: "destructive" });
     }
+  };
 
   const getParcelaLabel = (r: any) => {
     const total = parcelaTotals.get(r.proposal_id) || 1;
