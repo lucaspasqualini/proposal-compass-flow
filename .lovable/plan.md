@@ -1,23 +1,26 @@
 
 
-# Ajustar ordenação da aba Contas a Receber
+# Adicionar campo "Documentação Necessária" na proposta
+
+## Fluxo
+1. Usuário envia o template PPTX atualizado com `{{DOCUMENTAÇÃO NECESSÁRIA}}` já posicionado
+2. Substituímos o arquivo em `public/templates/proposta_modelo.pptx`
+3. Implementamos as alterações abaixo
 
 ## Alterações
 
-### 1. Tabela "Por Parcela" — Nova hierarquia de ordenação
+### 1. Banco de dados
+Migração: `ALTER TABLE proposals ADD COLUMN documentacao_necessaria text DEFAULT NULL`
 
-Ordenar `filtered` no frontend (após filtros) com a seguinte prioridade:
-1. **Status**: atrasado > pendente > pago
-2. **Data de vencimento**: mais próxima primeiro (ascending para pendente/atrasado, ascending para pago)
-3. **Nº Projeto**: usando `compareProjectNumbers` (YY → XXXX), do maior para menor (descending)
+### 2. Card da proposta (`ProposalDetailDialog.tsx`)
+- Adicionar campo `<Textarea>` com label "Documentação Necessária" logo após o campo "Escopo do Trabalho" (linha 576)
+- Incluir no state `form` e no `handleSave`
 
-### 2. Tabela "Por Projeto" — Usar hierarquia YY→XXXX
+### 3. Gerador PPTX (`generateProposalPptx.ts`)
+- Adicionar `documentacao_necessaria` na interface `ProposalPptxData`
+- Adicionar ao mapa de substituições: `"{{DOCUMENTAÇÃO NECESSÁRIA}}": data.documentacao_necessaria || "#N/A#"`
+- Passar o campo na chamada do gerador (linha ~606)
 
-Substituir o `localeCompare` na linha 136 por `compareProjectNumbers` (importado de `src/lib/projectNumber.ts`), em ordem decrescente (mais recente primeiro).
-
-## Arquivo a alterar
-
-| Arquivo | Alteração |
-|---|---|
-| `src/pages/ContasReceber.tsx` | Importar `compareProjectNumbers`, aplicar sort em `filtered` e `byProject` |
+## Próximo passo
+Envie o template PPTX editado e eu implemento tudo de uma vez.
 
