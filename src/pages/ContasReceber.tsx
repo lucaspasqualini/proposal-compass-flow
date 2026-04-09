@@ -77,22 +77,34 @@ export default function ContasReceber() {
   }, [enriched]);
 
   const filtered = useMemo(() => {
-    return enriched.filter((r) => {
-      const pn = (r.proposals as any)?.proposal_number || "";
-      const clientName = (r.clients as any)?.name || "";
-      const title = (r.proposals as any)?.title || "";
-      const q = search.toLowerCase();
-      if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
-      if (statusFilter !== "all" && r.effectiveStatus !== statusFilter) return false;
-      if (yearFilter !== "all") {
-        const yr = r.due_date?.substring(0, 4) || "";
-        const pnYr = pn.match(/_(\d{2})$/)?.[1];
-        const fullYr = pnYr ? "20" + pnYr : "";
-        if (yr !== yearFilter && fullYr !== yearFilter) return false;
-      }
-      if (empresaFilter !== "all" && (r.proposals as any)?.empresa !== empresaFilter) return false;
-      return true;
-    });
+    const statusPriority: Record<string, number> = { atrasado: 0, pendente: 1, pago: 2 };
+    return enriched
+      .filter((r) => {
+        const pn = (r.proposals as any)?.proposal_number || "";
+        const clientName = (r.clients as any)?.name || "";
+        const title = (r.proposals as any)?.title || "";
+        const q = search.toLowerCase();
+        if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
+        if (statusFilter !== "all" && r.effectiveStatus !== statusFilter) return false;
+        if (yearFilter !== "all") {
+          const yr = r.due_date?.substring(0, 4) || "";
+          const pnYr = pn.match(/_(\d{2})$/)?.[1];
+          const fullYr = pnYr ? "20" + pnYr : "";
+          if (yr !== yearFilter && fullYr !== yearFilter) return false;
+        }
+        if (empresaFilter !== "all" && (r.proposals as any)?.empresa !== empresaFilter) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const sp = (statusPriority[a.effectiveStatus] ?? 1) - (statusPriority[b.effectiveStatus] ?? 1);
+        if (sp !== 0) return sp;
+        const da = a.due_date || "9999-12-31";
+        const db = b.due_date || "9999-12-31";
+        if (da !== db) return da.localeCompare(db);
+        const pnA = (a.proposals as any)?.proposal_number || "";
+        const pnB = (b.proposals as any)?.proposal_number || "";
+        return -compareProjectNumbers(pnA, pnB);
+      });
   }, [enriched, search, statusFilter, yearFilter, empresaFilter]);
 
   // Dashboard stats
