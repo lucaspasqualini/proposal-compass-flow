@@ -91,6 +91,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
     empresa: "",
     payment_type: "",
     about_company: "",
+    documentacao_necessaria: "",
   });
 
   useEffect(() => {
@@ -115,6 +116,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         empresa: (existing as any).empresa ?? "",
         payment_type: (existing as any).payment_type ?? "",
         about_company: (existing as any).about_company ?? "",
+        documentacao_necessaria: (existing as any).documentacao_necessaria ?? "",
       });
       const saved = (existing as any).parcelas;
       if (Array.isArray(saved) && saved.length > 0) {
@@ -575,6 +577,15 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                     />
                   </div>
                   <div className="grid gap-2">
+                    <Label>Documentação Necessária</Label>
+                    <Textarea
+                      rows={4}
+                      value={form.documentacao_necessaria ?? ""}
+                      onChange={(e) => setForm({ ...form, documentacao_necessaria: e.target.value })}
+                      placeholder="Liste a documentação necessária para o projeto..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
                     <Label>Observações</Label>
                     <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
                   </div>
@@ -613,6 +624,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                           empresa: form.empresa ?? null,
                           tipo_projeto: form.tipo_projeto ?? null,
                           etapas: etapas,
+                          documentacao_necessaria: form.documentacao_necessaria ?? null,
                         });
                         toast({ title: "PPT gerado com sucesso!" });
                       } catch {
