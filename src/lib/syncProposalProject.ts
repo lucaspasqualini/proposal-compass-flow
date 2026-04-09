@@ -50,12 +50,12 @@ export async function syncProposalProjectStatus({
   }
 
   if (previousStatus === "ganha" && proposal.status !== "ganha") {
-    const { error: cancelError } = await supabase
+    const { error: deleteError } = await supabase
       .from("projects")
-      .update({ status: "cancelado" satisfies ProjectStatus })
+      .delete()
       .eq("proposal_id", proposal.id);
 
-    if (cancelError) throw cancelError;
+    if (deleteError) throw deleteError;
     return "cancelled";
   }
 
