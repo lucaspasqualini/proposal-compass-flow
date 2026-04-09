@@ -102,10 +102,13 @@ export default function Propostas() {
           const pb = statusPriority[b.status] ?? 99;
           const cmp = sortDir === "asc" ? pa - pb : pb - pa;
           if (cmp !== 0) return cmp;
-          // tiebreaker: data_envio desc (most recent first)
+          // 2nd tiebreaker: data_envio desc (most recent first)
           const da = (a as any).data_envio ?? "";
           const db = (b as any).data_envio ?? "";
-          return db.localeCompare(da);
+          const dateCmp = db.localeCompare(da);
+          if (dateCmp !== 0) return dateCmp;
+          // 3rd tiebreaker: Nº Projeto hierarchy (YY desc, then XXXX desc)
+          return -compareProjectNumbers(a.proposal_number, b.proposal_number);
         }
         case "title": va = a.title; vb = b.title; break;
         case "client": va = (a.clients as any)?.name ?? ""; vb = (b.clients as any)?.name ?? ""; break;
