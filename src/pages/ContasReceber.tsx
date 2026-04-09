@@ -213,6 +213,15 @@ export default function ContasReceber() {
     }
   };
 
+  const handleDateInline = async (id: string, field: string, date: Date) => {
+    try {
+      await updateReceivable.mutateAsync({ id, [field]: format(date, "yyyy-MM-dd") } as any);
+      toast({ title: "Data atualizada" });
+    } catch {
+      toast({ title: "Erro ao atualizar", variant: "destructive" });
+    }
+  };
+
   const getParcelaLabel = (r: any) => {
     const total = parcelaTotals.get(r.proposal_id) || 1;
     const index = r.parcela_index + 1;
@@ -352,16 +361,16 @@ export default function ContasReceber() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nº Projeto</TableHead>
-                    <TableHead>Nome do Projeto</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Parcela</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Previsão de Faturamento</TableHead>
-                    <TableHead>Emissão Fatura</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Recebimento</TableHead>
-                    <TableHead className="w-[100px]">Ação</TableHead>
+                     <TableHead>Nº Projeto</TableHead>
+                     <TableHead>Nome do Projeto</TableHead>
+                     <TableHead>Parcela</TableHead>
+                     <TableHead className="text-right">Valor</TableHead>
+                     <TableHead># NFe</TableHead>
+                     <TableHead>Previsão de Faturamento</TableHead>
+                     <TableHead>Emissão Fatura</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Recebimento</TableHead>
+                     <TableHead className="w-[100px]">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -374,12 +383,36 @@ export default function ContasReceber() {
                         onClick={() => setSelectedReceivable(r)}
                       >
                         <TableCell className="font-mono text-xs">{(r.proposals as any)?.proposal_number || "—"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{(r.proposals as any)?.title || "—"}</TableCell>
-                        <TableCell>{(r.clients as any)?.name || "—"}</TableCell>
-                        <TableCell className="font-mono text-sm">{parcelaLabel}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(r.amount)}</TableCell>
-                        <TableCell>{formatDate(r.due_date)}</TableCell>
-                        <TableCell>{formatDate(r.invoice_date)}</TableCell>
+                         <TableCell className="max-w-[200px] truncate">{(r.proposals as any)?.title || "—"}</TableCell>
+                         <TableCell className="font-mono text-sm">{parcelaLabel}</TableCell>
+                         <TableCell className="text-right">{formatCurrency(r.amount)}</TableCell>
+                         <TableCell className="text-xs">{r.nfe_number || "—"}</TableCell>
+                         <TableCell onClick={(e) => e.stopPropagation()}>
+                           <Popover>
+                             <PopoverTrigger asChild>
+                               <Button variant="ghost" size="sm" className="h-7 px-1 text-xs font-normal gap-1">
+                                 {r.due_date ? formatDate(r.due_date) : "—"}
+                                 <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                               </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-3" align="start">
+                               <Calendar mode="single" selected={r.due_date ? new Date(r.due_date + "T12:00:00") : undefined} onSelect={(d) => { if (d) handleDateInline(r.id, "due_date", d); }} locale={ptBR} />
+                             </PopoverContent>
+                           </Popover>
+                         </TableCell>
+                         <TableCell onClick={(e) => e.stopPropagation()}>
+                           <Popover>
+                             <PopoverTrigger asChild>
+                               <Button variant="ghost" size="sm" className="h-7 px-1 text-xs font-normal gap-1">
+                                 {r.invoice_date ? formatDate(r.invoice_date) : "—"}
+                                 <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                               </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-3" align="start">
+                               <Calendar mode="single" selected={r.invoice_date ? new Date(r.invoice_date + "T12:00:00") : undefined} onSelect={(d) => { if (d) handleDateInline(r.id, "invoice_date", d); }} locale={ptBR} />
+                             </PopoverContent>
+                           </Popover>
+                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Select
                             value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
