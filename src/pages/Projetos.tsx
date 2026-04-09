@@ -16,7 +16,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors, formatCurrency } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
-import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search } from "lucide-react";
+import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/exportExcel";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 
 type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
@@ -268,9 +269,28 @@ export default function Projetos() {
           <h1 className="text-2xl font-bold">Projetos</h1>
           <p className="text-muted-foreground">Gerencie seus projetos</p>
         </div>
-        <Button onClick={() => navigate("/projetos/novo")}>
-          <Plus className="h-4 w-4 mr-1" /> Novo Projeto
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const rows = filtered.map((p) => ({
+                "Nº do Projeto": (p.proposals as any)?.proposal_number || "",
+                "Nome do Projeto": p.title,
+                "Cliente": (p.clients as any)?.name || "",
+                "Tipo": (p.proposals as any)?.tipo_projeto || "",
+                "Status": projectStatusLabels[p.status] || p.status,
+                "Etapa": projectEtapaLabels[(p as any).etapa || "iniciado"] || "",
+                "Colaboradores": ((p as any).project_allocations || []).map((a: any) => a.team_members?.name?.split(" ")[0] || "").filter(Boolean).join(", "),
+              }));
+              exportToExcel(rows, "projetos");
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" /> Exportar
+          </Button>
+          <Button onClick={() => navigate("/projetos/novo")}>
+            <Plus className="h-4 w-4 mr-1" /> Novo Projeto
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">

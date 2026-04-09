@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
-import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon, TrendingUp, TrendingDown, Clock, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/exportExcel";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
@@ -203,6 +204,24 @@ export default function Propostas() {
         </div>
         <div className="flex gap-2">
           <ImportProposals />
+          <Button
+            variant="outline"
+            onClick={() => {
+              const rows = filtered.map((p) => ({
+                "Nº do Projeto": p.proposal_number || "",
+                "Nome do Projeto": p.title,
+                "Tipo": (p as any).tipo_projeto || "",
+                "Cliente": (p.clients as any)?.name || "",
+                "Valor": Number(p.value) || 0,
+                "Status": proposalStatusLabels[p.status] || p.status,
+                "Data de Envio": (p as any).data_envio ? formatDate((p as any).data_envio) : "",
+                "Data de Aprovação": (p as any).data_aprovacao ? formatDate((p as any).data_aprovacao) : "",
+              }));
+              exportToExcel(rows, "propostas");
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" /> Exportar
+          </Button>
           <Button onClick={() => setShowNewDialog(true)}>
             <Plus className="h-4 w-4 mr-1" /> Nova Proposta
           </Button>
