@@ -34,8 +34,8 @@ export default function Propostas() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("data_envio");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [hidePerdida, setHidePerdida] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -83,6 +83,13 @@ export default function Propostas() {
       return matchSearch && matchStatus && matchEmpresa && matchYear && matchHide;
     });
 
+    const statusPriority: Record<string, number> = {
+      em_elaboracao: 0,
+      em_negociacao: 1,
+      ganha: 2,
+      perdida: 3,
+    };
+
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
@@ -90,10 +97,19 @@ export default function Propostas() {
           const cmp = compareProjectNumbers(a.proposal_number, b.proposal_number);
           return sortDir === "asc" ? cmp : -cmp;
         }
+        case "status": {
+          const pa = statusPriority[a.status] ?? 99;
+          const pb = statusPriority[b.status] ?? 99;
+          const cmp = sortDir === "asc" ? pa - pb : pb - pa;
+          if (cmp !== 0) return cmp;
+          // tiebreaker: data_envio desc (most recent first)
+          const da = (a as any).data_envio ?? "";
+          const db = (b as any).data_envio ?? "";
+          return db.localeCompare(da);
+        }
         case "title": va = a.title; vb = b.title; break;
         case "client": va = (a.clients as any)?.name ?? ""; vb = (b.clients as any)?.name ?? ""; break;
         case "value": va = Number(a.value) || 0; vb = Number(b.value) || 0; break;
-        case "status": va = a.status; vb = b.status; break;
         case "data_envio": va = (a as any).data_envio ?? ""; vb = (b as any).data_envio ?? ""; break;
         case "data_aprovacao": va = (a as any).data_aprovacao ?? ""; vb = (b as any).data_aprovacao ?? ""; break;
         case "tipo_projeto": va = (a as any).tipo_projeto ?? ""; vb = (b as any).tipo_projeto ?? ""; break;
