@@ -409,6 +409,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          invoice_date: string | null
           notes: string | null
           paid_at: string | null
           parcela_index: number
@@ -423,6 +424,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          invoice_date?: string | null
           notes?: string | null
           paid_at?: string | null
           parcela_index?: number
@@ -437,6 +439,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          invoice_date?: string | null
           notes?: string | null
           paid_at?: string | null
           parcela_index?: number
