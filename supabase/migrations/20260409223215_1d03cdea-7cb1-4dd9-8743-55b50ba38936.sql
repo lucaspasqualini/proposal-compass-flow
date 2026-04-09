@@ -1,0 +1,1 @@
+ALTER TABLE public.proposals ADD COLUMN documentacao_necessaria text DEFAULT NULL;

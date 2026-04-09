@@ -23,6 +23,7 @@ export interface ProposalPptxData {
   empresa: string | null;
   tipo_projeto: string | null;
   etapas: { descricao: string; valor: number | null }[];
+  documentacao_necessaria: string | null;
 }
 
 function formatCurrency(v: number | null): string {
@@ -138,6 +139,7 @@ export async function generateProposalPptx(data: ProposalPptxData) {
     "{{CONDIÇÃO DE PAGAMENTO 1}}": formatEtapaLabel(etapaInicio?.valor ?? null, isPercent ? "percent" : "value", data.value),
     "{{CONDIÇÃO DE PAGAMENTO 2}}": formatEtapaLabel(etapaMinuta?.valor ?? null, isPercent ? "percent" : "value", data.value),
     "{{CONDIÇÃO DE PAGAMENTO 3}}": formatEtapaLabel(etapaAssinatura?.valor ?? null, isPercent ? "percent" : "value", data.value),
+    "{{DOCUMENTAÇÃO NECESSÁRIA}}": data.documentacao_necessaria || "#N/A#",
   };
 
   // Process each slide XML
