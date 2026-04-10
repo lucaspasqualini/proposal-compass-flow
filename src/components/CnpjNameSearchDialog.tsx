@@ -2,21 +2,12 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Loader2, Building2, MapPin, CheckCircle2 } from "lucide-react";
-
-interface CnpjNameResult {
-  cnpj: string;
-  razao_social: string;
-  nome_fantasia?: string;
-  uf?: string;
-  municipio?: string;
-  situacao_cadastral?: string;
-  cnae_principal?: string;
-  cnae_descricao?: string;
-}
+import { Search, Loader2, Building2, MapPin, ExternalLink } from "lucide-react";
 
 interface CnpjNameSearchDialogProps {
   open: boolean;
@@ -25,164 +16,123 @@ interface CnpjNameSearchDialogProps {
   onSelect: (cnpj: string) => void;
 }
 
+function formatCnpjDisplay(cnpj: string) {
+  const d = cnpj.replace(/\D/g, "");
+  if (d.length !== 14) return cnpj;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+function formatCnpjInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
 export default function CnpjNameSearchDialog({
   open,
   onOpenChange,
   initialName = "",
   onSelect,
 }: CnpjNameSearchDialogProps) {
-  const [searchTerm, setSearchTerm] = useState(initialName);
+  const [cnpjInput, setCnpjInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<CnpjNameResult[]>([]);
-  const [searched, setSearched] = useState(false);
   const { toast } = useToast();
 
-  const handleSearch = async () => {
-    if (searchTerm.trim().length < 3) {
-      toast({ title: "Digite pelo menos 3 caracteres", variant: "destructive" });
+  const handleCnpjSearch = async () => {
+    const digits = cnpjInput.replace(/\D/g, "");
+    if (digits.length !== 14) {
+      toast({ title: "CNPJ deve conter 14 dígitos", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    setResults([]);
-    setSearched(true);
-
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/search-cnpj-by-name?nome=${encodeURIComponent(searchTerm.trim())}`;
-
-      const response = await fetch(url, {
-        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Erro ao buscar");
-      }
-
-      const data = await response.json();
-      setResults(data.results || []);
-
-      if (!data.results?.length) {
-        toast({ title: "Nenhum resultado encontrado", description: "Tente um nome diferente" });
-      }
-    } catch (err: any) {
-      toast({ title: err.message || "Erro ao buscar", variant: "destructive" });
+      onSelect(digits);
+      onOpenChange(false);
+      setCnpjInput("");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelect = (result: CnpjNameResult) => {
-    const cnpjDigits = result.cnpj.replace(/\D/g, "");
-    onSelect(cnpjDigits);
-    onOpenChange(false);
-    setResults([]);
-    setSearched(false);
-  };
-
   const handleOpenChange = (v: boolean) => {
     onOpenChange(v);
     if (!v) {
-      setResults([]);
-      setSearched(false);
-    } else {
-      setSearchTerm(initialName);
+      setCnpjInput("");
     }
   };
 
-  const formatCnpjDisplay = (cnpj: string) => {
-    const d = cnpj.replace(/\D/g, "");
-    if (d.length !== 14) return cnpj;
-    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
-  };
+  const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(initialName + " CNPJ")}`;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Buscar CNPJ por Nome</DialogTitle>
           <DialogDescription>
-            Pesquise o nome da empresa para encontrar o CNPJ correspondente.
+            Encontre o CNPJ da empresa e preencha os dados automaticamente.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder="Nome da empresa..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                autoFocus
-              />
+          {/* Step 1: Help find the CNPJ */}
+          <div className="rounded-lg border p-4 bg-muted/30 space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />
+              <Label className="font-semibold text-sm">Empresa: {initialName || "—"}</Label>
             </div>
-            <Button onClick={handleSearch} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Buscar
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Pesquise o CNPJ da empresa em um dos serviços abaixo e depois cole o número aqui:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(googleSearchUrl, "_blank")}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" /> Google
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://cnpjs.dev/?q=${encodeURIComponent(initialName)}`, "_blank")}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" /> CNPJ.dev
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://casadosdados.com.br/solucao/cnpj?q=${encodeURIComponent(initialName)}`, "_blank")}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" /> Casa dos Dados
+              </Button>
+            </div>
           </div>
 
-          {loading && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Buscando empresas...</span>
+          {/* Step 2: Enter the CNPJ */}
+          <div className="space-y-2">
+            <Label className="font-semibold text-sm">Cole o CNPJ encontrado</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="00.000.000/0000-00"
+                value={cnpjInput}
+                onChange={(e) => setCnpjInput(formatCnpjInput(e.target.value))}
+                onKeyDown={(e) => e.key === "Enter" && handleCnpjSearch()}
+                className="flex-1 font-mono"
+                autoFocus
+              />
+              <Button onClick={handleCnpjSearch} disabled={loading || cnpjInput.replace(/\D/g, "").length !== 14}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Consultar
+              </Button>
             </div>
-          )}
-
-          {!loading && searched && results.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum resultado encontrado. Tente outro nome.
-            </div>
-          )}
-
-          {results.length > 0 && (
-            <ScrollArea className="max-h-[45vh]">
-              <div className="space-y-2">
-                {results.map((r, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className="w-full text-left rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer space-y-1"
-                    onClick={() => handleSelect(r)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Building2 className="h-4 w-4 text-primary shrink-0" />
-                        <span className="font-medium text-sm truncate">
-                          {r.razao_social || r.nome_fantasia || "—"}
-                        </span>
-                      </div>
-                      {r.situacao_cadastral && (
-                        <Badge
-                          variant={r.situacao_cadastral === "ATIVA" ? "default" : "destructive"}
-                          className="text-[10px] shrink-0"
-                        >
-                          {r.situacao_cadastral}
-                        </Badge>
-                      )}
-                    </div>
-                    {r.nome_fantasia && r.razao_social && r.nome_fantasia !== r.razao_social && (
-                      <p className="text-xs text-muted-foreground pl-6">{r.nome_fantasia}</p>
-                    )}
-                    <div className="flex items-center gap-3 pl-6 text-xs text-muted-foreground">
-                      <span className="font-mono">{formatCnpjDisplay(r.cnpj)}</span>
-                      {(r.municipio || r.uf) && (
-                        <span className="flex items-center gap-0.5">
-                          <MapPin className="h-3 w-3" />
-                          {[r.municipio, r.uf].filter(Boolean).join("/")}
-                        </span>
-                      )}
-                    </div>
-                    {r.cnae_descricao && (
-                      <p className="text-[11px] text-muted-foreground pl-6 truncate">{r.cnae_descricao}</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
+            <p className="text-xs text-muted-foreground">
+              Ao consultar, os dados cadastrais serão preenchidos automaticamente.
+            </p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
