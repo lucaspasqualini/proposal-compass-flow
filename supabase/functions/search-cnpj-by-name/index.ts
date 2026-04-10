@@ -1,7 +1,4 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "@supabase/supabase-js/cors";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -19,38 +16,71 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Try cnpjs.dev open API
     const encoded = encodeURIComponent(nome);
-    const response = await fetch(
-      `https://open.cnpjs.dev/office?company_name=${encoded}&limit=5`,
-      { headers: { "Accept": "application/json" } }
-    );
 
-    if (!response.ok) {
-      // Fallback: try Minha Receita API
-      const fallback = await fetch(
-        `https://minhareceita.org/?nome=${encoded}`,
-        { headers: { "Accept": "application/json" } }
-      );
-      
-      if (!fallback.ok) {
-        const text = await fallback.text();
-        return new Response(
-          JSON.stringify({ error: `APIs retornaram erro`, detail: text }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      const fdata = await fallback.json();
-      return new Response(JSON.stringify({ results: Array.isArray(fdata) ? fdata : [fdata], source: "minhareceita" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Try casadosdados.com.br API (POST-based search)
+    try {
+      const cdResponse = await fetch("https://api.casadosdados.com.br/v2/public/cnpj/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0",
+        },
+        body: JSON.stringify({
+          query: {
+            termo: [nome],
+            situacao_cadastral: "ATIVA",
+          },
+          range: { inicio: 0, fim: 10 },
+        }),
       });
+
+      if (cdResponse.ok) {
+        const cdData = await cdResponse.json();
+        if (cdData?.data?.cnpj && cdData.data.cnpj.length > 0) {
+          const results = cdData.data.cnpj.map((item: any) => ({
+            cnpj: item.cnpj || "",
+            razao_social: item.razao_social || "",
+            nome_fantasia: item.nome_fantasia || "",
+            uf: item.uf || "",
+            municipio: item.municipio || "",
+            situacao_cadastral: item.situacao_cadastral || "",
+            cnae_principal: item.cnae?.codigo || "",
+            cnae_descricao: item.cnae?.descricao || "",
+          }));
+          return new Response(JSON.stringify({ results, source: "casadosdados" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    } catch (_) {
+      // fallthrough to next API
     }
 
-    const data = await response.json();
-    return new Response(JSON.stringify({ results: data, source: "cnpjs.dev" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Fallback: cnpjs.dev open API
+    try {
+      const response = await fetch(
+        `https://open.cnpjs.dev/office?company_name=${encoded}&limit=10`,
+        { headers: { Accept: "application/json" } }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return new Response(JSON.stringify({ results: data, source: "cnpjs.dev" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    } catch (_) {
+      // fallthrough
+    }
+
+    // No results found
+    return new Response(
+      JSON.stringify({ results: [], source: "none", message: "Nenhum resultado encontrado" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err) {
     return new Response(
       JSON.stringify({ error: "Erro ao buscar CNPJ por nome", detail: String(err) }),
