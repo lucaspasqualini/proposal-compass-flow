@@ -1,26 +1,36 @@
 
 
-# Adicionar campo "Documentação Necessária" na proposta
+# Saneamento da Base de Clientes
 
-## Fluxo
-1. Usuário envia o template PPTX atualizado com `{{DOCUMENTAÇÃO NECESSÁRIA}}` já posicionado
-2. Substituímos o arquivo em `public/templates/proposta_modelo.pptx`
-3. Implementamos as alterações abaixo
+## Resumo
+Limpar duplicatas e enriquecer todos os 693 clientes com CNPJ automaticamente — incluindo os órfãos.
 
-## Alterações
+## Etapas
 
-### 1. Banco de dados
-Migração: `ALTER TABLE proposals ADD COLUMN documentacao_necessaria text DEFAULT NULL`
+### Etapa 1 — Relatório de duplicatas (CSV)
+Script Python com fuzzy matching (`difflib.SequenceMatcher`) nos 693 clientes. Gera CSV em `/mnt/documents/` com colunas: `grupo`, `id`, `nome`, `propostas`, `projetos`, `receivables`, `ação_sugerida` (manter/mesclar). Você revisa e decide quais mesclar e qual nome manter.
 
-### 2. Card da proposta (`ProposalDetailDialog.tsx`)
-- Adicionar campo `<Textarea>` com label "Documentação Necessária" logo após o campo "Escopo do Trabalho" (linha 576)
-- Incluir no state `form` e no `handleSave`
+### Etapa 2 — Mesclar duplicatas aprovadas
+Para cada grupo aprovado por você:
+- `UPDATE proposals/projects/receivables SET client_id = <id_mantido>`
+- `DELETE` o cliente duplicado
+- **Clientes órfãos são mantidos** — não serão deletados
 
-### 3. Gerador PPTX (`generateProposalPptx.ts`)
-- Adicionar `documentacao_necessaria` na interface `ProposalPptxData`
-- Adicionar ao mapa de substituições: `"{{DOCUMENTAÇÃO NECESSÁRIA}}": data.documentacao_necessaria || "#N/A#"`
-- Passar o campo na chamada do gerador (linha ~606)
+### Etapa 3 — Busca automática de CNPJ
+- Criar edge function `search-cnpj-by-name` que busca empresas por nome usando a API pública `https://publica.cnpj.ws/cnpj` (gratuita, busca por razão social/nome fantasia)
+- Executar script que percorre todos os clientes sem CNPJ, chama a edge function, e gera um segundo CSV com os resultados: `nome_cliente`, `cnpj_encontrado`, `razao_social`, `confiança` (match score)
+- Você revisa o CSV e aprova quais CNPJs gravar
+- Após aprovação, atualizo o banco com os CNPJs confirmados e preencho os demais campos (razão social, endereço, etc.) usando a edge function `search-cnpj` que já existe
 
-## Próximo passo
-Envie o template PPTX editado e eu implemento tudo de uma vez.
+### Limitações
+- APIs públicas têm rate limit (~3 req/s no cnpj.ws gratuito) — o script fará pausas automáticas
+- Nem todos os nomes terão match exato; alguns precisarão revisão manual
+
+## Detalhes técnicos
+
+| Etapa | Ferramenta | Resultado |
+|---|---|---|
+| 1 | Python script via `code--exec` | CSV de duplicatas |
+| 2 | SQL UPDATE/DELETE via insert tool | Base limpa |
+| 3 | Nova edge function + Python script | CSV de CNPJs para aprovação |
 
