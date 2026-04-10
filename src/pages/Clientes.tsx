@@ -210,7 +210,19 @@ export default function Clientes() {
                   {filtered.map((c) => (
                     <TableRow key={c.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${c.id}`)}>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{c.cnpj || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {c.cnpj ? (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            {c.cnpj}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-orange-500">
+                            <AlertCircle className="h-3 w-3" />
+                            Pendente
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">{c.proposal_count}</TableCell>
                       <TableCell className="text-center hidden sm:table-cell">{c.project_count}</TableCell>
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
