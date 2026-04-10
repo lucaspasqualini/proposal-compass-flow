@@ -94,6 +94,7 @@ export default function Clientes() {
   const totalClients = clients?.length ?? 0;
   const activeClients = clients?.filter((c) => c.is_active).length ?? 0;
   const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
+  const semCnpj = clients?.filter((c) => !c.cnpj).length ?? 0;
 
   return (
     <div className="space-y-6">
