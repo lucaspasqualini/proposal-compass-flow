@@ -20,98 +20,93 @@ Deno.serve(async (req) => {
     }
 
     const encoded = encodeURIComponent(nome);
+    const errors: string[] = [];
 
-    // Try BrasilAPI CNPJ search (requires exact CNPJ, so skip)
-    // Try publica.cnpj.ws search by name
+    // 1) Try cnpj.ws public search
     try {
-      const response = await fetch(
-        `https://publica.cnpj.ws/cnpj/pesquisa?razao_social=${encoded}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "Mozilla/5.0 (compatible; LovableBot/1.0)",
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
+      const resp = await fetch(`https://publica.cnpj.ws/cnpj/pesquisa?razao_social=${encoded}`, {
+        headers: { Accept: "application/json" },
+      });
+      console.log(`cnpj.ws status: ${resp.status}`);
+      if (resp.ok) {
+        const data = await resp.json();
         if (Array.isArray(data) && data.length > 0) {
           const results = data.slice(0, 10).map((item: any) => ({
-            cnpj: item.cnpj || item.cnpj_raiz || "",
+            cnpj: item.cnpj || "",
             razao_social: item.razao_social || "",
             nome_fantasia: item.nome_fantasia || "",
-            uf: item.uf || item.estado || "",
-            municipio: item.municipio || item.cidade || "",
-            situacao_cadastral: item.situacao_cadastral || item.situacao || "",
-            cnae_principal: item.cnae_fiscal || "",
-            cnae_descricao: item.cnae_fiscal_descricao || "",
+            uf: item.uf || "",
+            municipio: item.municipio || "",
+            situacao_cadastral: item.situacao_cadastral || "",
           }));
           return new Response(JSON.stringify({ results, source: "cnpj.ws" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+      } else {
+        errors.push(`cnpj.ws: ${resp.status}`);
       }
-    } catch (_) {
-      // fallthrough
+    } catch (e) {
+      errors.push(`cnpj.ws: ${e}`);
     }
 
-    // Fallback: ReceitaWS free API
+    // 2) Try casadosdados
     try {
-      const response = await fetch(
-        `https://receitaws.com.br/v1/cnpj/search?query=${encoded}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "Mozilla/5.0 (compatible; LovableBot/1.0)",
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const items = Array.isArray(data) ? data : data?.results || [];
-        if (items.length > 0) {
-          const results = items.slice(0, 10).map((item: any) => ({
+      const resp = await fetch("https://api.casadosdados.com.br/v2/public/cnpj/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: { termo: [nome], situacao_cadastral: "ATIVA" },
+          range: { inicio: 0, fim: 10 },
+        }),
+      });
+      console.log(`casadosdados status: ${resp.status}`);
+      if (resp.ok) {
+        const cdData = await resp.json();
+        if (cdData?.data?.cnpj?.length > 0) {
+          const results = cdData.data.cnpj.map((item: any) => ({
             cnpj: item.cnpj || "",
-            razao_social: item.nome || item.razao_social || "",
-            nome_fantasia: item.fantasia || item.nome_fantasia || "",
+            razao_social: item.razao_social || "",
+            nome_fantasia: item.nome_fantasia || "",
             uf: item.uf || "",
             municipio: item.municipio || "",
-            situacao_cadastral: item.situacao || "",
-            cnae_principal: item.atividade_principal?.[0]?.code || "",
-            cnae_descricao: item.atividade_principal?.[0]?.text || "",
+            situacao_cadastral: item.situacao_cadastral || "",
           }));
-          return new Response(JSON.stringify({ results, source: "receitaws" }), {
+          return new Response(JSON.stringify({ results, source: "casadosdados" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+      } else {
+        errors.push(`casadosdados: ${resp.status}`);
       }
-    } catch (_) {
-      // fallthrough
+    } catch (e) {
+      errors.push(`casadosdados: ${e}`);
     }
 
-    // Fallback: cnpjs.dev open API
+    // 3) Try cnpjs.dev
     try {
-      const response = await fetch(
-        `https://open.cnpjs.dev/office?company_name=${encoded}&limit=10`,
-        { headers: { Accept: "application/json" } }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
+      const resp = await fetch(`https://open.cnpjs.dev/office?company_name=${encoded}&limit=10`, {
+        headers: { Accept: "application/json" },
+      });
+      console.log(`cnpjs.dev status: ${resp.status}`);
+      if (resp.ok) {
+        const data = await resp.json();
         if (Array.isArray(data) && data.length > 0) {
           return new Response(JSON.stringify({ results: data, source: "cnpjs.dev" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+      } else {
+        errors.push(`cnpjs.dev: ${resp.status}`);
       }
-    } catch (_) {
-      // fallthrough
+    } catch (e) {
+      errors.push(`cnpjs.dev: ${e}`);
     }
 
+    console.log("All APIs failed or returned empty:", errors);
+
     return new Response(
-      JSON.stringify({ results: [], source: "none", message: "Nenhum resultado encontrado" }),
+      JSON.stringify({ results: [], source: "none", message: "Nenhum resultado encontrado", debug: errors }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
