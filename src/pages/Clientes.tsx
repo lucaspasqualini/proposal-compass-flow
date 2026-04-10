@@ -47,6 +47,8 @@ export default function Clientes() {
     let list = clients.filter(
       (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
     );
+    if (filterCnpj === "sem_cnpj") list = list.filter((c) => !c.cnpj);
+    if (filterCnpj === "com_cnpj") list = list.filter((c) => !!c.cnpj);
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
@@ -63,7 +65,7 @@ export default function Clientes() {
       return sortDir === "asc" ? va - vb : vb - va;
     });
     return list;
-  }, [clients, search, sortKey, sortDir]);
+  }, [clients, search, sortKey, sortDir, filterCnpj]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
