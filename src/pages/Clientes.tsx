@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type SortKey = "name" | "proposal_count" | "project_count" | "won_value" | "last_proposal_date";
 type SortDir = "asc" | "desc";
@@ -26,6 +27,7 @@ export default function Clientes() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showNew, setShowNew] = useState(false);
+  const [filterCnpj, setFilterCnpj] = useState<"all" | "sem_cnpj" | "com_cnpj">("all");
   const [newName, setNewName] = useState("");
   const [newCnpj, setNewCnpj] = useState("");
 
@@ -45,6 +47,8 @@ export default function Clientes() {
     let list = clients.filter(
       (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
     );
+    if (filterCnpj === "sem_cnpj") list = list.filter((c) => !c.cnpj);
+    if (filterCnpj === "com_cnpj") list = list.filter((c) => !!c.cnpj);
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
@@ -61,7 +65,7 @@ export default function Clientes() {
       return sortDir === "asc" ? va - vb : vb - va;
     });
     return list;
-  }, [clients, search, sortKey, sortDir]);
+  }, [clients, search, sortKey, sortDir, filterCnpj]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -90,6 +94,7 @@ export default function Clientes() {
   const totalClients = clients?.length ?? 0;
   const activeClients = clients?.filter((c) => c.is_active).length ?? 0;
   const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
+  const semCnpj = clients?.filter((c) => !c.cnpj).length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -134,9 +139,36 @@ export default function Clientes() {
         </Card>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={filterCnpj === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterCnpj("all")}
+          >
+            Todos ({totalClients})
+          </Button>
+          <Button
+            variant={filterCnpj === "sem_cnpj" ? "destructive" : "outline"}
+            size="sm"
+            onClick={() => setFilterCnpj("sem_cnpj")}
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Sem CNPJ ({semCnpj})
+          </Button>
+          <Button
+            variant={filterCnpj === "com_cnpj" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterCnpj("com_cnpj")}
+          >
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Com CNPJ ({totalClients - semCnpj})
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -178,7 +210,19 @@ export default function Clientes() {
                   {filtered.map((c) => (
                     <TableRow key={c.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${c.id}`)}>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{c.cnpj || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {c.cnpj ? (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            {c.cnpj}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-orange-500">
+                            <AlertCircle className="h-3 w-3" />
+                            Pendente
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">{c.proposal_count}</TableCell>
                       <TableCell className="text-center hidden sm:table-cell">{c.project_count}</TableCell>
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
