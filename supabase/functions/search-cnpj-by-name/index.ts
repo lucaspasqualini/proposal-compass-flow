@@ -21,43 +21,74 @@ Deno.serve(async (req) => {
 
     const encoded = encodeURIComponent(nome);
 
-    // Try casadosdados.com.br API (POST-based search)
+    // Try BrasilAPI CNPJ search (requires exact CNPJ, so skip)
+    // Try publica.cnpj.ws search by name
     try {
-      const cdResponse = await fetch("https://api.casadosdados.com.br/v2/public/cnpj/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0",
-        },
-        body: JSON.stringify({
-          query: {
-            termo: [nome],
-            situacao_cadastral: "ATIVA",
+      const response = await fetch(
+        `https://publica.cnpj.ws/cnpj/pesquisa?razao_social=${encoded}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; LovableBot/1.0)",
           },
-          range: { inicio: 0, fim: 10 },
-        }),
-      });
+        }
+      );
 
-      if (cdResponse.ok) {
-        const cdData = await cdResponse.json();
-        if (cdData?.data?.cnpj && cdData.data.cnpj.length > 0) {
-          const results = cdData.data.cnpj.map((item: any) => ({
-            cnpj: item.cnpj || "",
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const results = data.slice(0, 10).map((item: any) => ({
+            cnpj: item.cnpj || item.cnpj_raiz || "",
             razao_social: item.razao_social || "",
             nome_fantasia: item.nome_fantasia || "",
-            uf: item.uf || "",
-            municipio: item.municipio || "",
-            situacao_cadastral: item.situacao_cadastral || "",
-            cnae_principal: item.cnae?.codigo || "",
-            cnae_descricao: item.cnae?.descricao || "",
+            uf: item.uf || item.estado || "",
+            municipio: item.municipio || item.cidade || "",
+            situacao_cadastral: item.situacao_cadastral || item.situacao || "",
+            cnae_principal: item.cnae_fiscal || "",
+            cnae_descricao: item.cnae_fiscal_descricao || "",
           }));
-          return new Response(JSON.stringify({ results, source: "casadosdados" }), {
+          return new Response(JSON.stringify({ results, source: "cnpj.ws" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       }
     } catch (_) {
-      // fallthrough to next API
+      // fallthrough
+    }
+
+    // Fallback: ReceitaWS free API
+    try {
+      const response = await fetch(
+        `https://receitaws.com.br/v1/cnpj/search?query=${encoded}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; LovableBot/1.0)",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const items = Array.isArray(data) ? data : data?.results || [];
+        if (items.length > 0) {
+          const results = items.slice(0, 10).map((item: any) => ({
+            cnpj: item.cnpj || "",
+            razao_social: item.nome || item.razao_social || "",
+            nome_fantasia: item.fantasia || item.nome_fantasia || "",
+            uf: item.uf || "",
+            municipio: item.municipio || "",
+            situacao_cadastral: item.situacao || "",
+            cnae_principal: item.atividade_principal?.[0]?.code || "",
+            cnae_descricao: item.atividade_principal?.[0]?.text || "",
+          }));
+          return new Response(JSON.stringify({ results, source: "receitaws" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    } catch (_) {
+      // fallthrough
     }
 
     // Fallback: cnpjs.dev open API
@@ -79,7 +110,6 @@ Deno.serve(async (req) => {
       // fallthrough
     }
 
-    // No results found
     return new Response(
       JSON.stringify({ results: [], source: "none", message: "Nenhum resultado encontrado" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
