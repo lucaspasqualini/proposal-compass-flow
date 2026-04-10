@@ -30,7 +30,6 @@ export default function Clientes() {
   const [filterCnpj, setFilterCnpj] = useState<"all" | "sem_cnpj" | "com_cnpj">("all");
   const [newName, setNewName] = useState("");
   const [newCnpj, setNewCnpj] = useState("");
-  const [newCnpj, setNewCnpj] = useState("");
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
