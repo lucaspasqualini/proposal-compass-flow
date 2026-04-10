@@ -19,14 +19,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use the public CNPJ.ws API to search by company name
-    const encoded = encodeURIComponent(nome);
+    // Use Casa dos Dados API for searching by company name
     const response = await fetch(
-      `https://publica.cnpj.ws/cnpj/s?nome=${encoded}&page=1`,
+      "https://api.casadosdados.com.br/v2/cnpj",
       {
+        method: "POST",
         headers: {
-          "Accept": "application/json",
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          query: {
+            termo: [nome],
+            situacao_cadastral: "ATIVA",
+          },
+          range_query: {},
+          extras: {},
+          page: 1,
+        }),
       }
     );
 
@@ -40,8 +49,17 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
 
-    // Return the results (array of companies)
-    return new Response(JSON.stringify(data), {
+    // Normalize results
+    const results = (data.data?.cnpj || []).map((item: any) => ({
+      cnpj: item.cnpj,
+      razao_social: item.razao_social,
+      nome_fantasia: item.nome_fantasia,
+      municipio: item.municipio,
+      uf: item.uf,
+      situacao_cadastral: item.situacao_cadastral,
+    }));
+
+    return new Response(JSON.stringify({ results, total: data.data?.count || 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
