@@ -19,52 +19,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use Casa dos Dados API for searching by company name
+    // Try cnpjs.dev open API
+    const encoded = encodeURIComponent(nome);
     const response = await fetch(
-      "https://api.casadosdados.com.br/v2/cnpj",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: {
-            termo: [nome],
-            situacao_cadastral: "ATIVA",
-          },
-          range_query: {},
-          extras: {},
-          page: 1,
-        }),
-      }
+      `https://open.cnpjs.dev/office?company_name=${encoded}&limit=5`,
+      { headers: { "Accept": "application/json" } }
     );
 
     if (!response.ok) {
-      const text = await response.text();
-      return new Response(
-        JSON.stringify({ error: `API retornou ${response.status}`, detail: text }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      // Fallback: try Minha Receita API
+      const fallback = await fetch(
+        `https://minhareceita.org/?nome=${encoded}`,
+        { headers: { "Accept": "application/json" } }
       );
+      
+      if (!fallback.ok) {
+        const text = await fallback.text();
+        return new Response(
+          JSON.stringify({ error: `APIs retornaram erro`, detail: text }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const fdata = await fallback.json();
+      return new Response(JSON.stringify({ results: Array.isArray(fdata) ? fdata : [fdata], source: "minhareceita" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
-
-    // Normalize results
-    const results = (data.data?.cnpj || []).map((item: any) => ({
-      cnpj: item.cnpj,
-      razao_social: item.razao_social,
-      nome_fantasia: item.nome_fantasia,
-      municipio: item.municipio,
-      uf: item.uf,
-      situacao_cadastral: item.situacao_cadastral,
-    }));
-
-    return new Response(JSON.stringify({ results, total: data.data?.count || 0 }), {
+    return new Response(JSON.stringify({ results: data, source: "cnpjs.dev" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: "Erro ao buscar CNPJ por nome" }),
+      JSON.stringify({ error: "Erro ao buscar CNPJ por nome", detail: String(err) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
