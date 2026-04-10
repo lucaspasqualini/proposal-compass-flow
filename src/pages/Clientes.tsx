@@ -139,9 +139,36 @@ export default function Clientes() {
         </Card>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={filterCnpj === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterCnpj("all")}
+          >
+            Todos ({totalClients})
+          </Button>
+          <Button
+            variant={filterCnpj === "sem_cnpj" ? "destructive" : "outline"}
+            size="sm"
+            onClick={() => setFilterCnpj("sem_cnpj")}
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Sem CNPJ ({semCnpj})
+          </Button>
+          <Button
+            variant={filterCnpj === "com_cnpj" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterCnpj("com_cnpj")}
+          >
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Com CNPJ ({totalClients - semCnpj})
+          </Button>
+        </div>
       </div>
 
       <Card>
