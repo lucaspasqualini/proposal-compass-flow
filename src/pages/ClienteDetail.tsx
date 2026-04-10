@@ -18,6 +18,7 @@ import { formatCurrency, formatDate, proposalStatusLabels, proposalStatusColors 
 import { ArrowLeft, Building2, FileText, FolderKanban, Save, Search, Users, Briefcase, MapPin, Phone, Mail, Hash, Calendar, Scale, TrendingUp } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import CnpjLookupDialog, { type CnpjConfirmData } from "@/components/CnpjLookupDialog";
+import CnpjNameSearchDialog from "@/components/CnpjNameSearchDialog";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 
@@ -65,6 +66,7 @@ export default function ClienteDetail() {
     qsa: [] as Array<{ nome: string; qualificacao: string; data_entrada: string; faixa_etaria: string }>,
   });
   const [cnpjDialogOpen, setCnpjDialogOpen] = useState(false);
+  const [cnpjNameSearchOpen, setCnpjNameSearchOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 
@@ -170,6 +172,59 @@ export default function ClienteDetail() {
       situacao_cadastral: data.situacao_cadastral || prev.situacao_cadastral,
       qsa: data.qsa?.length ? data.qsa : prev.qsa,
     }));
+  };
+
+  // When a CNPJ is selected from name search, open the full CNPJ lookup to enrich data
+  const handleCnpjFromNameSearch = async (cnpjDigits: string) => {
+    // Auto-search using the existing CNPJ lookup
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const url = `https://${projectId}.supabase.co/functions/v1/search-cnpj?cnpj=${cnpjDigits}`;
+      const response = await fetch(url, {
+        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      });
+      if (!response.ok) throw new Error("Erro ao consultar CNPJ");
+      const result = await response.json();
+
+      // Build address
+      const addressParts = [
+        result.descricao_tipo_logradouro,
+        result.logradouro,
+        result.numero,
+        result.complemento,
+        result.bairro,
+        result.municipio ? `${result.municipio}/${result.uf}` : result.uf,
+        result.cep,
+      ].filter(Boolean);
+
+      const formatCnpj = (v: string) => {
+        const d = v.replace(/\D/g, "");
+        if (d.length !== 14) return v;
+        return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+      };
+
+      handleCnpjConfirm({
+        cnpj: formatCnpj(result.cnpj),
+        razao_social: result.razao_social || "",
+        nome_fantasia: result.nome_fantasia || "",
+        address: addressParts.join(", "),
+        phone: result.telefone || "",
+        email: result.email || "",
+        contact_name: "",
+        capital_social: result.capital_social,
+        natureza_juridica: result.natureza_juridica || "",
+        cnae_principal: result.cnae_principal || "",
+        cnae_descricao: result.cnae_descricao || "",
+        porte: result.porte || "",
+        data_abertura: result.data_abertura || "",
+        situacao_cadastral: result.situacao_cadastral || "",
+        qsa: result.qsa || [],
+      });
+
+      toast({ title: "Dados preenchidos com sucesso!" });
+    } catch {
+      toast({ title: "Erro ao buscar dados completos do CNPJ", variant: "destructive" });
+    }
   };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
@@ -382,7 +437,12 @@ export default function ClienteDetail() {
               <CardContent className="grid gap-4">
                 <div className="grid gap-2">
                   <Label className="font-semibold">Nome do Cliente (usado no sistema)</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome exibido no sistema" />
+                  <div className="flex gap-2">
+                    <Input className="flex-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome exibido no sistema" />
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCnpjNameSearchOpen(true)} className="whitespace-nowrap">
+                      <Search className="h-4 w-4 mr-1" /> Buscar CNPJ por Nome
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">Preenchido automaticamente pelo Nome Fantasia ao consultar CNPJ, mas pode ser editado manualmente.</p>
                 </div>
                 <Separator />
@@ -534,6 +594,12 @@ export default function ClienteDetail() {
         open={cnpjDialogOpen}
         onOpenChange={setCnpjDialogOpen}
         onConfirm={handleCnpjConfirm}
+      />
+      <CnpjNameSearchDialog
+        open={cnpjNameSearchOpen}
+        onOpenChange={setCnpjNameSearchOpen}
+        initialName={form.name}
+        onSelect={handleCnpjFromNameSearch}
       />
       <ProjectDetailDialog
         projectId={selectedProjectId}
