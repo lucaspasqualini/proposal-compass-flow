@@ -1,36 +1,26 @@
 
 
-# Saneamento da Base de Clientes
+# Busca de CNPJ via Google Search
 
 ## Resumo
-Limpar duplicatas e enriquecer todos os 693 clientes com CNPJ automaticamente — incluindo os órfãos.
+Usar busca web para pesquisar "{nome do cliente} CNPJ" e extrair o CNPJ diretamente dos snippets do Google — sem precisar entrar nas páginas.
 
-## Etapas
+## Como funciona
+1. **Script Python** percorre os ~687 clientes sem CNPJ
+2. Para cada um, usa a ferramenta de busca web com query `"{nome}" CNPJ`
+3. Aplica regex `\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}` nos snippets/títulos dos resultados
+4. Se encontrar um CNPJ, registra como match
+5. Gera CSV em `/mnt/documents/cnpj_google_results.csv` com colunas: `id`, `nome_cliente`, `cnpj_encontrado`, `fonte` (URL do resultado)
+6. Você revisa o CSV e aprova quais gravar
+7. Após aprovação, atualizo o banco e busco dados completos (razão social, endereço, etc.) usando a edge function `search-cnpj` que já existe
 
-### Etapa 1 — Relatório de duplicatas (CSV)
-Script Python com fuzzy matching (`difflib.SequenceMatcher`) nos 693 clientes. Gera CSV em `/mnt/documents/` com colunas: `grupo`, `id`, `nome`, `propostas`, `projetos`, `receivables`, `ação_sugerida` (manter/mesclar). Você revisa e decide quais mesclar e qual nome manter.
-
-### Etapa 2 — Mesclar duplicatas aprovadas
-Para cada grupo aprovado por você:
-- `UPDATE proposals/projects/receivables SET client_id = <id_mantido>`
-- `DELETE` o cliente duplicado
-- **Clientes órfãos são mantidos** — não serão deletados
-
-### Etapa 3 — Busca automática de CNPJ
-- Criar edge function `search-cnpj-by-name` que busca empresas por nome usando a API pública `https://publica.cnpj.ws/cnpj` (gratuita, busca por razão social/nome fantasia)
-- Executar script que percorre todos os clientes sem CNPJ, chama a edge function, e gera um segundo CSV com os resultados: `nome_cliente`, `cnpj_encontrado`, `razao_social`, `confiança` (match score)
-- Você revisa o CSV e aprova quais CNPJs gravar
-- Após aprovação, atualizo o banco com os CNPJs confirmados e preencho os demais campos (razão social, endereço, etc.) usando a edge function `search-cnpj` que já existe
-
-### Limitações
-- APIs públicas têm rate limit (~3 req/s no cnpj.ws gratuito) — o script fará pausas automáticas
-- Nem todos os nomes terão match exato; alguns precisarão revisão manual
+## Limitações
+- A busca web tem rate limit — processamento em lotes com pausas
+- Alguns clientes podem não ter resultado (nomes genéricos, pessoas físicas)
+- Possíveis falsos positivos — por isso a etapa de revisão via CSV é essencial
 
 ## Detalhes técnicos
-
-| Etapa | Ferramenta | Resultado |
-|---|---|---|
-| 1 | Python script via `code--exec` | CSV de duplicatas |
-| 2 | SQL UPDATE/DELETE via insert tool | Base limpa |
-| 3 | Nova edge function + Python script | CSV de CNPJs para aprovação |
+- Ferramenta: `websearch--web_search` (disponível no sandbox)
+- Regex de extração: `\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}`
+- Após aprovação do CSV, enriquecimento completo via `search-cnpj` edge function existente
 
