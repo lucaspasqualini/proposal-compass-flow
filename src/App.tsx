@@ -14,6 +14,7 @@ import Propostas from "@/pages/Propostas";
 import Projetos from "@/pages/Projetos";
 import Equipe from "@/pages/Equipe";
 import Alocacao from "@/pages/Alocacao";
+import CnpjReview from "@/pages/CnpjReview";
 import ContasReceber from "@/pages/ContasReceber";
 import NotFound from "@/pages/NotFound";
 
