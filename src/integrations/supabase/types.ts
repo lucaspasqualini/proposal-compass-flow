@@ -124,6 +124,47 @@ export type Database = {
         }
         Relationships: []
       }
+      cnpj_review_queue: {
+        Row: {
+          client_id: string
+          client_name: string
+          cnpj_found: string
+          created_at: string
+          id: string
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          client_name: string
+          cnpj_found: string
+          created_at?: string
+          id?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          client_name?: string
+          cnpj_found?: string
+          created_at?: string
+          id?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cnpj_review_queue_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
