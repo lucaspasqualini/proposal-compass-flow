@@ -387,15 +387,15 @@ export default function ContasReceber() {
         <TabsContent value="projetos">
           <Card>
             <CardContent className="p-0">
-              <Table>
+               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nº Projeto</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Título</TableHead>
-                    <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead className="text-right">Recebido</TableHead>
-                    <TableHead className="text-right">Pendente</TableHead>
+                    <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleProjectSort("number")}>Nº Projeto <ProjectSortIcon col="number" /></button></TableHead>
+                    <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleProjectSort("client")}>Cliente <ProjectSortIcon col="client" /></button></TableHead>
+                    <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleProjectSort("title")}>Título <ProjectSortIcon col="title" /></button></TableHead>
+                    <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleProjectSort("total")}>Valor Total <ProjectSortIcon col="total" /></button></TableHead>
+                    <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleProjectSort("received")}>Recebido <ProjectSortIcon col="received" /></button></TableHead>
+                    <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleProjectSort("pending")}>Pendente <ProjectSortIcon col="pending" /></button></TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                   </TableRow>
                 </TableHeader>
