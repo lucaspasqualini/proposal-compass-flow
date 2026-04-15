@@ -400,7 +400,7 @@ export default function ContasReceber() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {byProject.map((p) => {
+                  {sortedProjects.map((p) => {
                     const pct = p.total > 0 ? Math.round((p.received / p.total) * 100) : 0;
                     return (
                       <TableRow key={p.proposalNumber}>
@@ -434,15 +434,15 @@ export default function ContasReceber() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                     <TableHead>Nº Projeto</TableHead>
-                     <TableHead>Nome do Projeto</TableHead>
-                     <TableHead>Parcela</TableHead>
-                     <TableHead className="text-right">Valor</TableHead>
-                     <TableHead># NFe</TableHead>
-                     <TableHead>Previsão de Faturamento</TableHead>
-                     <TableHead>Emissão Fatura</TableHead>
-                     <TableHead>Status</TableHead>
-                     <TableHead>Recebimento</TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("number")}>Nº Projeto <ParcelaSortIcon col="number" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("title")}>Nome do Projeto <ParcelaSortIcon col="title" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("parcela")}>Parcela <ParcelaSortIcon col="parcela" /></button></TableHead>
+                     <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleParcelaSort("amount")}>Valor <ParcelaSortIcon col="amount" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("nfe")}># NFe <ParcelaSortIcon col="nfe" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão <ParcelaSortIcon col="due_date" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("invoice_date")}>Emissão <ParcelaSortIcon col="invoice_date" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("status")}>Status <ParcelaSortIcon col="status" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("paid_at")}>Recebimento <ParcelaSortIcon col="paid_at" /></button></TableHead>
                      <TableHead className="w-[100px]">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
