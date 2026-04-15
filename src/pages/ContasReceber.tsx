@@ -44,6 +44,10 @@ const editableStatuses = [
   { value: "pdd", label: "PDD" },
 ];
 
+type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "paid_at";
+type ProjectSortKey = "number" | "client" | "title" | "total" | "received" | "pending";
+type SortDir = "asc" | "desc";
+
 export default function ContasReceber() {
   const { data: receivables, isLoading } = useReceivables();
   const updateReceivable = useUpdateReceivable();
@@ -55,6 +59,10 @@ export default function ContasReceber() {
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
   const [payingId, setPayingId] = useState<string | null>(null);
   const [selectedReceivable, setSelectedReceivable] = useState<any | null>(null);
+  const [parcelaSortKey, setParcelaSortKey] = useState<ParcelaSortKey | null>(null);
+  const [parcelaSortDir, setParcelaSortDir] = useState<SortDir>("asc");
+  const [projectSortKey, setProjectSortKey] = useState<ProjectSortKey | null>(null);
+  const [projectSortDir, setProjectSortDir] = useState<SortDir>("asc");
 
   // Count total parcelas per proposal for X/Y format
   const parcelaTotals = useMemo(() => {
