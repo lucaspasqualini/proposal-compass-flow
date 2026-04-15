@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -60,6 +61,15 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const createProposal = useCreateProposal();
   const createClient = useCreateClient();
   const { toast } = useToast();
+
+  const { data: templates } = useQuery({
+    queryKey: ["proposal-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("proposal_templates").select("*").order("tipo_projeto");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -342,7 +352,14 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                   </div>
                   <div className="grid gap-2">
                     <Label>Tipo de Projeto</Label>
-                    <Select value={form.tipo_projeto ?? ""} onValueChange={(v) => setForm({ ...form, tipo_projeto: v })}>
+                    <Select value={form.tipo_projeto ?? ""} onValueChange={(v) => {
+                      const updates: any = { ...form, tipo_projeto: v };
+                      if (!form.scope?.trim()) {
+                        const tpl = templates?.find((t) => t.tipo_projeto === v);
+                        if (tpl?.scope_text) updates.scope = tpl.scope_text;
+                      }
+                      setForm(updates);
+                    }}>
                       <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                       <SelectContent>
                         {TIPOS_PROJETO.map((t) => (
