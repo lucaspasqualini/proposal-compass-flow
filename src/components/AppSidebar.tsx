@@ -7,7 +7,7 @@ import {
   CalendarRange,
   LogOut,
   Receipt,
-  SearchCheck,
+  LayoutTemplate,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,7 +34,7 @@ const mainItems = [
   { title: "Clientes", url: "/clientes", icon: Building },
   { title: "Alocação", url: "/alocacao", icon: CalendarRange },
   { title: "Contas a Receber", url: "/contas-a-receber", icon: Receipt },
-  { title: "Revisão CNPJ", url: "/cnpj-review", icon: SearchCheck },
+  { title: "Templates", url: "/templates", icon: LayoutTemplate },
 ];
 
 export function AppSidebar() {
