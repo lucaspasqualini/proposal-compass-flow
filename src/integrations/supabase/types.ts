@@ -353,6 +353,30 @@ export type Database = {
           },
         ]
       }
+      proposal_templates: {
+        Row: {
+          created_at: string
+          id: string
+          scope_text: string
+          tipo_projeto: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scope_text?: string
+          tipo_projeto: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scope_text?: string
+          tipo_projeto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       proposals: {
         Row: {
           about_company: string | null
