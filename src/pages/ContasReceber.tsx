@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
-import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check } from "lucide-react";
+import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -44,6 +44,10 @@ const editableStatuses = [
   { value: "pdd", label: "PDD" },
 ];
 
+type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "paid_at";
+type ProjectSortKey = "number" | "client" | "title" | "total" | "received" | "pending";
+type SortDir = "asc" | "desc";
+
 export default function ContasReceber() {
   const { data: receivables, isLoading } = useReceivables();
   const updateReceivable = useUpdateReceivable();
@@ -55,6 +59,10 @@ export default function ContasReceber() {
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
   const [payingId, setPayingId] = useState<string | null>(null);
   const [selectedReceivable, setSelectedReceivable] = useState<any | null>(null);
+  const [parcelaSortKey, setParcelaSortKey] = useState<ParcelaSortKey | null>(null);
+  const [parcelaSortDir, setParcelaSortDir] = useState<SortDir>("asc");
+  const [projectSortKey, setProjectSortKey] = useState<ProjectSortKey | null>(null);
+  const [projectSortDir, setProjectSortDir] = useState<SortDir>("asc");
 
   // Count total parcelas per proposal for X/Y format
   const parcelaTotals = useMemo(() => {
@@ -228,6 +236,71 @@ export default function ContasReceber() {
     return `${index}/${total}`;
   };
 
+  const handleParcelaSort = (key: ParcelaSortKey) => {
+    if (parcelaSortKey === key) setParcelaSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setParcelaSortKey(key); setParcelaSortDir("asc"); }
+  };
+
+  const handleProjectSort = (key: ProjectSortKey) => {
+    if (projectSortKey === key) setProjectSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setProjectSortKey(key); setProjectSortDir("asc"); }
+  };
+
+  const ParcelaSortIcon = ({ col }: { col: ParcelaSortKey }) => {
+    if (parcelaSortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return parcelaSortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const ProjectSortIcon = ({ col }: { col: ProjectSortKey }) => {
+    if (projectSortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return projectSortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const sortedParcelas = useMemo(() => {
+    if (!parcelaSortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      let va: string | number, vb: string | number;
+      switch (parcelaSortKey) {
+        case "number": va = (a.proposals as any)?.proposal_number || ""; vb = (b.proposals as any)?.proposal_number || ""; break;
+        case "title": va = (a.proposals as any)?.title || ""; vb = (b.proposals as any)?.title || ""; break;
+        case "parcela": va = a.parcela_index; vb = b.parcela_index; break;
+        case "amount": va = a.amount || 0; vb = b.amount || 0; break;
+        case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
+        case "due_date": va = a.due_date || "9999"; vb = b.due_date || "9999"; break;
+        case "invoice_date": va = a.invoice_date || "9999"; vb = b.invoice_date || "9999"; break;
+        case "status": va = a.effectiveStatus; vb = b.effectiveStatus; break;
+        case "paid_at": va = a.paid_at || "9999"; vb = b.paid_at || "9999"; break;
+        default: va = ""; vb = "";
+      }
+      if (typeof va === "number" && typeof vb === "number") {
+        return parcelaSortDir === "asc" ? va - vb : vb - va;
+      }
+      const cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
+      return parcelaSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, parcelaSortKey, parcelaSortDir]);
+
+  const sortedProjects = useMemo(() => {
+    if (!projectSortKey) return byProject;
+    return [...byProject].sort((a, b) => {
+      let va: string | number, vb: string | number;
+      switch (projectSortKey) {
+        case "number": va = a.proposalNumber; vb = b.proposalNumber; break;
+        case "client": va = a.client; vb = b.client; break;
+        case "title": va = a.title; vb = b.title; break;
+        case "total": va = a.total; vb = b.total; break;
+        case "received": va = a.received; vb = b.received; break;
+        case "pending": va = a.pending; vb = b.pending; break;
+        default: va = ""; vb = "";
+      }
+      if (typeof va === "number" && typeof vb === "number") {
+        return projectSortDir === "asc" ? va - vb : vb - va;
+      }
+      const cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
+      return projectSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [byProject, projectSortKey, projectSortDir]);
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
 
   return (
@@ -314,20 +387,20 @@ export default function ContasReceber() {
         <TabsContent value="projetos">
           <Card>
             <CardContent className="p-0">
-              <Table>
+               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nº Projeto</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Título</TableHead>
-                    <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead className="text-right">Recebido</TableHead>
-                    <TableHead className="text-right">Pendente</TableHead>
+                    <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleProjectSort("number")}>Nº Projeto <ProjectSortIcon col="number" /></button></TableHead>
+                    <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleProjectSort("client")}>Cliente <ProjectSortIcon col="client" /></button></TableHead>
+                    <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleProjectSort("title")}>Título <ProjectSortIcon col="title" /></button></TableHead>
+                    <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleProjectSort("total")}>Valor Total <ProjectSortIcon col="total" /></button></TableHead>
+                    <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleProjectSort("received")}>Recebido <ProjectSortIcon col="received" /></button></TableHead>
+                    <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleProjectSort("pending")}>Pendente <ProjectSortIcon col="pending" /></button></TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {byProject.map((p) => {
+                  {sortedProjects.map((p) => {
                     const pct = p.total > 0 ? Math.round((p.received / p.total) * 100) : 0;
                     return (
                       <TableRow key={p.proposalNumber}>
@@ -361,20 +434,20 @@ export default function ContasReceber() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                     <TableHead>Nº Projeto</TableHead>
-                     <TableHead>Nome do Projeto</TableHead>
-                     <TableHead>Parcela</TableHead>
-                     <TableHead className="text-right">Valor</TableHead>
-                     <TableHead># NFe</TableHead>
-                     <TableHead>Previsão de Faturamento</TableHead>
-                     <TableHead>Emissão Fatura</TableHead>
-                     <TableHead>Status</TableHead>
-                     <TableHead>Recebimento</TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("number")}>Nº Projeto <ParcelaSortIcon col="number" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("title")}>Nome do Projeto <ParcelaSortIcon col="title" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("parcela")}>Parcela <ParcelaSortIcon col="parcela" /></button></TableHead>
+                     <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleParcelaSort("amount")}>Valor <ParcelaSortIcon col="amount" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("nfe")}># NFe <ParcelaSortIcon col="nfe" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão <ParcelaSortIcon col="due_date" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("invoice_date")}>Emissão <ParcelaSortIcon col="invoice_date" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("status")}>Status <ParcelaSortIcon col="status" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("paid_at")}>Recebimento <ParcelaSortIcon col="paid_at" /></button></TableHead>
                      <TableHead className="w-[100px]">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => {
+                  {sortedParcelas.map((r) => {
                     const parcelaLabel = getParcelaLabel(r);
                     return (
                       <TableRow
