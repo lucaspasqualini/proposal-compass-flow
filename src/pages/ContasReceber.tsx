@@ -447,7 +447,7 @@ export default function ContasReceber() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => {
+                  {sortedParcelas.map((r) => {
                     const parcelaLabel = getParcelaLabel(r);
                     return (
                       <TableRow
