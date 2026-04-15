@@ -236,6 +236,71 @@ export default function ContasReceber() {
     return `${index}/${total}`;
   };
 
+  const handleParcelaSort = (key: ParcelaSortKey) => {
+    if (parcelaSortKey === key) setParcelaSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setParcelaSortKey(key); setParcelaSortDir("asc"); }
+  };
+
+  const handleProjectSort = (key: ProjectSortKey) => {
+    if (projectSortKey === key) setProjectSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setProjectSortKey(key); setProjectSortDir("asc"); }
+  };
+
+  const ParcelaSortIcon = ({ col }: { col: ParcelaSortKey }) => {
+    if (parcelaSortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return parcelaSortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const ProjectSortIcon = ({ col }: { col: ProjectSortKey }) => {
+    if (projectSortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return projectSortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const sortedParcelas = useMemo(() => {
+    if (!parcelaSortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      let va: string | number, vb: string | number;
+      switch (parcelaSortKey) {
+        case "number": va = (a.proposals as any)?.proposal_number || ""; vb = (b.proposals as any)?.proposal_number || ""; break;
+        case "title": va = (a.proposals as any)?.title || ""; vb = (b.proposals as any)?.title || ""; break;
+        case "parcela": va = a.parcela_index; vb = b.parcela_index; break;
+        case "amount": va = a.amount || 0; vb = b.amount || 0; break;
+        case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
+        case "due_date": va = a.due_date || "9999"; vb = b.due_date || "9999"; break;
+        case "invoice_date": va = a.invoice_date || "9999"; vb = b.invoice_date || "9999"; break;
+        case "status": va = a.effectiveStatus; vb = b.effectiveStatus; break;
+        case "paid_at": va = a.paid_at || "9999"; vb = b.paid_at || "9999"; break;
+        default: va = ""; vb = "";
+      }
+      if (typeof va === "number" && typeof vb === "number") {
+        return parcelaSortDir === "asc" ? va - vb : vb - va;
+      }
+      const cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
+      return parcelaSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, parcelaSortKey, parcelaSortDir]);
+
+  const sortedProjects = useMemo(() => {
+    if (!projectSortKey) return byProject;
+    return [...byProject].sort((a, b) => {
+      let va: string | number, vb: string | number;
+      switch (projectSortKey) {
+        case "number": va = a.proposalNumber; vb = b.proposalNumber; break;
+        case "client": va = a.client; vb = b.client; break;
+        case "title": va = a.title; vb = b.title; break;
+        case "total": va = a.total; vb = b.total; break;
+        case "received": va = a.received; vb = b.received; break;
+        case "pending": va = a.pending; vb = b.pending; break;
+        default: va = ""; vb = "";
+      }
+      if (typeof va === "number" && typeof vb === "number") {
+        return projectSortDir === "asc" ? va - vb : vb - va;
+      }
+      const cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
+      return projectSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [byProject, projectSortKey, projectSortDir]);
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
 
   return (
