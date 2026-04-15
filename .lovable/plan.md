@@ -1,26 +1,31 @@
 
 
-# Busca de CNPJ via Google Search
+# Filtros e Ordenação — Alocação + Contas a Receber
 
 ## Resumo
-Usar busca web para pesquisar "{nome do cliente} CNPJ" e extrair o CNPJ diretamente dos snippets do Google — sem precisar entrar nas páginas.
+Padronizar filtros e ordenação por coluna nas abas **Alocação** e **Contas a Receber**, seguindo o padrão já usado em **Projetos** (headers clicáveis com ícones de sort, filtros por coluna com popover de checkboxes).
 
-## Como funciona
-1. **Script Python** percorre os ~687 clientes sem CNPJ
-2. Para cada um, usa a ferramenta de busca web com query `"{nome}" CNPJ`
-3. Aplica regex `\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}` nos snippets/títulos dos resultados
-4. Se encontrar um CNPJ, registra como match
-5. Gera CSV em `/mnt/documents/cnpj_google_results.csv` com colunas: `id`, `nome_cliente`, `cnpj_encontrado`, `fonte` (URL do resultado)
-6. Você revisa o CSV e aprova quais gravar
-7. Após aprovação, atualizo o banco e busco dados completos (razão social, endereço, etc.) usando a edge function `search-cnpj` que já existe
+## Alocação (`src/pages/Alocacao.tsx`)
 
-## Limitações
-- A busca web tem rate limit — processamento em lotes com pausas
-- Alguns clientes podem não ter resultado (nomes genéricos, pessoas físicas)
-- Possíveis falsos positivos — por isso a etapa de revisão via CSV é essencial
+**Manter** o filtro cumulativo `STATUS_HIERARCHY` (como pedido), mas melhorar o layout e adicionar:
 
-## Detalhes técnicos
-- Ferramenta: `websearch--web_search` (disponível no sandbox)
-- Regex de extração: `\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}`
-- Após aprovação do CSV, enriquecimento completo via `search-cnpj` edge function existente
+- **Busca textual** global (projeto, cliente, proposta) — `Input` com ícone `Search`
+- **Filtro de Etapa** — `Select` com valores do enum
+- **Ordenação clicável** em todas as colunas (Proposta, Projeto, Cliente, Status, Etapa) com ícones `ArrowUpDown`/`ArrowUp`/`ArrowDown`
+- **Layout da barra de filtros** unificado: todos os controles na mesma linha, sem labels separados (usar placeholders), `flex flex-wrap gap-3`
+- Corrigir tipagem (remover `any` onde possível)
+
+## Contas a Receber (`src/pages/ContasReceber.tsx`)
+
+Manter filtros existentes (busca, status, ano, empresa) e adicionar:
+
+- **Ordenação clicável por coluna** nas colunas: Nº Projeto, Nome, Valor, Previsão, Emissão, Status, Recebimento
+- Headers com `cursor-pointer` + ícones de sort (`ArrowUpDown`/`ArrowUp`/`ArrowDown`)
+- State `sortKey`/`sortDir` integrado ao `useMemo` de `filtered`
+- Aplicar ordenação tanto na view "Por Parcela" quanto "Por Projeto"
+
+## Padrão visual
+- Mesma mecânica de sort do `Projetos.tsx` (`handleSort`, `SortIcon`)
+- Barra de filtros inline sem labels (placeholder nos selects/inputs)
+- Arquivos editados: `src/pages/Alocacao.tsx`, `src/pages/ContasReceber.tsx`
 
