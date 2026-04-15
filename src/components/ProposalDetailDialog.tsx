@@ -599,42 +599,40 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                 <Button onClick={handleSave} disabled={createProposal.isPending || updateProposal.isPending}>
                   {isEdit ? "Salvar" : "Criar Proposta"}
                 </Button>
-                {isEdit && (
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      const clientName = selectedClient?.name || "Cliente";
-                      try {
-                        await generateProposalPptx({
-                          proposal_number: existing?.proposal_number || form.title,
-                          title: form.title,
-                          client_name: clientName,
-                          client_razao_social: selectedClient?.name || null,
-                          client_cnpj: selectedClient?.cnpj || null,
-                          client_contato: form.cliente_contato ?? null,
-                          about_company: form.about_company ?? null,
-                          description: form.description ?? null,
-                          scope: form.scope ?? null,
-                          value: form.value ?? null,
-                          parcelas: form.payment_type === "etapas"
-                            ? etapas.map(e => ({ descricao: e.descricao, valor: e.valor, data_vencimento: "" }))
-                            : parcelas,
-                          payment_type: form.payment_type ?? null,
-                          data_envio: form.data_envio ?? null,
-                          empresa: form.empresa ?? null,
-                          tipo_projeto: form.tipo_projeto ?? null,
-                          etapas: etapas,
-                          documentacao_necessaria: form.documentacao_necessaria ?? null,
-                        });
-                        toast({ title: "PPT gerado com sucesso!" });
-                      } catch {
-                        toast({ title: "Erro ao gerar PPT", variant: "destructive" });
-                      }
-                    }}
-                  >
-                    <FileDown className="h-4 w-4 mr-1" /> Gerar PPT
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    const clientName = selectedClient?.name || "Cliente";
+                    try {
+                      await generateProposalPptx({
+                        proposal_number: existing?.proposal_number || form.title,
+                        title: form.title,
+                        client_name: clientName,
+                        client_razao_social: selectedClient?.name || null,
+                        client_cnpj: selectedClient?.cnpj || null,
+                        client_contato: form.cliente_contato ?? null,
+                        about_company: form.about_company ?? null,
+                        description: form.description ?? null,
+                        scope: form.scope ?? null,
+                        value: form.value ?? null,
+                        parcelas: form.payment_type === "etapas"
+                          ? etapas.map(e => ({ descricao: e.descricao, valor: e.valor, data_vencimento: "" }))
+                          : parcelas,
+                        payment_type: form.payment_type ?? null,
+                        data_envio: form.data_envio ?? null,
+                        empresa: form.empresa ?? null,
+                        tipo_projeto: form.tipo_projeto ?? null,
+                        etapas: etapas,
+                        documentacao_necessaria: form.documentacao_necessaria ?? null,
+                      });
+                      toast({ title: "PPT gerado com sucesso!" });
+                    } catch {
+                      toast({ title: "Erro ao gerar PPT", variant: "destructive" });
+                    }
+                  }}
+                >
+                  <FileDown className="h-4 w-4 mr-1" /> Gerar PPT
+                </Button>
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               </div>
             </div>
