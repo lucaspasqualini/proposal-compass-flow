@@ -77,6 +77,7 @@ export type Database = {
           razao_social: string | null
           situacao_cadastral: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
           address?: string | null
@@ -99,6 +100,7 @@ export type Database = {
           razao_social?: string | null
           situacao_cadastral?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
           address?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           razao_social?: string | null
           situacao_cadastral?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
