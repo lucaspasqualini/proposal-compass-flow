@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
@@ -40,12 +41,12 @@ type SortKey = "proposal" | "title" | "client" | "status" | "etapa";
 type SortDir = "asc" | "desc";
 
 export default function Alocacao() {
-  const [search, setSearch] = useState("");
-  const [selectedMember, setSelectedMember] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("em_andamento");
-  const [selectedEtapa, setSelectedEtapa] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [search, setSearch] = usePersistedState("alocacao:search", "");
+  const [selectedMember, setSelectedMember] = usePersistedState<string>("alocacao:member", "all");
+  const [selectedStatus, setSelectedStatus] = usePersistedState<string>("alocacao:status", "em_andamento");
+  const [selectedEtapa, setSelectedEtapa] = usePersistedState<string>("alocacao:etapa", "all");
+  const [sortKey, setSortKey] = usePersistedState<SortKey | null>("alocacao:sortKey", null);
+  const [sortDir, setSortDir] = usePersistedState<SortDir>("alocacao:sortDir", "asc");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const { data: projects, isLoading } = useQuery({

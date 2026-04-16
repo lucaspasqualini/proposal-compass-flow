@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { useCreateClient, useDeleteClient } from "@/hooks/useClients";
 import { useClientsWithStats } from "@/hooks/useClientStats";
@@ -23,11 +24,11 @@ export default function Clientes() {
   const deleteClient = useDeleteClient();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [search, setSearch] = usePersistedState("clientes:search", "");
+  const [sortKey, setSortKey] = usePersistedState<SortKey>("clientes:sortKey", "name");
+  const [sortDir, setSortDir] = usePersistedState<SortDir>("clientes:sortDir", "asc");
   const [showNew, setShowNew] = useState(false);
-  const [filterCnpj, setFilterCnpj] = useState<"all" | "sem_cnpj" | "com_cnpj">("all");
+  const [filterCnpj, setFilterCnpj] = usePersistedState<"all" | "sem_cnpj" | "com_cnpj">("clientes:filterCnpj", "all");
   const [newName, setNewName] = useState("");
   const [newCnpj, setNewCnpj] = useState("");
 

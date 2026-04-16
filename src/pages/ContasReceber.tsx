@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useReceivables, useUpdateReceivable } from "@/hooks/useReceivables";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -52,17 +53,17 @@ export default function ContasReceber() {
   const { data: receivables, isLoading } = useReceivables();
   const updateReceivable = useUpdateReceivable();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [yearFilter, setYearFilter] = useState<string>("all");
-  const [empresaFilter, setEmpresaFilter] = useState<string>("all");
+  const [search, setSearch] = usePersistedState("contasreceber:search", "");
+  const [statusFilter, setStatusFilter] = usePersistedState<string>("contasreceber:status", "all");
+  const [yearFilter, setYearFilter] = usePersistedState<string>("contasreceber:year", "all");
+  const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("contasreceber:empresa", "all");
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
   const [payingId, setPayingId] = useState<string | null>(null);
   const [selectedReceivable, setSelectedReceivable] = useState<any | null>(null);
-  const [parcelaSortKey, setParcelaSortKey] = useState<ParcelaSortKey | null>(null);
-  const [parcelaSortDir, setParcelaSortDir] = useState<SortDir>("asc");
-  const [projectSortKey, setProjectSortKey] = useState<ProjectSortKey | null>(null);
-  const [projectSortDir, setProjectSortDir] = useState<SortDir>("asc");
+  const [parcelaSortKey, setParcelaSortKey] = usePersistedState<ParcelaSortKey | null>("contasreceber:parcelaSortKey", null);
+  const [parcelaSortDir, setParcelaSortDir] = usePersistedState<SortDir>("contasreceber:parcelaSortDir", "asc");
+  const [projectSortKey, setProjectSortKey] = usePersistedState<ProjectSortKey | null>("contasreceber:projectSortKey", null);
+  const [projectSortDir, setProjectSortDir] = usePersistedState<SortDir>("contasreceber:projectSortDir", "asc");
 
   // Count total parcelas per proposal for X/Y format
   const parcelaTotals = useMemo(() => {

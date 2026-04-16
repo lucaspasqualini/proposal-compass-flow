@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate, Link } from "react-router-dom";
 import { useProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
 import { useTeamMembers } from "@/hooks/useTeam";
@@ -60,16 +61,38 @@ export default function Projetos() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [sortKey, setSortKey] = useState<SortKey | null>("number");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = usePersistedState<SortKey | null>("projetos:sortKey", "number");
+  const [sortDir, setSortDir] = usePersistedState<SortDir>("projetos:sortDir", "desc");
   // Each column filter is a Set of selected values (empty = all selected = no filter)
-  const [columnFilters, setColumnFilters] = useState<Partial<Record<SortKey, Set<string>>>>({});
+  // Persisted as plain object { key: string[] } (Sets aren't JSON-serializable)
+  const [columnFiltersRaw, setColumnFiltersRaw] = usePersistedState<Partial<Record<SortKey, string[]>>>("projetos:columnFilters", {});
+  const columnFilters: Partial<Record<SortKey, Set<string>>> = useMemo(() => {
+    const out: Partial<Record<SortKey, Set<string>>> = {};
+    (Object.entries(columnFiltersRaw) as [SortKey, string[]][]).forEach(([k, v]) => {
+      if (v && v.length > 0) out[k] = new Set(v);
+    });
+    return out;
+  }, [columnFiltersRaw]);
+  const setColumnFilters = (updater: (prev: Partial<Record<SortKey, Set<string>>>) => Partial<Record<SortKey, Set<string>>>) => {
+    setColumnFiltersRaw((prevRaw) => {
+      const prevSets: Partial<Record<SortKey, Set<string>>> = {};
+      (Object.entries(prevRaw) as [SortKey, string[]][]).forEach(([k, v]) => {
+        if (v && v.length > 0) prevSets[k] = new Set(v);
+      });
+      const next = updater(prevSets);
+      const out: Partial<Record<SortKey, string[]>> = {};
+      (Object.entries(next) as [SortKey, Set<string>][]).forEach(([k, set]) => {
+        if (set && set.size > 0) out[k] = Array.from(set);
+      });
+      return out;
+    });
+  };
   const [filterSearch, setFilterSearch] = useState<Partial<Record<SortKey, string>>>({});
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [hideFinalizado, setHideFinalizado] = useState(false);
+  const [search, setSearch] = usePersistedState("projetos:search", "");
+  const [statusFilter, setStatusFilter] = usePersistedState<string>("projetos:status", "all");
+  const [hideFinalizado, setHideFinalizado] = usePersistedState("projetos:hideFinalizado", false);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearPersistedFilters } from "@/hooks/usePersistedState";
 
 interface AuthContextType {
   session: Session | null;
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    clearPersistedFilters();
     await supabase.auth.signOut();
   };
 
