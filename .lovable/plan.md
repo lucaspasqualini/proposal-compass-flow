@@ -1,57 +1,52 @@
 
 
-## Diagnóstico: lentidão e falhas na alocação de colaboradores
+## Logotipo automático nos cards de cliente via Clearbit
 
-### Problemas encontrados
+### Objetivo
+Exibir o logotipo da empresa no card/lista de clientes e na página de detalhe, buscando automaticamente via Clearbit a partir do **website** do cliente. Quando não houver website, derivar o domínio do **email** cadastrado.
 
-**1. Cascata de invalidações pesadas (causa principal da lentidão)**
-Cada toggle de colaborador chama `createAllocation` ou `deleteAllocation`, que invalida `["project_allocations"]`. Mas as listas de projetos puxam allocations **embarcadas** dentro do query `["projects"]` / `["alocacao-projects"]` / `["projects", id]`, que **não são invalidadas**. Resultado: o backend confirma a mudança, porém a UI continua mostrando o estado antigo até o usuário recarregar — parecendo "não vai" ou "demora".
+### Sobre a Clearbit Logo API
+- Endpoint público: `https://logo.clearbit.com/{dominio}`
+- Não requer chave de API nem backend — é uma simples tag `<img src="...">`
+- Retorna 404 quando não encontra o logo → tratamos com fallback (ícone `Building2` + iniciais do nome, como já existe hoje)
 
-**2. Falta de optimistic updates**
-Cada clique no checkbox espera o round-trip (~300-800 ms) antes da UI atualizar. Em conexões mais lentas vira falha aparente — usuário clica de novo, dispara mutações duplicadas que podem dar erro de unique constraint.
+### Mudanças
 
-**3. `useProject` usa `.single()` (causa do "Projeto não encontrado" no replay)**
-Quando há latência ou o ID muda durante navegação, `.single()` lança erro. Deve ser `.maybeSingle()` com tratamento adequado.
+**1. Banco — adicionar coluna `website`**
+Migração para adicionar `website TEXT` na tabela `clients`. Necessário porque hoje não existe esse campo, e o email nem sempre usa o domínio corporativo (ex.: gmail).
 
-**4. Sem `staleTime` no QueryClient**
-Cada navegação entre Projetos ↔ Alocação ↔ ProjectDetailDialog refetch tudo do zero, pesando dezenas de KB de joins desnecessariamente.
+**2. Helper de domínio — `src/lib/clientLogo.ts` (novo)**
+Função pura `getClientLogoUrl(client)` que:
+- Se `client.website` preenchido → extrai o hostname (remove `http://`, `https://`, `www.`, paths)
+- Senão, se `client.email` preenchido e o domínio **não** for genérico (gmail, hotmail, outlook, yahoo, icloud, uol, bol, terra) → usa o domínio do email
+- Senão → retorna `null`
+- Quando há domínio → retorna `https://logo.clearbit.com/{dominio}`
 
-**5. Query de Alocação e Projetos têm queryKeys diferentes**
-`["alocacao-projects"]` vs `["projects"]` — alterar alocação numa página não atualiza a outra.
+**3. Componente `ClientLogo` — `src/components/ClientLogo.tsx` (novo)**
+Wrapper sobre o `Avatar` do shadcn:
+- Props: `client`, `size` (`sm` | `md` | `lg`), `className`
+- Usa `AvatarImage` com a URL da Clearbit
+- `AvatarFallback` mostra as iniciais do nome do cliente (já com cor primária suave) — Radix automaticamente exibe o fallback se a imagem der 404
+- Tamanhos: `sm` 32px (linha de tabela), `md` 48px (cards), `lg` 80px (header de detalhe)
 
-### Plano de correção
+**4. Aplicar nos pontos de exibição**
+- `src/pages/Clientes.tsx` → adicionar coluna logo (32px) no início de cada linha da tabela, antes do nome
+- `src/pages/ClienteDetail.tsx` → trocar o quadrado azul com `Building2` no header pelo `ClientLogo` tamanho `lg`
+- `src/pages/ClienteDetail.tsx` → adicionar campo `Website` no card "Contato e Endereço" (input ao lado do telefone), salvo via `updateClient`
+- `src/components/CnpjLookupDialog.tsx` (consulta) — verificar se a API de CNPJ retorna site/email e propagar para o form (apenas se já existir; sem novas dependências)
 
-**A. Atualizar `src/hooks/useTeam.ts`**
-- `useCreateAllocation` e `useDeleteAllocation` passam a invalidar **também** `["projects"]`, `["alocacao-projects"]` e a query individual `["projects", projectId]`.
-- Adicionar **optimistic updates** via `onMutate` / `onError` / `onSettled`: a UI muda imediatamente; em caso de erro, faz rollback e mostra toast.
+**5. Reaproveitamento**
+O `ClientLogo` também pode ser usado depois nos cards de Propostas e Projetos (o cliente é a chave estrangeira), mas isso fica fora deste escopo a menos que solicitado.
 
-**B. Unificar queryKey em `src/pages/Alocacao.tsx`**
-- Trocar `["alocacao-projects"]` por `["projects", "alocacao-light"]` ou simplesmente reusar `useProjects` para que invalidações se propaguem corretamente.
+### Arquivos
+- **Migração**: adicionar coluna `website` em `clients`
+- **Criar**: `src/lib/clientLogo.ts`, `src/components/ClientLogo.tsx`
+- **Editar**: `src/pages/Clientes.tsx`, `src/pages/ClienteDetail.tsx`
 
-**C. `src/hooks/useProjects.ts`**
-- Trocar `.single()` por `.maybeSingle()` em `useProject` e tratar `null` (evita o erro "Projeto não encontrado" durante transições).
-
-**D. `src/main.tsx` — configurar QueryClient**
-- Adicionar `staleTime: 30_000` e `refetchOnWindowFocus: false` como defaults. Reduz refetches redundantes ao trocar de aba.
-
-**E. Proteger contra cliques duplicados**
-- Em `ProjectDetailDialog.handleToggleMember` e `Projetos.handleToggleMember`, desabilitar o `Checkbox` enquanto a mutação correspondente está pendente (`disabled={createAllocation.isPending || deleteAllocation.isPending}`).
-
-### Arquivos a editar
-- `src/hooks/useTeam.ts` — invalidações abrangentes + optimistic updates nas mutações de alocação
-- `src/hooks/useProjects.ts` — `.maybeSingle()` em `useProject`
-- `src/pages/Alocacao.tsx` — unificar queryKey de projetos
-- `src/pages/Projetos.tsx` — desabilitar checkbox durante pending
-- `src/components/ProjectDetailDialog.tsx` — desabilitar checkbox durante pending; tratar `project === null`
-- `src/main.tsx` — defaults do QueryClient (`staleTime`, `refetchOnWindowFocus`)
-
-### Resultado esperado
-- Toggle de colaborador reflete **instantaneamente** na UI (optimistic).
-- Em caso de erro real, rollback automático + toast.
-- Mudanças feitas em qualquer aba (Projetos, Alocação, dialog do projeto) aparecem **imediatamente** nas outras.
-- Sem mais "Projeto não encontrado" durante transições rápidas.
-
-### Observações
-- Sem mudanças no banco — apenas lógica client-side.
-- Não impacta filtros persistidos nem outras funcionalidades.
+### Considerações
+- Sem custo: Clearbit Logo API é gratuita e pública
+- Sem requisições do backend: o navegador faz a chamada direto
+- LGPD/privacidade: apenas o domínio público da empresa é exposto
+- Performance: navegador faz cache automático; carga única por domínio
+- Fallback elegante: iniciais aparecem se logo não existir, mantendo consistência visual
 
