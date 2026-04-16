@@ -90,7 +90,7 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Carregando...</div>
         ) : !project ? (
-          <div className="py-12 text-center text-muted-foreground">Projeto não encontrado</div>
+          <div className="py-12 text-center text-muted-foreground">Carregando projeto...</div>
         ) : (
           <>
             <DialogHeader>
@@ -242,6 +242,7 @@ export default function ProjectDetailDialog({ projectId, open, onOpenChange }: P
                               <label key={member.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent cursor-pointer">
                                 <Checkbox
                                   checked={isAllocated}
+                                  disabled={createAllocation.isPending || deleteAllocation.isPending}
                                   onCheckedChange={() => handleToggleMember(member.id)}
                                 />
                                 <span className="text-sm flex-1">{member.name}</span>

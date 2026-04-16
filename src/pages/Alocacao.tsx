@@ -50,12 +50,13 @@ export default function Alocacao() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const { data: projects, isLoading } = useQuery({
-    queryKey: ["alocacao-projects"],
+    // Compartilha namespace com ["projects"] para que invalidações de alocação propaguem
+    queryKey: ["projects", "alocacao-light"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
         .select(
-          "id, title, status, etapa, clients(name), proposals(proposal_number), project_allocations(team_member_id, team_members(id, name))"
+          "id, title, status, etapa, clients(name), proposals(proposal_number), project_allocations(id, team_member_id, team_members(id, name))"
         )
         .order("title");
       if (error) throw error;

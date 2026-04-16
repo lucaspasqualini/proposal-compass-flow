@@ -28,7 +28,7 @@ export function useProject(id: string | undefined) {
         .from("projects")
         .select("*, clients(id, name, cnpj), proposals(title, proposal_number, tipo_projeto, scope, description, value, payment_type, parcelas, data_aprovacao), project_allocations(id, team_member_id, team_members(id, name, role))")
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

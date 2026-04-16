@@ -524,6 +524,7 @@ export default function Projetos() {
                                   <label key={member.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-accent cursor-pointer">
                                     <Checkbox
                                       checked={isAllocated}
+                                      disabled={createAllocation.isPending || deleteAllocation.isPending}
                                       onCheckedChange={() => handleToggleMember(p.id, member.id, allocations)}
                                     />
                                     <span className="text-sm">{member.name.split(" ")[0]}</span>
