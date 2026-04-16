@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -151,10 +152,11 @@ const TemplatesPropostas = () => {
 };
 
 const Templates = () => {
+  const [tab, setTab] = usePersistedState<string>("templates:tab", "propostas");
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-2xl font-bold">Templates</h1>
-      <Tabs defaultValue="propostas">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="propostas" className="gap-1.5">
             <FileText className="h-4 w-4" /> Templates Propostas
