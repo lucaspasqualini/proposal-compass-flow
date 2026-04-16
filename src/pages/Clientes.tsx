@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ClientLogo } from "@/components/ClientLogo";
 
 type SortKey = "name" | "proposal_count" | "project_count" | "won_value" | "last_proposal_date";
 type SortDir = "asc" | "desc";
@@ -181,6 +182,7 @@ export default function Clientes() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[52px]"></TableHead>
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
                       <span className="flex items-center">Cliente <SortIcon col="name" /></span>
                     </TableHead>
@@ -203,13 +205,19 @@ export default function Clientes() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         Nenhum cliente encontrado
                       </TableCell>
                     </TableRow>
                   )}
                   {filtered.map((c) => (
                     <TableRow key={c.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${c.id}`)}>
+                      <TableCell className="py-2">
+                        <ClientLogo
+                          client={{ name: c.name, website: (c as any).website, email: (c as any).email }}
+                          size="sm"
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                         {c.cnpj ? (
