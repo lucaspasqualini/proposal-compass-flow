@@ -1,67 +1,57 @@
 
 
-## Persistência de filtros e ordenação entre navegações
+## Diagnóstico: lentidão e falhas na alocação de colaboradores
 
-### Objetivo
-Quando o usuário aplicar filtros ou ordenação em qualquer aba (Propostas, Projetos, Clientes, Equipe, Alocação, Contas a Receber, Templates) e navegar para outra aba, ao voltar os filtros devem permanecer como estavam. O reset para o padrão acontece apenas quando:
-- A página é recarregada (F5 / refresh)
-- O usuário faz logout
+### Problemas encontrados
 
-### Abordagem técnica
+**1. Cascata de invalidações pesadas (causa principal da lentidão)**
+Cada toggle de colaborador chama `createAllocation` ou `deleteAllocation`, que invalida `["project_allocations"]`. Mas as listas de projetos puxam allocations **embarcadas** dentro do query `["projects"]` / `["alocacao-projects"]` / `["projects", id]`, que **não são invalidadas**. Resultado: o backend confirma a mudança, porém a UI continua mostrando o estado antigo até o usuário recarregar — parecendo "não vai" ou "demora".
 
-Criar um **hook genérico `usePersistedState`** que substitui `useState` e armazena o valor em `sessionStorage` (não `localStorage`).
+**2. Falta de optimistic updates**
+Cada clique no checkbox espera o round-trip (~300-800 ms) antes da UI atualizar. Em conexões mais lentas vira falha aparente — usuário clica de novo, dispara mutações duplicadas que podem dar erro de unique constraint.
 
-Por que `sessionStorage`?
-- Persiste enquanto a aba do navegador estiver aberta → sobrevive a navegações entre rotas
-- É limpo automaticamente ao fechar a aba ou recarregar a página → atende ao requisito de "resetar ao atualizar"
-- Logout limpará a chave manualmente para garantir consistência
+**3. `useProject` usa `.single()` (causa do "Projeto não encontrado" no replay)**
+Quando há latência ou o ID muda durante navegação, `.single()` lança erro. Deve ser `.maybeSingle()` com tratamento adequado.
 
-```text
-┌─────────────────────────────────────────────────┐
-│  Navegação entre abas        → MANTÉM filtros   │
-│  F5 / refresh                → RESETA filtros   │
-│  Logout                      → RESETA filtros   │
-│  Fechar aba do navegador     → RESETA filtros   │
-└─────────────────────────────────────────────────┘
-```
+**4. Sem `staleTime` no QueryClient**
+Cada navegação entre Projetos ↔ Alocação ↔ ProjectDetailDialog refetch tudo do zero, pesando dezenas de KB de joins desnecessariamente.
 
-### Mudanças
+**5. Query de Alocação e Projetos têm queryKeys diferentes**
+`["alocacao-projects"]` vs `["projects"]` — alterar alocação numa página não atualiza a outra.
 
-**1. Novo hook `src/hooks/usePersistedState.ts`**
-- API idêntica a `useState<T>(initial)` mas recebe uma `key` única
-- Lê de `sessionStorage` na montagem; se não houver, usa o valor inicial
-- Grava em `sessionStorage` a cada mudança (JSON serializado)
-- Em refresh, `sessionStorage` mantém os dados — então adicionamos um marcador `session-active` setado no carregamento inicial do app que, se ausente, limpa as chaves de filtros antes de hidratar
+### Plano de correção
 
-Estratégia de reset no refresh: usar a Performance API (`performance.getEntriesByType("navigation")[0].type === "reload"`) no `main.tsx` para limpar todas as chaves com prefixo `filter:` antes do React montar.
+**A. Atualizar `src/hooks/useTeam.ts`**
+- `useCreateAllocation` e `useDeleteAllocation` passam a invalidar **também** `["projects"]`, `["alocacao-projects"]` e a query individual `["projects", projectId]`.
+- Adicionar **optimistic updates** via `onMutate` / `onError` / `onSettled`: a UI muda imediatamente; em caso de erro, faz rollback e mostra toast.
 
-**2. Logout limpa filtros — `src/contexts/AuthContext.tsx`**
-- No `signOut()`, antes do `supabase.auth.signOut()`, percorrer `sessionStorage` e remover chaves com prefixo `filter:`
+**B. Unificar queryKey em `src/pages/Alocacao.tsx`**
+- Trocar `["alocacao-projects"]` por `["projects", "alocacao-light"]` ou simplesmente reusar `useProjects` para que invalidações se propaguem corretamente.
 
-**3. Aplicar o hook em todas as páginas com filtros/ordenação**
+**C. `src/hooks/useProjects.ts`**
+- Trocar `.single()` por `.maybeSingle()` em `useProject` e tratar `null` (evita o erro "Projeto não encontrado" durante transições).
 
-Substituir `useState` por `usePersistedState` nos states de filtros, busca e ordenação:
+**D. `src/main.tsx` — configurar QueryClient**
+- Adicionar `staleTime: 30_000` e `refetchOnWindowFocus: false` como defaults. Reduz refetches redundantes ao trocar de aba.
 
-| Página | States a persistir |
-|---|---|
-| `Propostas.tsx` | busca, filtros de status/ano/empresa, sortKey, sortDir |
-| `Projetos.tsx` | busca, filtros de coluna, sortKey, sortDir |
-| `Clientes.tsx` | busca, filtros, ordenação |
-| `Equipe.tsx` | busca, filtros, ordenação |
-| `Alocacao.tsx` | search, selectedMember, selectedStatus, selectedEtapa, sortKey, sortDir |
-| `ContasReceber.tsx` | busca, filtros (status/ano/empresa), view mode (parcela/projeto), sortKey, sortDir |
-| `Templates.tsx` | aba ativa (Templates Propostas / Email Comercial) |
+**E. Proteger contra cliques duplicados**
+- Em `ProjectDetailDialog.handleToggleMember` e `Projetos.handleToggleMember`, desabilitar o `Checkbox` enquanto a mutação correspondente está pendente (`disabled={createAllocation.isPending || deleteAllocation.isPending}`).
 
-Cada página usa uma key única, ex.: `filter:propostas:search`, `filter:alocacao:sortKey`.
+### Arquivos a editar
+- `src/hooks/useTeam.ts` — invalidações abrangentes + optimistic updates nas mutações de alocação
+- `src/hooks/useProjects.ts` — `.maybeSingle()` em `useProject`
+- `src/pages/Alocacao.tsx` — unificar queryKey de projetos
+- `src/pages/Projetos.tsx` — desabilitar checkbox durante pending
+- `src/components/ProjectDetailDialog.tsx` — desabilitar checkbox durante pending; tratar `project === null`
+- `src/main.tsx` — defaults do QueryClient (`staleTime`, `refetchOnWindowFocus`)
 
-**NÃO** persistir: dados de formulários de criação/edição, diálogos abertos, IDs selecionados — apenas filtros de listagem e ordenação.
-
-### Arquivos a editar/criar
-- **Criar**: `src/hooks/usePersistedState.ts`
-- **Editar**: `src/main.tsx` (lógica de reset no refresh), `src/contexts/AuthContext.tsx` (limpeza no logout), `src/pages/Propostas.tsx`, `src/pages/Projetos.tsx`, `src/pages/Clientes.tsx`, `src/pages/Equipe.tsx`, `src/pages/Alocacao.tsx`, `src/pages/ContasReceber.tsx`, `src/pages/Templates.tsx`
+### Resultado esperado
+- Toggle de colaborador reflete **instantaneamente** na UI (optimistic).
+- Em caso de erro real, rollback automático + toast.
+- Mudanças feitas em qualquer aba (Projetos, Alocação, dialog do projeto) aparecem **imediatamente** nas outras.
+- Sem mais "Projeto não encontrado" durante transições rápidas.
 
 ### Observações
-- A solução é puramente client-side, não requer mudanças no banco
-- Não afeta performance: `sessionStorage` é síncrono e leve
-- Funciona em todos os navegadores modernos
+- Sem mudanças no banco — apenas lógica client-side.
+- Não impacta filtros persistidos nem outras funcionalidades.
 
