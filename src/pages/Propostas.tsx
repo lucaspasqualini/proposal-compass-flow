@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,13 +32,13 @@ export default function Propostas() {
   const deleteProposal = useDeleteProposal();
   const updateProposal = useUpdateProposal();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [empresaFilter, setEmpresaFilter] = useState<string>("all");
-  const [yearFilter, setYearFilter] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("status");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [hidePerdida, setHidePerdida] = useState(false);
+  const [search, setSearch] = usePersistedState("propostas:search", "");
+  const [statusFilter, setStatusFilter] = usePersistedState<string>("propostas:status", "all");
+  const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("propostas:empresa", "all");
+  const [yearFilter, setYearFilter] = usePersistedState<string>("propostas:year", "all");
+  const [sortKey, setSortKey] = usePersistedState<SortKey>("propostas:sortKey", "status");
+  const [sortDir, setSortDir] = usePersistedState<SortDir>("propostas:sortDir", "asc");
+  const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
 
