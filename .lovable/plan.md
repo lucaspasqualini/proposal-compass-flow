@@ -1,31 +1,67 @@
 
 
-# Filtros e Ordenação — Alocação + Contas a Receber
+## Persistência de filtros e ordenação entre navegações
 
-## Resumo
-Padronizar filtros e ordenação por coluna nas abas **Alocação** e **Contas a Receber**, seguindo o padrão já usado em **Projetos** (headers clicáveis com ícones de sort, filtros por coluna com popover de checkboxes).
+### Objetivo
+Quando o usuário aplicar filtros ou ordenação em qualquer aba (Propostas, Projetos, Clientes, Equipe, Alocação, Contas a Receber, Templates) e navegar para outra aba, ao voltar os filtros devem permanecer como estavam. O reset para o padrão acontece apenas quando:
+- A página é recarregada (F5 / refresh)
+- O usuário faz logout
 
-## Alocação (`src/pages/Alocacao.tsx`)
+### Abordagem técnica
 
-**Manter** o filtro cumulativo `STATUS_HIERARCHY` (como pedido), mas melhorar o layout e adicionar:
+Criar um **hook genérico `usePersistedState`** que substitui `useState` e armazena o valor em `sessionStorage` (não `localStorage`).
 
-- **Busca textual** global (projeto, cliente, proposta) — `Input` com ícone `Search`
-- **Filtro de Etapa** — `Select` com valores do enum
-- **Ordenação clicável** em todas as colunas (Proposta, Projeto, Cliente, Status, Etapa) com ícones `ArrowUpDown`/`ArrowUp`/`ArrowDown`
-- **Layout da barra de filtros** unificado: todos os controles na mesma linha, sem labels separados (usar placeholders), `flex flex-wrap gap-3`
-- Corrigir tipagem (remover `any` onde possível)
+Por que `sessionStorage`?
+- Persiste enquanto a aba do navegador estiver aberta → sobrevive a navegações entre rotas
+- É limpo automaticamente ao fechar a aba ou recarregar a página → atende ao requisito de "resetar ao atualizar"
+- Logout limpará a chave manualmente para garantir consistência
 
-## Contas a Receber (`src/pages/ContasReceber.tsx`)
+```text
+┌─────────────────────────────────────────────────┐
+│  Navegação entre abas        → MANTÉM filtros   │
+│  F5 / refresh                → RESETA filtros   │
+│  Logout                      → RESETA filtros   │
+│  Fechar aba do navegador     → RESETA filtros   │
+└─────────────────────────────────────────────────┘
+```
 
-Manter filtros existentes (busca, status, ano, empresa) e adicionar:
+### Mudanças
 
-- **Ordenação clicável por coluna** nas colunas: Nº Projeto, Nome, Valor, Previsão, Emissão, Status, Recebimento
-- Headers com `cursor-pointer` + ícones de sort (`ArrowUpDown`/`ArrowUp`/`ArrowDown`)
-- State `sortKey`/`sortDir` integrado ao `useMemo` de `filtered`
-- Aplicar ordenação tanto na view "Por Parcela" quanto "Por Projeto"
+**1. Novo hook `src/hooks/usePersistedState.ts`**
+- API idêntica a `useState<T>(initial)` mas recebe uma `key` única
+- Lê de `sessionStorage` na montagem; se não houver, usa o valor inicial
+- Grava em `sessionStorage` a cada mudança (JSON serializado)
+- Em refresh, `sessionStorage` mantém os dados — então adicionamos um marcador `session-active` setado no carregamento inicial do app que, se ausente, limpa as chaves de filtros antes de hidratar
 
-## Padrão visual
-- Mesma mecânica de sort do `Projetos.tsx` (`handleSort`, `SortIcon`)
-- Barra de filtros inline sem labels (placeholder nos selects/inputs)
-- Arquivos editados: `src/pages/Alocacao.tsx`, `src/pages/ContasReceber.tsx`
+Estratégia de reset no refresh: usar a Performance API (`performance.getEntriesByType("navigation")[0].type === "reload"`) no `main.tsx` para limpar todas as chaves com prefixo `filter:` antes do React montar.
+
+**2. Logout limpa filtros — `src/contexts/AuthContext.tsx`**
+- No `signOut()`, antes do `supabase.auth.signOut()`, percorrer `sessionStorage` e remover chaves com prefixo `filter:`
+
+**3. Aplicar o hook em todas as páginas com filtros/ordenação**
+
+Substituir `useState` por `usePersistedState` nos states de filtros, busca e ordenação:
+
+| Página | States a persistir |
+|---|---|
+| `Propostas.tsx` | busca, filtros de status/ano/empresa, sortKey, sortDir |
+| `Projetos.tsx` | busca, filtros de coluna, sortKey, sortDir |
+| `Clientes.tsx` | busca, filtros, ordenação |
+| `Equipe.tsx` | busca, filtros, ordenação |
+| `Alocacao.tsx` | search, selectedMember, selectedStatus, selectedEtapa, sortKey, sortDir |
+| `ContasReceber.tsx` | busca, filtros (status/ano/empresa), view mode (parcela/projeto), sortKey, sortDir |
+| `Templates.tsx` | aba ativa (Templates Propostas / Email Comercial) |
+
+Cada página usa uma key única, ex.: `filter:propostas:search`, `filter:alocacao:sortKey`.
+
+**NÃO** persistir: dados de formulários de criação/edição, diálogos abertos, IDs selecionados — apenas filtros de listagem e ordenação.
+
+### Arquivos a editar/criar
+- **Criar**: `src/hooks/usePersistedState.ts`
+- **Editar**: `src/main.tsx` (lógica de reset no refresh), `src/contexts/AuthContext.tsx` (limpeza no logout), `src/pages/Propostas.tsx`, `src/pages/Projetos.tsx`, `src/pages/Clientes.tsx`, `src/pages/Equipe.tsx`, `src/pages/Alocacao.tsx`, `src/pages/ContasReceber.tsx`, `src/pages/Templates.tsx`
+
+### Observações
+- A solução é puramente client-side, não requer mudanças no banco
+- Não afeta performance: `sessionStorage` é síncrono e leve
+- Funciona em todos os navegadores modernos
 
