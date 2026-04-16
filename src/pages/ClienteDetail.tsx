@@ -20,6 +20,8 @@ import { useState, useEffect, useMemo } from "react";
 import CnpjLookupDialog, { type CnpjConfirmData } from "@/components/CnpjLookupDialog";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
+import { ClientLogo } from "@/components/ClientLogo";
+import { Globe } from "lucide-react";
 
 export default function ClienteDetail() {
   const { id } = useParams();
@@ -53,6 +55,7 @@ export default function ClienteDetail() {
     contact_name: "",
     email: "",
     phone: "",
+    website: "",
     address: "",
     notes: "",
     capital_social: null as number | null,
@@ -84,6 +87,7 @@ export default function ClienteDetail() {
         contact_name: client.contact_name ?? "",
         email: client.email ?? "",
         phone: client.phone ?? "",
+        website: (client as any).website ?? "",
         address: client.address ?? "",
         notes: client.notes ?? "",
         capital_social: (client as any).capital_social ?? null,
@@ -133,6 +137,7 @@ export default function ClienteDetail() {
         contact_name: form.contact_name,
         email: form.email,
         phone: form.phone,
+        website: form.website,
         address: form.address,
         notes: form.notes,
         capital_social: form.capital_social,
@@ -194,10 +199,11 @@ export default function ClienteDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/clientes")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
+        <div className="flex items-center gap-4">
+          <ClientLogo
+            client={{ name: client.name, website: (client as any).website, email: client.email }}
+            size="lg"
+          />
           <div>
             <h1 className="text-2xl font-bold">{client.name}</h1>
             {client.cnpj && <p className="text-sm text-muted-foreground">CNPJ: {client.cnpj}</p>}
@@ -463,8 +469,13 @@ export default function ClienteDetail() {
                     <Label className="flex items-center gap-1"><Phone className="h-3 w-3" /> Telefone</Label>
                     <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                   </div>
-                  <div className="grid gap-2 sm:col-span-1">
-                    {/* spacer */}
+                  <div className="grid gap-2">
+                    <Label className="flex items-center gap-1"><Globe className="h-3 w-3" /> Website</Label>
+                    <Input
+                      value={form.website}
+                      onChange={(e) => setForm({ ...form, website: e.target.value })}
+                      placeholder="empresa.com.br"
+                    />
                   </div>
                 </div>
                 <div className="grid gap-2">
