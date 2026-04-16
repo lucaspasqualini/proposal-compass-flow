@@ -71,6 +71,17 @@ export function useProjectAllocations(projectId?: string) {
   });
 }
 
+/**
+ * Invalida todas as queries que embarcam project_allocations.
+ * Usado após criar/remover alocações para garantir que UI fique sincronizada
+ * em todas as abas (Projetos, Alocação, ProjectDetailDialog).
+ */
+function invalidateAllocationQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["project_allocations"] });
+  qc.invalidateQueries({ queryKey: ["projects"] });
+  qc.invalidateQueries({ queryKey: ["alocacao-projects"] });
+}
+
 export function useCreateAllocation() {
   const qc = useQueryClient();
   return useMutation({
@@ -79,7 +90,61 @@ export function useCreateAllocation() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["project_allocations"] }),
+    // Optimistic update: adiciona a alocação imediatamente nas listas de projetos
+    onMutate: async (allocation) => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ["projects"] }),
+        qc.cancelQueries({ queryKey: ["alocacao-projects"] }),
+      ]);
+
+      const member = qc.getQueryData<TeamMember[]>(["team_members"])?.find(
+        (m) => m.id === allocation.team_member_id
+      );
+
+      const tempAllocation = {
+        id: `temp-${Date.now()}`,
+        team_member_id: allocation.team_member_id,
+        team_members: member
+          ? { id: member.id, name: member.name, role: member.role }
+          : null,
+      };
+
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+
+      // Atualiza todas as queries que tenham project_allocations embarcadas
+      qc.getQueriesData<any>({ queryKey: ["projects"] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (Array.isArray(data)) {
+          qc.setQueryData(key, data.map((p: any) =>
+            p.id === allocation.project_id
+              ? { ...p, project_allocations: [...(p.project_allocations || []), tempAllocation] }
+              : p
+          ));
+        } else if (data && data.id === allocation.project_id) {
+          qc.setQueryData(key, {
+            ...data,
+            project_allocations: [...(data.project_allocations || []), tempAllocation],
+          });
+        }
+      });
+
+      qc.getQueriesData<any>({ queryKey: ["alocacao-projects"] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (Array.isArray(data)) {
+          qc.setQueryData(key, data.map((p: any) =>
+            p.id === allocation.project_id
+              ? { ...p, project_allocations: [...(p.project_allocations || []), tempAllocation] }
+              : p
+          ));
+        }
+      });
+
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+    onSettled: () => invalidateAllocationQueries(qc),
   });
 }
 
@@ -89,7 +154,53 @@ export function useDeleteAllocation() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("project_allocations").delete().eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["project_allocations"] }),
+    // Optimistic remove: tira a alocação imediatamente das listas
+    onMutate: async (allocationId) => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ["projects"] }),
+        qc.cancelQueries({ queryKey: ["alocacao-projects"] }),
+      ]);
+
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+
+      qc.getQueriesData<any>({ queryKey: ["projects"] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (Array.isArray(data)) {
+          qc.setQueryData(key, data.map((p: any) => ({
+            ...p,
+            project_allocations: (p.project_allocations || []).filter(
+              (a: any) => a.id !== allocationId
+            ),
+          })));
+        } else if (data && Array.isArray(data.project_allocations)) {
+          qc.setQueryData(key, {
+            ...data,
+            project_allocations: data.project_allocations.filter(
+              (a: any) => a.id !== allocationId
+            ),
+          });
+        }
+      });
+
+      qc.getQueriesData<any>({ queryKey: ["alocacao-projects"] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (Array.isArray(data)) {
+          qc.setQueryData(key, data.map((p: any) => ({
+            ...p,
+            project_allocations: (p.project_allocations || []).filter(
+              (a: any) => a.id !== allocationId
+            ),
+          })));
+        }
+      });
+
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+    onSettled: () => invalidateAllocationQueries(qc),
   });
 }
