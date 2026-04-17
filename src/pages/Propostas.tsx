@@ -36,6 +36,7 @@ export default function Propostas() {
   const [statusFilter, setStatusFilter] = usePersistedState<string>("propostas:status", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("propostas:empresa", "all");
   const [yearFilter, setYearFilter] = usePersistedState<string>("propostas:year", "all");
+  const [monthFilter, setMonthFilter] = usePersistedState<string>("propostas:month", "all");
   const [sortKey, setSortKey] = usePersistedState<SortKey>("propostas:sortKey", "status");
   const [sortDir, setSortDir] = usePersistedState<SortDir>("propostas:sortDir", "asc");
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
