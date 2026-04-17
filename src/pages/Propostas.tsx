@@ -36,6 +36,7 @@ export default function Propostas() {
   const [statusFilter, setStatusFilter] = usePersistedState<string>("propostas:status", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("propostas:empresa", "all");
   const [yearFilter, setYearFilter] = usePersistedState<string>("propostas:year", "all");
+  const [monthFilter, setMonthFilter] = usePersistedState<string>("propostas:month", "all");
   const [sortKey, setSortKey] = usePersistedState<SortKey>("propostas:sortKey", "status");
   const [sortDir, setSortDir] = usePersistedState<SortDir>("propostas:sortDir", "asc");
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
@@ -81,8 +82,9 @@ export default function Propostas() {
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
       const matchYear = yearFilter === "all" || ((p as any).data_envio ?? "").startsWith(yearFilter);
+      const matchMonth = monthFilter === "all" || ((p as any).data_envio ?? "").substring(5, 7) === monthFilter;
       const matchHide = !hidePerdida || p.status !== "perdida";
-      return matchSearch && matchStatus && matchEmpresa && matchYear && matchHide;
+      return matchSearch && matchStatus && matchEmpresa && matchYear && matchMonth && matchHide;
     });
 
     const statusPriority: Record<string, number> = {
@@ -128,7 +130,7 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, yearFilter, sortKey, sortDir, hidePerdida]);
+  }, [proposals, search, statusFilter, empresaFilter, yearFilter, monthFilter, sortKey, sortDir, hidePerdida]);
 
   const stats = useMemo(() => {
     const ganhas = filtered.filter((p) => p.status === "ganha");
@@ -301,6 +303,21 @@ export default function Propostas() {
             <SelectItem value="all">Todos os Anos</SelectItem>
             {availableYears.map((y) => (
               <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Mês" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Meses</SelectItem>
+            {[
+              ["01", "Janeiro"], ["02", "Fevereiro"], ["03", "Março"], ["04", "Abril"],
+              ["05", "Maio"], ["06", "Junho"], ["07", "Julho"], ["08", "Agosto"],
+              ["09", "Setembro"], ["10", "Outubro"], ["11", "Novembro"], ["12", "Dezembro"],
+            ].map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
             ))}
           </SelectContent>
         </Select>
