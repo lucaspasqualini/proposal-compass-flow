@@ -82,8 +82,9 @@ export default function Propostas() {
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
       const matchYear = yearFilter === "all" || ((p as any).data_envio ?? "").startsWith(yearFilter);
+      const matchMonth = monthFilter === "all" || ((p as any).data_envio ?? "").substring(5, 7) === monthFilter;
       const matchHide = !hidePerdida || p.status !== "perdida";
-      return matchSearch && matchStatus && matchEmpresa && matchYear && matchHide;
+      return matchSearch && matchStatus && matchEmpresa && matchYear && matchMonth && matchHide;
     });
 
     const statusPriority: Record<string, number> = {
