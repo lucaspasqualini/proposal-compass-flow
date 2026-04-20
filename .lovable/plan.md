@@ -1,79 +1,58 @@
 
 
-## Controle de acesso por papel — 5 níveis (ajuste final)
+## Melhorar Usuários + mostrar identidade do usuário logado
 
-### Mapa final de permissões
+### Diagnóstico
+- Hoje os 2 usuários estão na base (`lpasqualinidelima@gmail.com` e `admin@admin.com.br`), ambos como **Sócio**, mas com `full_name` em branco — por isso aparecem como "Sem nome".
+- Não temos email visível em lugar nenhum (só está em `auth.users`, que não é exposto pelo frontend).
+- A sidebar não mostra quem está logado.
+- A aba Usuários só tem nome + dropdown de papel, sem contexto (email, status, etc).
 
-| Papel | Dashboard | Propostas | Projetos | Templates | Alocação | Clientes | Equipe | Contas a Receber | Usuários |
-|---|---|---|---|---|---|---|---|---|---|
-| **Sócio** | ✅ tudo | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD (com salário) | ✅ CRUD | ✅ |
-| **Gerente de Projetos** | ❌ | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD | ❌ | ✅ CRUD | ❌ |
-| **Consultor de Projetos** | ❌ | ✅ CRUD (sem cards de totalizador) | ✅ CRUD (sem cards de totalizador) | ✅ CRUD | ✅ CRUD | 👁️ leitura | ❌ | ❌ | ❌ |
-| **Estagiário** | ❌ | ❌ | ❌ | ❌ | 👁️ leitura | ❌ | ❌ | ❌ | ❌ |
-| **Administrativo** | ❌ | ❌ | ❌ | ❌ | 👁️ leitura | ✅ CRUD | 👁️ leitura (com salário) | ✅ CRUD | ❌ |
+### O que vamos construir
 
-Mudança em relação à versão anterior: **Gerente de Projetos** agora também tem acesso completo a **Contas a Receber**.
+**1. Mostrar email na lista de usuários**
+- Adicionar coluna `email` à tabela `profiles` (sincronizada do `auth.users` via trigger `handle_new_user`).
+- Backfill: copiar email dos 2 usuários existentes.
+- Coluna "Email" passa a aparecer na tabela de Usuários.
 
-### Banco de dados
+**2. Permitir editar o próprio nome**
+- Novo cartão "Meu perfil" no topo da página Usuários (visível para qualquer papel que entrar na página — mas como só Sócio acessa, fica natural).
+- Mostra: avatar com iniciais, nome (editável), email (somente leitura), papel atual.
+- Botão "Salvar" grava em `profiles.full_name`.
 
-**1. Enum e tabela de papéis**
-- Enum `app_role`: `socio`, `gerente_projetos`, `consultor_projetos`, `estagiario`, `administrativo`
-- Tabela `user_roles` (`id`, `user_id`, `role`, `created_at`) com unique em `(user_id, role)`
-- Função `has_role(_user_id, _role)` (`SECURITY DEFINER`) para evitar recursão
-- Função utilitária `is_socio(_user_id)`
-- Seu usuário atual é inserido como `socio` automaticamente
+**3. Reformular a tabela "Todos os usuários"**
+Colunas: **Avatar+Nome | Email | Papel atual | Data de cadastro | Ações**
+- Cada linha mostra avatar com iniciais, nome (ou "—" se vazio) e email logo abaixo.
+- Coluna "Papel" exibe **badge colorida** com o papel atual + dropdown discreto para trocar.
+- Badges: Sócio (roxo), Gerente (azul), Consultor (verde), Estagiário (amarelo), Administrativo (laranja), Sem acesso (cinza).
+- Filtros no cabeçalho: busca por nome/email + filtro por papel (dropdown "Todos os papéis").
+- Ordenação por nome, email ou data.
+- Linha do próprio usuário fica destacada com fundo sutil + tag "(você)".
+- Proteção: o Sócio não consegue revogar o próprio acesso nem rebaixar a si mesmo (botão desabilitado com tooltip explicativo) — evita ficar trancado fora.
 
-**2. Reescrita das RLS**
+**4. Mostrar usuário logado na sidebar**
+- Bloco no rodapé da sidebar (acima do botão "Sair") com avatar + nome + papel.
+- Quando colapsada, mostra só o avatar com tooltip.
+- Clicar no bloco abre `/usuarios` (ou um menu com "Meu perfil" + "Sair").
 
-| Tabela | SELECT | INSERT/UPDATE/DELETE |
-|---|---|---|
-| `proposals` | socio, gerente_projetos, consultor_projetos | socio, gerente_projetos, consultor_projetos |
-| `projects` | socio, gerente_projetos, consultor_projetos | socio, gerente_projetos, consultor_projetos |
-| `proposal_templates` | socio, gerente_projetos, consultor_projetos | socio, gerente_projetos, consultor_projetos |
-| `project_allocations` | todos os 5 papéis | socio, gerente_projetos, consultor_projetos |
-| `clients` | socio, gerente_projetos, consultor_projetos, administrativo | socio, gerente_projetos, administrativo |
-| `team_members` | socio, administrativo | socio |
-| `bonus_history`, `promotion_history` | socio, administrativo | socio |
-| `receivables` | socio, gerente_projetos, administrativo | socio, gerente_projetos, administrativo |
-| `cnpj_review_queue` | socio, gerente_projetos, administrativo | mesmos |
-| `user_roles` | só socio | só socio |
-| `profiles` | mantém atual | mantém |
+**5. Texto explicativo no topo da página Usuários**
+Substituir o subtítulo atual por um bloco curto explicando:
+> Aqui você gerencia quem tem acesso ao sistema e o nível de permissão de cada pessoa. Cada papel libera um conjunto específico de abas — veja a tabela de permissões expandindo o painel abaixo.
 
-### Frontend
-
-**Novos arquivos**
-- `src/hooks/useUserRole.ts` — `{ role, isSocio, isGerente, isConsultor, isEstagiario, isAdministrativo, isLoading }`
-- `src/components/RoleGuard.tsx` — esconde seções por papel
-- `src/components/RoleProtectedRoute.tsx` — redireciona para a primeira rota permitida
-- `src/pages/Usuarios.tsx` — só sócio: lista usuários e atribui papel
-- `src/pages/AguardandoAcesso.tsx` — usuário sem papel atribuído
-
-**Edições**
-- `src/contexts/AuthContext.tsx` — carregar papel junto com a sessão
-- `src/App.tsx` — envolver rotas em `RoleProtectedRoute`; raiz redireciona conforme papel
-- `src/components/AppSidebar.tsx` — filtrar menu pelo papel; adicionar "Usuários" só para sócio
-- `src/pages/Propostas.tsx` — esconder cards de totalizador para consultor
-- `src/pages/Projetos.tsx` — esconder cards de totalizador para consultor
-- `src/pages/Clientes.tsx` + `src/pages/ClienteDetail.tsx` — modo leitura para consultor
-- `src/pages/Equipe.tsx` + `src/components/TeamMemberDetailDialog.tsx` — modo leitura para administrativo
-
-### Redirecionamento por papel
-```text
-socio              → /
-gerente_projetos   → /propostas
-consultor_projetos → /propostas
-estagiario         → /alocacao
-administrativo     → /contas-a-receber
-sem papel          → /aguardando-acesso
-```
+Painel colapsável "Ver matriz de permissões" mostrando a tabela completa de quem acessa o quê (a mesma do plano anterior) — assim você não precisa lembrar de cabeça.
 
 ### Arquivos
-- **Migração**: enum `app_role`, tabela `user_roles`, funções `has_role`/`is_socio`, inserção do sócio atual, reescrita de RLS de 10 tabelas
-- **Criar**: `src/hooks/useUserRole.ts`, `src/components/RoleGuard.tsx`, `src/components/RoleProtectedRoute.tsx`, `src/pages/Usuarios.tsx`, `src/pages/AguardandoAcesso.tsx`
-- **Editar**: `src/contexts/AuthContext.tsx`, `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/pages/Propostas.tsx`, `src/pages/Projetos.tsx`, `src/pages/Clientes.tsx`, `src/pages/ClienteDetail.tsx`, `src/pages/Equipe.tsx`, `src/components/TeamMemberDetailDialog.tsx`
+- **Migração**: adicionar coluna `email TEXT` em `profiles`; atualizar trigger `handle_new_user` para preencher `email = NEW.email`; backfill dos 2 registros existentes
+- **Editar tipos**: `src/integrations/supabase/types.ts` (auto)
+- **Editar**: 
+  - `src/pages/Usuarios.tsx` — cartão "Meu perfil", nova tabela com email + badge + filtros + proteção do próprio sócio + painel de matriz de permissões
+  - `src/components/AppSidebar.tsx` — bloco do usuário logado no rodapé
+- **Criar**: 
+  - `src/components/RoleBadge.tsx` — badge colorida reutilizável por papel
+  - `src/components/UserAvatar.tsx` — avatar com iniciais a partir do nome/email
 
 ### Observações
-- Você (sócio) não perde nenhum acesso — ganha a aba "Usuários".
-- Mudança não destrutiva: dados intactos, só RLS fica mais restritiva.
-- Reversível a qualquer momento via "Usuários".
+- Mudança não destrutiva.
+- Você poderá finalmente colocar seu nome ("Lucas Pasqualini de Lima"?) e ele vai aparecer na sidebar e em qualquer lugar que use `profiles.full_name`.
+- O segundo usuário (`admin@admin.com.br`) também aparecerá com email — fica fácil decidir se mantém ou revoga.
 
