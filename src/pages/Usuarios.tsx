@@ -1,30 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, ArrowUpDown, ChevronDown } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowUpDown, ChevronDown, Plus, MoreHorizontal, KeyRound, Trash2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ROLE_LABELS, type AppRole, useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-import { useState, useMemo, useEffect } from "react";
-import { UserAvatar } from "@/components/UserAvatar";
+import { useState, useMemo, useRef } from "react";
 import { RoleBadge } from "@/components/RoleBadge";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface ProfileRow {
   user_id: string;
   full_name: string;
   email: string | null;
-  created_at: string;
 }
 
 interface UserRoleRow {
@@ -33,7 +31,7 @@ interface UserRoleRow {
   role: AppRole;
 }
 
-type SortKey = "name" | "email" | "created_at";
+type SortKey = "name" | "email" | "role";
 
 const PERMISSION_MATRIX: { module: string; roles: Record<AppRole, string> }[] = [
   { module: "Dashboard", roles: { socio: "✅", gerente_projetos: "—", consultor_projetos: "—", estagiario: "—", administrativo: "—" } },
@@ -47,6 +45,25 @@ const PERMISSION_MATRIX: { module: string; roles: Record<AppRole, string> }[] = 
   { module: "Usuários", roles: { socio: "✅", gerente_projetos: "—", consultor_projetos: "—", estagiario: "—", administrativo: "—" } },
 ];
 
+async function callManageUsers(action: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  const res = await fetch(
+    `https://${projectId}.supabase.co/functions/v1/manage-users/${action}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Erro na operação");
+  return data;
+}
+
 export default function Usuarios() {
   const { isSocio, isLoading } = useUserRole();
   const { user } = useAuth();
@@ -57,13 +74,23 @@ export default function Usuarios() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [matrixOpen, setMatrixOpen] = useState(false);
 
+  // Invite dialog
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AppRole>("consultor_projetos");
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  // Delete confirm
+  const [deleteTarget, setDeleteTarget] = useState<ProfileRow | null>(null);
+
   const { data: profiles = [], isLoading: loadingProfiles } = useQuery({
     queryKey: ["all_profiles"],
     enabled: isSocio,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, full_name, email, created_at")
+        .select("user_id, full_name, email")
         .order("full_name");
       if (error) throw error;
       return data as ProfileRow[];
@@ -80,28 +107,24 @@ export default function Usuarios() {
     },
   });
 
-  const myProfile = useMemo(
-    () => profiles.find((p) => p.user_id === user?.id),
-    [profiles, user?.id],
-  );
-  const [myName, setMyName] = useState("");
-  useEffect(() => {
-    if (myProfile) setMyName(myProfile.full_name || "");
-  }, [myProfile]);
+  const rolesByUser = useMemo(() => {
+    const m = new Map<string, AppRole>();
+    roles.forEach((r) => m.set(r.user_id, r.role));
+    return m;
+  }, [roles]);
 
-  const saveMyName = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sem usuário");
+  // Inline edit mutations
+  const updateProfile = useMutation({
+    mutationFn: async ({ userId, field, value }: { userId: string; field: "full_name" | "email"; value: string }) => {
       const { error } = await supabase
         .from("profiles")
-        .update({ full_name: myName.trim() })
-        .eq("user_id", user.id);
+        .update({ [field]: value.trim() })
+        .eq("user_id", userId);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all_profiles"] });
       qc.invalidateQueries({ queryKey: ["my_profile"] });
-      toast.success("Nome atualizado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -119,29 +142,54 @@ export default function Usuarios() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const removeRole = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+  const handleInvite = async () => {
+    if (!inviteEmail) { toast.error("Informe o email"); return; }
+    setInviteLoading(true);
+    try {
+      await callManageUsers("invite", { email: inviteEmail, full_name: inviteName, role: inviteRole });
+      toast.success(`Convite enviado para ${inviteEmail}`);
+      setInviteOpen(false);
+      setInviteName("");
+      setInviteEmail("");
+      setInviteRole("consultor_projetos");
+      qc.invalidateQueries({ queryKey: ["all_profiles"] });
       qc.invalidateQueries({ queryKey: ["all_user_roles"] });
-      toast.success("Acesso revogado");
-    },
-  });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
-  const rolesByUser = useMemo(() => {
-    const m = new Map<string, AppRole>();
-    roles.forEach((r) => m.set(r.user_id, r.role));
-    return m;
-  }, [roles]);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await callManageUsers("delete", { user_id: deleteTarget.user_id });
+      toast.success("Usuário excluído");
+      qc.invalidateQueries({ queryKey: ["all_profiles"] });
+      qc.invalidateQueries({ queryKey: ["all_user_roles"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleResetPassword = async (email: string) => {
+    try {
+      await callManageUsers("reset-password", { email });
+      toast.success(`Email de redefinição enviado para ${email}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     let list = profiles.filter((p) => {
       const matchesText =
         !q ||
-        p.full_name.toLowerCase().includes(q) ||
+        (p.full_name || "").toLowerCase().includes(q) ||
         (p.email || "").toLowerCase().includes(q);
       const r = rolesByUser.get(p.user_id);
       const matchesRole =
@@ -154,7 +202,11 @@ export default function Usuarios() {
       let cmp = 0;
       if (sortKey === "name") cmp = (a.full_name || "").localeCompare(b.full_name || "");
       else if (sortKey === "email") cmp = (a.email || "").localeCompare(b.email || "");
-      else cmp = a.created_at.localeCompare(b.created_at);
+      else {
+        const ra = rolesByUser.get(a.user_id) || "";
+        const rb = rolesByUser.get(b.user_id) || "";
+        cmp = ra.localeCompare(rb);
+      }
       return sortDir === "asc" ? cmp : -cmp;
     });
     return list;
@@ -162,255 +214,277 @@ export default function Usuarios() {
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
   if (isLoading) return null;
   if (!isSocio) return <Navigate to="/" replace />;
 
-  const myRole = user ? rolesByUser.get(user.id) : undefined;
-
   return (
-    <TooltipProvider>
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Usuários</h1>
-          <p className="text-muted-foreground mt-1 max-w-3xl">
-            Gerencie quem tem acesso ao sistema e o nível de permissão de cada pessoa. Cada papel libera um conjunto específico de abas — veja a matriz de permissões abaixo.
+          <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+            Gerencie quem tem acesso ao sistema e o nível de permissão de cada pessoa.
           </p>
         </div>
+        <Button onClick={() => setInviteOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Adicionar usuário
+        </Button>
+      </div>
 
-        {/* Meu perfil */}
+      {/* Matriz de permissões */}
+      <Collapsible open={matrixOpen} onOpenChange={setMatrixOpen}>
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Meu perfil</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start gap-4">
-              <UserAvatar name={myName} email={myProfile?.email} className="h-14 w-14" />
-              <div className="flex-1 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="my-name">Nome completo</Label>
-                  <Input
-                    id="my-name"
-                    value={myName}
-                    onChange={(e) => setMyName(e.target.value)}
-                    placeholder="Seu nome completo"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Email</Label>
-                  <Input value={myProfile?.email || ""} readOnly disabled />
-                </div>
-                <div className="space-y-1">
-                  <Label>Papel</Label>
-                  <div className="pt-2"><RoleBadge role={myRole ?? null} /></div>
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    onClick={() => saveMyName.mutate()}
-                    disabled={saveMyName.isPending || myName.trim() === (myProfile?.full_name || "")}
-                  >
-                    Salvar nome
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Matriz de permissões */}
-        <Collapsible open={matrixOpen} onOpenChange={setMatrixOpen}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors rounded-t-lg">
-                <span className="font-medium">Ver matriz de permissões</span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", matrixOpen && "rotate-180")} />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="border-t overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Módulo</TableHead>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors rounded-t-lg">
+              <span className="font-medium">Ver matriz de permissões</span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", matrixOpen && "rotate-180")} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-t overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Módulo</TableHead>
+                    {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
+                      <TableHead key={r}>{ROLE_LABELS[r]}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PERMISSION_MATRIX.map((row) => (
+                    <TableRow key={row.module}>
+                      <TableCell className="font-medium">{row.module}</TableCell>
                       {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
-                        <TableHead key={r}>{ROLE_LABELS[r]}</TableHead>
+                        <TableCell key={r} className="text-sm text-muted-foreground">
+                          {row.roles[r]}
+                        </TableCell>
                       ))}
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {PERMISSION_MATRIX.map((row) => (
-                      <TableRow key={row.module}>
-                        <TableCell className="font-medium">{row.module}</TableCell>
-                        {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
-                          <TableCell key={r} className="text-sm text-muted-foreground">
-                            {row.roles[r]}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Tabela de usuários */}
-        <Card className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <Input
-              placeholder="Buscar por nome ou email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
-            <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-              <SelectTrigger className="w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os papéis</SelectItem>
-                <SelectItem value="none">Sem acesso</SelectItem>
-                {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
-                  <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground">
-                    Usuário <ArrowUpDown className="h-3 w-3" />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button onClick={() => toggleSort("email")} className="flex items-center gap-1 hover:text-foreground">
-                    Email <ArrowUpDown className="h-3 w-3" />
-                  </button>
-                </TableHead>
-                <TableHead>Papel</TableHead>
-                <TableHead>
-                  <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 hover:text-foreground">
-                    Cadastro <ArrowUpDown className="h-3 w-3" />
-                  </button>
-                </TableHead>
-                <TableHead className="w-20"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingProfiles || loadingRoles ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Nenhum usuário encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered.map((p) => {
-                  const currentRole = rolesByUser.get(p.user_id);
-                  const isMe = p.user_id === user?.id;
-                  return (
-                    <TableRow key={p.user_id} className={cn(isMe && "bg-primary/5")}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <UserAvatar name={p.full_name} email={p.email} />
-                          <div>
-                            <div className="font-medium flex items-center gap-2">
-                              {p.full_name || <span className="text-muted-foreground italic">Sem nome</span>}
-                              {isMe && <span className="text-xs text-primary font-normal">(você)</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{p.email || "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <RoleBadge role={currentRole ?? null} />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Select
-                                  value={currentRole ?? ""}
-                                  onValueChange={(v) =>
-                                    setRole.mutate({ userId: p.user_id, role: v as AppRole })
-                                  }
-                                  disabled={isMe}
-                                >
-                                  <SelectTrigger className="w-44 h-8 text-xs">
-                                    <SelectValue placeholder="Atribuir..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
-                                      <SelectItem key={r} value={r}>
-                                        {ROLE_LABELS[r]}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </span>
-                            </TooltipTrigger>
-                            {isMe && (
-                              <TooltipContent>
-                                Você não pode alterar seu próprio papel
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {(() => {
-                          if (!p.created_at) return "—";
-                          const d = new Date(p.created_at);
-                          return isNaN(d.getTime())
-                            ? "—"
-                            : format(d, "dd/MM/yyyy", { locale: ptBR });
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {currentRole && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeRole.mutate(p.user_id)}
-                                  disabled={isMe}
-                                  title={isMe ? "Você não pode revogar seu próprio acesso" : "Revogar acesso"}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {isMe && (
-                              <TooltipContent>
-                                Você não pode revogar seu próprio acesso
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CollapsibleContent>
         </Card>
+      </Collapsible>
+
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Input
+          placeholder="Buscar por nome ou email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
+          <SelectTrigger className="w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os papéis</SelectItem>
+            <SelectItem value="none">Sem acesso</SelectItem>
+            {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
+              <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    </TooltipProvider>
+
+      {/* Tabela */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground">
+                  Nome <ArrowUpDown className="h-3 w-3" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button onClick={() => toggleSort("email")} className="flex items-center gap-1 hover:text-foreground">
+                  Email <ArrowUpDown className="h-3 w-3" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button onClick={() => toggleSort("role")} className="flex items-center gap-1 hover:text-foreground">
+                  Papel <ArrowUpDown className="h-3 w-3" />
+                </button>
+              </TableHead>
+              <TableHead className="w-16"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadingProfiles || loadingRoles ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">Carregando...</TableCell>
+              </TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">Nenhum usuário encontrado</TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((p) => {
+                const currentRole = rolesByUser.get(p.user_id);
+                const isMe = p.user_id === user?.id;
+                return (
+                  <TableRow key={p.user_id} className={cn(isMe && "bg-primary/5")}>
+                    <TableCell>
+                      <InlineEdit
+                        value={p.full_name || ""}
+                        placeholder="Nome completo"
+                        onSave={(v) => updateProfile.mutate({ userId: p.user_id, field: "full_name", value: v })}
+                      />
+                      {isMe && <span className="text-xs text-primary ml-2">(você)</span>}
+                    </TableCell>
+                    <TableCell>
+                      <InlineEdit
+                        value={p.email || ""}
+                        placeholder="email@exemplo.com"
+                        onSave={(v) => updateProfile.mutate({ userId: p.user_id, field: "email", value: v })}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={currentRole ?? ""}
+                        onValueChange={(v) => setRole.mutate({ userId: p.user_id, role: v as AppRole })}
+                        disabled={isMe}
+                      >
+                        <SelectTrigger className="w-44 h-8 text-xs">
+                          <SelectValue placeholder="Atribuir..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
+                            <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      {!isMe && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => p.email && handleResetPassword(p.email)}>
+                              <KeyRound className="h-4 w-4 mr-2" /> Redefinir senha
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => setDeleteTarget(p)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" /> Excluir usuário
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Invite Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome completo</Label>
+              <Input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nome do usuário" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Papel</Label>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
+                    <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
+            <Button onClick={handleInvite} disabled={inviteLoading}>
+              {inviteLoading ? "Enviando..." : "Enviar convite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteTarget?.full_name || deleteTarget?.email}</strong>? Esta ação é irreversível e remove todo o acesso à plataforma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// Inline editable cell
+function InlineEdit({ value, placeholder, onSave }: { value: string; placeholder: string; onSave: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = () => {
+    setEditing(false);
+    if (draft.trim() !== value) {
+      onSave(draft);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <button
+        className="text-left w-full px-2 py-1 rounded hover:bg-muted/50 transition-colors text-sm truncate"
+        onClick={() => { setDraft(value); setEditing(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+      >
+        {value || <span className="text-muted-foreground italic">{placeholder}</span>}
+      </button>
+    );
+  }
+
+  return (
+    <Input
+      ref={inputRef}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+      className="h-8 text-sm"
+      autoFocus
+    />
   );
 }
