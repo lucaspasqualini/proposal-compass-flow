@@ -12,6 +12,7 @@ import { usePromotionHistory, useCreatePromotion, useDeletePromotion, useBonusHi
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, TrendingUp, Award, User } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { Database } from "@/integrations/supabase/types";
 
 type TeamMember = Database["public"]["Tables"]["team_members"]["Row"];
@@ -24,6 +25,8 @@ interface Props {
 
 export default function TeamMemberDetailDialog({ member, open, onOpenChange }: Props) {
   const { toast } = useToast();
+  const { isSocio } = useUserRole();
+  const canEdit = isSocio;
   const { data: promotions } = usePromotionHistory(member?.id);
   const { data: bonuses } = useBonusHistory(member?.id);
   const createPromotion = useCreatePromotion();
@@ -140,12 +143,14 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
 
           <TabsContent value="promotions" className="space-y-3">
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setShowPromoForm(!showPromoForm)}>
-                <Plus className="h-3 w-3 mr-1" /> Nova Promoção
-              </Button>
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={() => setShowPromoForm(!showPromoForm)}>
+                  <Plus className="h-3 w-3 mr-1" /> Nova Promoção
+                </Button>
+              )}
             </div>
 
-            {showPromoForm && (
+            {canEdit && showPromoForm && (
               <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1">
@@ -194,9 +199,11 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
                     <TableCell className="text-sm">{formatCurrency(p.previous_salary)}</TableCell>
                     <TableCell className="text-sm font-medium">{formatCurrency(p.new_salary)}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletePromotion.mutate({ id: p.id, memberId: member.id })}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletePromotion.mutate({ id: p.id, memberId: member.id })}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -206,12 +213,14 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
 
           <TabsContent value="bonuses" className="space-y-3">
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setShowBonusForm(!showBonusForm)}>
-                <Plus className="h-3 w-3 mr-1" /> Novo Bônus
-              </Button>
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={() => setShowBonusForm(!showBonusForm)}>
+                  <Plus className="h-3 w-3 mr-1" /> Novo Bônus
+                </Button>
+              )}
             </div>
 
-            {showBonusForm && (
+            {canEdit && showBonusForm && (
               <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1">
@@ -258,9 +267,11 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
                     <TableCell className="text-sm">{formatDate(b.payment_date)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{b.notes || "—"}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteBonus.mutate({ id: b.id, memberId: member.id })}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteBonus.mutate({ id: b.id, memberId: member.id })}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
