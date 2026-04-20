@@ -8,10 +8,12 @@ import {
   LogOut,
   Receipt,
   LayoutTemplate,
+  ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole, canAccessRoute } from "@/hooks/useUserRole";
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +28,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Building2 } from "lucide-react";
 
-const mainItems = [
+const allItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Propostas", url: "/propostas", icon: FileText },
   { title: "Projetos", url: "/projetos", icon: FolderKanban },
@@ -35,6 +37,7 @@ const mainItems = [
   { title: "Alocação", url: "/alocacao", icon: CalendarRange },
   { title: "Contas a Receber", url: "/contas-a-receber", icon: Receipt },
   { title: "Templates", url: "/templates", icon: LayoutTemplate },
+  { title: "Usuários", url: "/usuarios", icon: ShieldCheck },
 ];
 
 export function AppSidebar() {
@@ -42,10 +45,13 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
+  const { role } = useUserRole();
   const currentPath = location.pathname;
 
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+
+  const mainItems = allItems.filter((item) => canAccessRoute(role, item.url));
 
   return (
     <Sidebar collapsible="icon">
