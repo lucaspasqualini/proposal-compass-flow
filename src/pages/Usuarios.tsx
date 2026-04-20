@@ -116,9 +116,12 @@ export default function Usuarios() {
   // Inline edit mutations
   const updateProfile = useMutation({
     mutationFn: async ({ userId, field, value }: { userId: string; field: "full_name" | "email"; value: string }) => {
+      const updateData = field === "full_name"
+        ? { full_name: value.trim() }
+        : { email: value.trim() };
       const { error } = await supabase
         .from("profiles")
-        .update({ [field]: value.trim() })
+        .update(updateData)
         .eq("user_id", userId);
       if (error) throw error;
     },
