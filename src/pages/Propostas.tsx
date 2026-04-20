@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
+import { RoleGuard } from "@/components/RoleGuard";
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
@@ -231,7 +232,8 @@ export default function Propostas() {
         </div>
       </div>
 
-      {/* Dashboard de subtotais */}
+      {/* Dashboard de subtotais — escondido para Consultor */}
+      <RoleGuard allowed={["socio", "gerente_projetos", "estagiario", "administrativo"]}>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
