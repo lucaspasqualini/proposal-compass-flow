@@ -269,6 +269,7 @@ export default function Propostas() {
           </CardContent>
         </Card>
       </div>
+      </RoleGuard>
 
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
