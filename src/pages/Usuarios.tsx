@@ -150,7 +150,7 @@ export default function Usuarios() {
     setInviteLoading(true);
     try {
       await callManageUsers("invite", { email: inviteEmail, full_name: inviteName, role: inviteRole });
-      toast.success(`Convite enviado para ${inviteEmail}`);
+      toast.success(`Usuário ${inviteEmail} criado com senha padrão Meden001`);
       setInviteOpen(false);
       setInviteName("");
       setInviteEmail("");
