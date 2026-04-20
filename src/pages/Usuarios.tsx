@@ -178,10 +178,10 @@ export default function Usuarios() {
     }
   };
 
-  const handleResetPassword = async (email: string) => {
+  const handleResetPassword = async (userId: string) => {
     try {
-      await callManageUsers("reset-password", { email });
-      toast.success(`Email de redefinição enviado para ${email}`);
+      await callManageUsers("reset-password", { user_id: userId });
+      toast.success("Senha redefinida para Meden001");
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -375,7 +375,7 @@ export default function Usuarios() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => p.email && handleResetPassword(p.email)}>
+                            <DropdownMenuItem onClick={() => handleResetPassword(p.user_id)}>
                               <KeyRound className="h-4 w-4 mr-2" /> Redefinir senha
                             </DropdownMenuItem>
                             <DropdownMenuItem
