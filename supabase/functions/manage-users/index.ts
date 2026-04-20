@@ -53,9 +53,12 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Invite user
-      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        data: { full_name: full_name || "" },
+      // Create user without sending email
+      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: "Meden001",
+        email_confirm: true,
+        user_metadata: { full_name: full_name || "" },
       });
       if (inviteError) throw inviteError;
 
