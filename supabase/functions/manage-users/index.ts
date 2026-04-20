@@ -53,9 +53,12 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Invite user
-      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        data: { full_name: full_name || "" },
+      // Create user without sending email
+      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: "Meden001",
+        email_confirm: true,
+        user_metadata: { full_name: full_name || "" },
       });
       if (inviteError) throw inviteError;
 
@@ -102,16 +105,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === "reset-password" && req.method === "POST") {
-      const { email } = await req.json();
-      if (!email) {
-        return new Response(JSON.stringify({ error: "email required" }), {
+      const { user_id } = await req.json();
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const { error } = await supabaseAdmin.auth.admin.generateLink({
-        type: "recovery",
-        email,
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
+        password: "Meden001",
       });
       if (error) throw error;
 
