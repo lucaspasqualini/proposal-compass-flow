@@ -21,12 +21,15 @@ import CnpjLookupDialog, { type CnpjConfirmData } from "@/components/CnpjLookupD
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 import { ClientLogo } from "@/components/ClientLogo";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Globe } from "lucide-react";
 
 export default function ClienteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isConsultor } = useUserRole();
+  const canEdit = !isConsultor;
   const { data: client, isLoading } = useClient(id);
   const updateClient = useUpdateClient();
   const { data: allProposals } = useProposals();
@@ -372,6 +375,7 @@ export default function ClienteDetail() {
 
         {/* Dados Cadastrais Tab */}
         <TabsContent value="dados">
+          <fieldset disabled={!canEdit} className="contents">
           <div className="space-y-6">
             {/* Informações da Empresa */}
             <Card>
@@ -532,12 +536,15 @@ export default function ClienteDetail() {
               </CardHeader>
               <CardContent className="grid gap-4">
                 <Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anotações gerais sobre o cliente..." />
-                <Button onClick={handleSave} disabled={updateClient.isPending} className="w-fit">
-                  <Save className="h-4 w-4 mr-1" /> Salvar Alterações
-                </Button>
+                {canEdit && (
+                  <Button onClick={handleSave} disabled={updateClient.isPending} className="w-fit">
+                    <Save className="h-4 w-4 mr-1" /> Salvar Alterações
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
+          </fieldset>
         </TabsContent>
       </Tabs>
 

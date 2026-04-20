@@ -15,11 +15,14 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ClientLogo } from "@/components/ClientLogo";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type SortKey = "name" | "proposal_count" | "project_count" | "won_value" | "last_proposal_date";
 type SortDir = "asc" | "desc";
 
 export default function Clientes() {
+  const { isConsultor } = useUserRole();
+  const canEdit = !isConsultor;
   const { data: clients, isLoading } = useClientsWithStats();
   const createClient = useCreateClient();
   const deleteClient = useDeleteClient();
@@ -105,9 +108,11 @@ export default function Clientes() {
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">Gerencie sua base de clientes</p>
         </div>
-        <Button onClick={() => setShowNew(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Novo Cliente
-        </Button>
+        {canEdit && (
+          <Button onClick={() => setShowNew(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Novo Cliente
+          </Button>
+        )}
       </div>
 
       {/* Summary */}
@@ -237,23 +242,25 @@ export default function Clientes() {
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{c.last_proposal_date ? formatDate(c.last_proposal_date) : "—"}</TableCell>
                       <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remover cliente?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={(e) => handleDelete(e, c.id)}>Remover</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {canEdit && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remover cliente?</AlertDialogTitle>
+                                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={(e) => handleDelete(e, c.id)}>Remover</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

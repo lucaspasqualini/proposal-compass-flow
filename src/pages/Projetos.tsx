@@ -20,6 +20,7 @@ import { compareProjectNumbers } from "@/lib/projectNumber";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, Download } from "lucide-react";
 import { exportToExcel } from "@/lib/exportExcel";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
+import { RoleGuard } from "@/components/RoleGuard";
 
 type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
 type SortDir = "asc" | "desc";
@@ -338,6 +339,7 @@ export default function Projetos() {
         </div>
       </div>
 
+      <RoleGuard allowed={["socio", "gerente_projetos", "estagiario", "administrativo"]}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -364,6 +366,7 @@ export default function Projetos() {
           </CardContent>
         </Card>
       </div>
+      </RoleGuard>
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
