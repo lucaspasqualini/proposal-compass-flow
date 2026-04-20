@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RoleProtectedRoute } from "@/components/RoleProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
+import { RoleHomeRedirect } from "@/components/RoleHomeRedirect";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
@@ -16,6 +18,8 @@ import Equipe from "@/pages/Equipe";
 import Alocacao from "@/pages/Alocacao";
 import Templates from "@/pages/Templates";
 import ContasReceber from "@/pages/ContasReceber";
+import Usuarios from "@/pages/Usuarios";
+import AguardandoAcesso from "@/pages/AguardandoAcesso";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -37,25 +41,34 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
+              path="/aguardando-acesso"
+              element={
+                <ProtectedRoute>
+                  <AguardandoAcesso />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               element={
                 <ProtectedRoute>
                   <AppLayout />
                 </ProtectedRoute>
               }
             >
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/clientes/:id" element={<ClienteDetail />} />
-              <Route path="/propostas" element={<Propostas />} />
+              <Route path="/" element={<RoleHomeRedirect><Dashboard /></RoleHomeRedirect>} />
+              <Route path="/clientes" element={<RoleProtectedRoute><Clientes /></RoleProtectedRoute>} />
+              <Route path="/clientes/:id" element={<RoleProtectedRoute><ClienteDetail /></RoleProtectedRoute>} />
+              <Route path="/propostas" element={<RoleProtectedRoute><Propostas /></RoleProtectedRoute>} />
               <Route path="/propostas/nova" element={<Navigate to="/propostas" replace />} />
               <Route path="/propostas/:id" element={<Navigate to="/propostas" replace />} />
-              <Route path="/projetos" element={<Projetos />} />
+              <Route path="/projetos" element={<RoleProtectedRoute><Projetos /></RoleProtectedRoute>} />
               <Route path="/projetos/novo" element={<Navigate to="/projetos" replace />} />
               <Route path="/projetos/:id" element={<Navigate to="/projetos" replace />} />
-              <Route path="/equipe" element={<Equipe />} />
-              <Route path="/alocacao" element={<Alocacao />} />
-              <Route path="/contas-a-receber" element={<ContasReceber />} />
-              <Route path="/templates" element={<Templates />} />
+              <Route path="/equipe" element={<RoleProtectedRoute><Equipe /></RoleProtectedRoute>} />
+              <Route path="/alocacao" element={<RoleProtectedRoute><Alocacao /></RoleProtectedRoute>} />
+              <Route path="/contas-a-receber" element={<RoleProtectedRoute><ContasReceber /></RoleProtectedRoute>} />
+              <Route path="/templates" element={<RoleProtectedRoute><Templates /></RoleProtectedRoute>} />
+              <Route path="/usuarios" element={<RoleProtectedRoute allowed={["socio"]}><Usuarios /></RoleProtectedRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
