@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/format";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import TeamMemberDetailDialog from "@/components/TeamMemberDetailDialog";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { Database } from "@/integrations/supabase/types";
 
 type TeamMember = Database["public"]["Tables"]["team_members"]["Row"];
@@ -21,6 +22,8 @@ type TeamMemberInsert = Database["public"]["Tables"]["team_members"]["Insert"];
 const emptyMember: TeamMemberInsert = { name: "", role: "", area: "", salary: null, is_active: true };
 
 export default function Equipe() {
+  const { isSocio } = useUserRole();
+  const canEdit = isSocio;
   const { data: members, isLoading } = useTeamMembers();
   const createMember = useCreateTeamMember();
   const updateMember = useUpdateTeamMember();
@@ -83,6 +86,7 @@ export default function Equipe() {
           <h1 className="text-2xl font-bold">Equipe</h1>
           <p className="text-muted-foreground">Gerencie membros da equipe</p>
         </div>
+        {canEdit && (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpen()}>
@@ -132,6 +136,7 @@ export default function Equipe() {
             </Button>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <Card>
@@ -170,28 +175,30 @@ export default function Equipe() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" onClick={() => handleOpen(m)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remover membro?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(m.id)}>Remover</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                      {canEdit && (
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" onClick={() => handleOpen(m)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remover membro?</AlertDialogTitle>
+                                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(m.id)}>Remover</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
