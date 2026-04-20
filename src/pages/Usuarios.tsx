@@ -371,7 +371,13 @@ export default function Usuarios() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {format(new Date(p.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        {(() => {
+                          if (!p.created_at) return "—";
+                          const d = new Date(p.created_at);
+                          return isNaN(d.getTime())
+                            ? "—"
+                            : format(d, "dd/MM/yyyy", { locale: ptBR });
+                        })()}
                       </TableCell>
                       <TableCell>
                         {currentRole && (
