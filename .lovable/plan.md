@@ -1,72 +1,47 @@
 
 
-## Redesign da aba Usuários — tabela editável + convite por email + exclusão + reset de senha
+## Corrigir RLS para que joins entre abas funcionem em todos os papéis
 
-### Visão geral
+### Diagnóstico
+Hoje as policies de `proposals`, `projects`, `clients` e `team_members` exigem o papel certo até para SELECT. Como o PostgREST aplica RLS em cada tabela do JOIN, quando o estagiário consulta `/alocacao` o join com `projects/clients/proposals` retorna vazio, e quando o administrativo abre `/contas-a-receber` o nome do projeto/cliente vem nulo.
 
-Simplificar a página para uma tabela com 3 colunas editáveis (Nome, Email, Papel) + coluna de ações. Adicionar botão "Adicionar usuário" que envia convite por email. Permitir excluir usuários e redefinir senhas.
+A solução: **liberar SELECT (apenas leitura) para qualquer usuário autenticado** nas tabelas de referência, mantendo INSERT/UPDATE/DELETE restritos por papel. Isso preserva toda a segurança de escrita e só expõe dados que já são visíveis para quem tem acesso "pleno" às outras abas.
 
-### 1. Edge Function `manage-users`
+### Mudanças de RLS (migração)
 
-Criar `supabase/functions/manage-users/index.ts` — uma edge function que usa o `service_role` key para operações administrativas que o client-side não pode fazer:
+| Tabela | SELECT (novo) | INSERT/UPDATE/DELETE (mantido) |
+|---|---|---|
+| `proposals` | qualquer usuário autenticado | sócio, gerente, consultor |
+| `projects` | qualquer usuário autenticado | sócio, gerente, consultor |
+| `clients` | qualquer usuário autenticado | sócio, gerente, administrativo |
+| `team_members` | qualquer usuário autenticado (sem o campo `salary` exposto — ver abaixo) | sócio |
+| `project_allocations` | já está liberado para os 5 papéis — ok |
+| `receivables` | qualquer usuário autenticado | sócio, gerente, administrativo |
 
-- **`POST /invite`**: Recebe `{ email, full_name, role }`. Usa `supabase.auth.admin.inviteUserByEmail()` para enviar convite. Após criação do usuário, insere o papel em `user_roles` e atualiza `full_name` em `profiles`.
-- **`POST /delete`**: Recebe `{ user_id }`. Usa `supabase.auth.admin.deleteUser()` para remover o usuário do auth (cascade deleta `profiles` e `user_roles`).
-- **`POST /reset-password`**: Recebe `{ email }`. Usa `supabase.auth.admin.generateLink({ type: 'recovery', email })` para gerar link de redefinição de senha e enviar por email.
+### Proteção do salário (team_members)
+O campo `salary` é sensível e não deve vazar para estagiários/consultores. Solução: criar uma **view** `public.team_members_public` com todas as colunas exceto `salary`, e fazer o frontend (Alocação, ProjectDetailDialog, etc.) usar essa view para joins/listagens. A tabela `team_members` em si só será consultada diretamente pelas páginas que precisam de salário (Equipe, histórico de bônus/promoção), que continuam restritas a sócio + administrativo via RLS atual.
 
-Todas as ações validam que o chamador é `socio` (verificando JWT + consultando `user_roles`).
+Alternativa mais simples: manter `team_members` com SELECT liberado mas adicionar policy column-level via view. Vou usar a view para ficar limpo.
 
-### 2. Migração de banco
+### Ajustes de código
+- **`src/pages/Alocacao.tsx`**: trocar `team_members(id, name)` por `team_members_public(id, name)` no select do join, e a query de filtro de colaboradores também passa a ler de `team_members_public`.
+- **`src/components/ProjectDetailDialog.tsx`**: idem no join de allocations.
+- Demais lugares que fazem join `team_members` apenas para mostrar nome → trocar para a view.
+- **`src/integrations/supabase/types.ts`** será regenerado automaticamente após a migração.
 
-- Remover o botão "Criar conta" da página de Login (signup público) — apenas convites.
-- Adicionar `ON DELETE CASCADE` na foreign key de `profiles.user_id` para `auth.users(id)` (se não existir), garantindo limpeza ao deletar.
+### O que NÃO muda
+- Permissão de navegação por aba (sidebar / RoleProtectedRoute) continua igual.
+- Permissão de escrita continua igual — estagiário não consegue editar nada de proposals/projects/clients.
+- Salário continua invisível para quem não é sócio/administrativo.
+- Tabelas sensíveis (`bonus_history`, `promotion_history`, `user_roles`) continuam restritas como estão.
 
-### 3. Reescrever `src/pages/Usuarios.tsx`
-
-**Layout simplificado:**
-- Cabeçalho com título + botão "Adicionar usuário"
-- Remover seção "Meu perfil" (mover para sidebar ou manter inline na tabela)
-- Manter matriz de permissões colapsável
-
-**Tabela com 3 colunas editáveis + ações:**
-
-| Nome | Email | Papel | Ações |
-|---|---|---|---|
-| Input editável inline | Input editável inline | Select dropdown | Excluir / Redefinir senha |
-
-- Cada célula de Nome e Email é um `<Input>` que salva ao perder foco (onBlur) ou ao pressionar Enter
-- Célula de Papel é um `<Select>` que salva ao trocar valor
-- Linha do próprio sócio: papel não editável (proteção), sem botão de excluir
-- Coluna de Ações: menu dropdown com "Redefinir senha" e "Excluir usuário"
-- Excluir pede confirmação via AlertDialog antes de executar
-- Filtro por nome/email e por papel no cabeçalho da tabela
-- Ordenação por clique no cabeçalho de cada coluna
-
-**Dialog "Adicionar usuário":**
-- Campos: Nome completo, Email, Papel (select)
-- Ao confirmar: chama edge function `/invite`
-- Mostra toast de sucesso: "Convite enviado para [email]"
-- O usuário convidado recebe email com link para definir senha
-
-### 4. Remover signup público
-
-Editar `src/pages/Login.tsx`:
-- Remover botão "Criar conta" — acesso só via convite do sócio
-
-### 5. Atualizar sidebar
-
-O bloco de usuário no rodapé da sidebar já existe. Manter como está — nome + papel do usuário logado.
+### Resultado esperado
+- **Estagiário em /alocacao**: vê todos os projetos, cliente, proposta, etapa e nomes da equipe (sem salário).
+- **Administrativo em /contas-a-receber**: vê o número da proposta, título, empresa, cliente normalmente.
+- **Consultor em /propostas e /projetos**: nada muda (já funcionava).
+- Sócio/gerente: nada muda.
 
 ### Arquivos
-
-- **Criar**: `supabase/functions/manage-users/index.ts` — edge function para invite, delete, reset
-- **Reescrever**: `src/pages/Usuarios.tsx` — tabela editável inline + dialog de adicionar + ações
-- **Editar**: `src/pages/Login.tsx` — remover botão "Criar conta"
-- **Migração**: garantir cascade delete em profiles, ajustar se necessário
-
-### Observações
-- Convites usam o sistema nativo de auth — o usuário recebe email com link para definir senha
-- Excluir um usuário remove completamente do auth e, por cascade, de profiles e user_roles
-- Redefinir senha envia email de recuperação ao usuário
-- Você (sócio) não consegue excluir a si mesmo nem alterar seu próprio papel
+- **Migração nova**: alterar policies de SELECT em `proposals`, `projects`, `clients`, `receivables`, `team_members`; criar view `team_members_public`.
+- **Editar**: `src/pages/Alocacao.tsx`, `src/components/ProjectDetailDialog.tsx` (e qualquer outro componente que faça join `team_members(id, name)` apenas para exibir).
 
