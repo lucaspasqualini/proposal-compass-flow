@@ -1,47 +1,86 @@
+## Dashboard executivo, informativo e interativo
 
+Hoje o dashboard mostra 4 contadores estáticos e um valor aprovado total. Vamos transformar numa visão executiva real, com filtros, gráficos, atalhos clicáveis e seções acionáveis. Como o `/` é restrito a **sócio**, podemos expor todas as métricas (incluindo financeiras).
 
-## Corrigir RLS para que joins entre abas funcionem em todos os papéis
+### 1. Filtro global de período
+Topo da página, ao lado do título: seletor de período (`Este mês` / `Últimos 3 meses` / `Este ano` / `Tudo`). Persistido em `usePersistedState`. Todas as métricas e gráficos abaixo respondem ao filtro.
 
-### Diagnóstico
-Hoje as policies de `proposals`, `projects`, `clients` e `team_members` exigem o papel certo até para SELECT. Como o PostgREST aplica RLS em cada tabela do JOIN, quando o estagiário consulta `/alocacao` o join com `projects/clients/proposals` retorna vazio, e quando o administrativo abre `/contas-a-receber` o nome do projeto/cliente vem nulo.
+### 2. KPIs com variação vs. período anterior
+Linha de 4 cards, cada um com valor atual + delta % colorido (verde ↑ / vermelho ↓) vs. período anterior comparável. Cada card é clicável e leva à aba correspondente já filtrada.
 
-A solução: **liberar SELECT (apenas leitura) para qualquer usuário autenticado** nas tabelas de referência, mantendo INSERT/UPDATE/DELETE restritos por papel. Isso preserva toda a segurança de escrita e só expõe dados que já são visíveis para quem tem acesso "pleno" às outras abas.
+| KPI | Cálculo |
+|---|---|
+| Receita aprovada | soma `value` de propostas `ganha` no período |
+| Pipeline ativo | soma `value` de propostas em `em_elaboracao` + `em_negociacao` |
+| Taxa de conversão | `ganha` / (`ganha` + `perdida`) no período |
+| A receber (próx. 30 dias) | soma `amount` de receivables `pendente` com `due_date` ≤ hoje+30 |
 
-### Mudanças de RLS (migração)
+### 3. Pipeline de propostas (gráfico de barras horizontal)
+Quantidade + valor agregado por status (`em_elaboracao`, `em_negociacao`, `ganha`, `perdida`). Barra clicável → leva para `/propostas` filtrada por aquele status.
 
-| Tabela | SELECT (novo) | INSERT/UPDATE/DELETE (mantido) |
-|---|---|---|
-| `proposals` | qualquer usuário autenticado | sócio, gerente, consultor |
-| `projects` | qualquer usuário autenticado | sócio, gerente, consultor |
-| `clients` | qualquer usuário autenticado | sócio, gerente, administrativo |
-| `team_members` | qualquer usuário autenticado (sem o campo `salary` exposto — ver abaixo) | sócio |
-| `project_allocations` | já está liberado para os 5 papéis — ok |
-| `receivables` | qualquer usuário autenticado | sócio, gerente, administrativo |
+### 4. Funil de projetos por etapa
+Cards compactos lado a lado com contagem por `etapa` (`iniciado`, `minuta`, `assinado`). Mostra também valor total em projetos ativos. Clique → `/projetos` filtrado.
 
-### Proteção do salário (team_members)
-O campo `salary` é sensível e não deve vazar para estagiários/consultores. Solução: criar uma **view** `public.team_members_public` com todas as colunas exceto `salary`, e fazer o frontend (Alocação, ProjectDetailDialog, etc.) usar essa view para joins/listagens. A tabela `team_members` em si só será consultada diretamente pelas páginas que precisam de salário (Equipe, histórico de bônus/promoção), que continuam restritas a sócio + administrativo via RLS atual.
+### 5. Fluxo de caixa — próximos 6 meses (gráfico de linha/área)
+Eixo X = mês, eixo Y = R$. Duas séries:
+- **Previsto**: soma de `receivables` por mês de `due_date` (status `pendente`)
+- **Recebido**: soma por mês de `paid_at` (status `pago`)
 
-Alternativa mais simples: manter `team_members` com SELECT liberado mas adicionar policy column-level via view. Vou usar a view para ficar limpo.
+Tooltip mostra valores formatados em BRL. Usa `recharts` (já comum em projetos shadcn).
 
-### Ajustes de código
-- **`src/pages/Alocacao.tsx`**: trocar `team_members(id, name)` por `team_members_public(id, name)` no select do join, e a query de filtro de colaboradores também passa a ler de `team_members_public`.
-- **`src/components/ProjectDetailDialog.tsx`**: idem no join de allocations.
-- Demais lugares que fazem join `team_members` apenas para mostrar nome → trocar para a view.
-- **`src/integrations/supabase/types.ts`** será regenerado automaticamente após a migração.
+### 6. Top 5 clientes por receita
+Tabela compacta: nome, nº de projetos, valor aprovado total. Clique na linha → `/clientes/:id`.
 
-### O que NÃO muda
-- Permissão de navegação por aba (sidebar / RoleProtectedRoute) continua igual.
-- Permissão de escrita continua igual — estagiário não consegue editar nada de proposals/projects/clients.
-- Salário continua invisível para quem não é sócio/administrativo.
-- Tabelas sensíveis (`bonus_history`, `promotion_history`, `user_roles`) continuam restritas como estão.
+### 7. Alertas acionáveis (lista com ícones)
+Cards/itens vermelhos/amarelos quando relevante:
+- Propostas com `data_fup` vencida
+- Recebíveis vencidos (`due_date` < hoje, status `pendente`)
+- Propostas em negociação há > 30 dias sem atualização
+- Projetos em `iniciado` há > 14 dias sem virar `minuta`
 
-### Resultado esperado
-- **Estagiário em /alocacao**: vê todos os projetos, cliente, proposta, etapa e nomes da equipe (sem salário).
-- **Administrativo em /contas-a-receber**: vê o número da proposta, título, empresa, cliente normalmente.
-- **Consultor em /propostas e /projetos**: nada muda (já funcionava).
-- Sócio/gerente: nada muda.
+Cada alerta é clicável e leva ao item específico.
+
+### 8. Atividade recente (timeline)
+Últimos 8 eventos misturando: propostas criadas/ganhas, projetos assinados, recebíveis pagos. Ordenado por data desc, com ícone por tipo e link.
+
+### Layout proposto
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Dashboard                            [Período ▼] [+ Proposta] │
+├─────────────────────────────────────────────────────────┤
+│ [Receita] [Pipeline] [Conversão] [A Receber]   ← KPIs   │
+├──────────────────────────┬──────────────────────────────┤
+│ Pipeline de Propostas    │ Funil de Projetos            │
+│ (barras horizontais)     │ (cards por etapa)            │
+├──────────────────────────┴──────────────────────────────┤
+│ Fluxo de Caixa — próximos 6 meses (gráfico área)        │
+├──────────────────────────┬──────────────────────────────┤
+│ Top 5 Clientes           │ Alertas                      │
+├──────────────────────────┴──────────────────────────────┤
+│ Atividade Recente (timeline)                            │
+└─────────────────────────────────────────────────────────┘
+```
+
+Responsivo: em telas estreitas vira 1 coluna.
+
+### Detalhes técnicos
+
+- **Arquivo único**: reescrever `src/pages/Dashboard.tsx`, dividindo em subcomponentes locais (`KpiCard`, `PipelineChart`, `CashflowChart`, `TopClients`, `AlertsList`, `ActivityFeed`) no mesmo arquivo ou em `src/components/dashboard/*`.
+- **Dados**: reaproveitar `useProposals`, `useProjects`, `useClients`, `useReceivables` — todos já trazem joins suficientes. Cálculos derivados em `useMemo` no componente, sem novas queries.
+- **Gráficos**: usar `recharts` (instalar se ainda não estiver no projeto) com wrapper de `src/components/ui/chart.tsx` que já existe.
+- **Formatação**: `formatCurrency` de `@/lib/format`, datas em `dd/MM/yyyy`.
+- **Filtro de período**: helper local que retorna `{ start, end, prevStart, prevEnd }` para cálculo de delta.
+- **Navegação clicável**: `useNavigate` + querystring (ex.: `/propostas?status=ganha`) — Propostas já lê filtros da URL? Se não, apenas navegar sem filtro automático nesta entrega; o filtro fica como melhoria futura.
+- **Empty states**: cada bloco mostra mensagem amigável quando não há dados no período.
+
+### Fora do escopo desta entrega
+- Drag-and-drop / customização de widgets pelo usuário.
+- Exportação do dashboard em PDF.
+- Comparação entre múltiplos períodos arbitrários.
+- Sincronizar querystring com filtros das telas internas (Propostas/Projetos) — pode virar tarefa separada.
 
 ### Arquivos
-- **Migração nova**: alterar policies de SELECT em `proposals`, `projects`, `clients`, `receivables`, `team_members`; criar view `team_members_public`.
-- **Editar**: `src/pages/Alocacao.tsx`, `src/components/ProjectDetailDialog.tsx` (e qualquer outro componente que faça join `team_members(id, name)` apenas para exibir).
-
+- **Editar**: `src/pages/Dashboard.tsx` (reescrita completa).
+- **Criar (opcional, se preferir modular)**: `src/components/dashboard/KpiCard.tsx`, `PipelineChart.tsx`, `CashflowChart.tsx`, `TopClients.tsx`, `AlertsList.tsx`, `ActivityFeed.tsx`.
+- **Dependência**: garantir `recharts` instalado (`bun add recharts` se faltar).
