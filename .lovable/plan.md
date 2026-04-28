@@ -1,86 +1,22 @@
-## Dashboard executivo, informativo e interativo
 
-Hoje o dashboard mostra 4 contadores estáticos e um valor aprovado total. Vamos transformar numa visão executiva real, com filtros, gráficos, atalhos clicáveis e seções acionáveis. Como o `/` é restrito a **sócio**, podemos expor todas as métricas (incluindo financeiras).
+## Execução: Dashboard 3 fases (sem performance por consultor)
 
-### 1. Filtro global de período
-Topo da página, ao lado do título: seletor de período (`Este mês` / `Últimos 3 meses` / `Este ano` / `Tudo`). Persistido em `usePersistedState`. Todas as métricas e gráficos abaixo respondem ao filtro.
+### Fase 1 — Corrigir filtros existentes
+1. Novo seletor de período com opções: Este mês, Mês anterior, Últimos 3 meses, Últimos 6 meses, Este ano, Ano anterior, **Mês específico…** (dropdown com meses gerados a partir dos dados), Tudo.
+2. Aplicar `range.start`/`range.end` em **todos** os blocos: Pipeline de propostas, Funil de projetos, Top 5 clientes, Atividade recente.
+3. Mostrar o range exato aplicado abaixo do título (ex: "01/04/2026 → 28/04/2026").
+4. KPI "Pipeline ativo" mantém snapshot atual mas com label "(snapshot atual)".
 
-### 2. KPIs com variação vs. período anterior
-Linha de 4 cards, cada um com valor atual + delta % colorido (verde ↑ / vermelho ↓) vs. período anterior comparável. Cada card é clicável e leva à aba correspondente já filtrada.
+### Fase 2 — Novos insights
+5. **Tendência mensal de receita** — bar chart 12 meses, com média móvel e clique-para-filtrar aquele mês.
+6. **Ticket médio** — novo KPI: receita ganha ÷ propostas ganhas no período.
+7. **Tempo médio de ciclo de venda** — novo KPI: média de dias entre `created_at` e `data_aprovacao` das ganhas.
+8. **Comparativo MoM/YoY** — card com 3 valores: mês atual, mês anterior, mesmo mês ano passado.
 
-| KPI | Cálculo |
-|---|---|
-| Receita aprovada | soma `value` de propostas `ganha` no período |
-| Pipeline ativo | soma `value` de propostas em `em_elaboracao` + `em_negociacao` |
-| Taxa de conversão | `ganha` / (`ganha` + `perdida`) no período |
-| A receber (próx. 30 dias) | soma `amount` de receivables `pendente` com `due_date` ≤ hoje+30 |
-
-### 3. Pipeline de propostas (gráfico de barras horizontal)
-Quantidade + valor agregado por status (`em_elaboracao`, `em_negociacao`, `ganha`, `perdida`). Barra clicável → leva para `/propostas` filtrada por aquele status.
-
-### 4. Funil de projetos por etapa
-Cards compactos lado a lado com contagem por `etapa` (`iniciado`, `minuta`, `assinado`). Mostra também valor total em projetos ativos. Clique → `/projetos` filtrado.
-
-### 5. Fluxo de caixa — próximos 6 meses (gráfico de linha/área)
-Eixo X = mês, eixo Y = R$. Duas séries:
-- **Previsto**: soma de `receivables` por mês de `due_date` (status `pendente`)
-- **Recebido**: soma por mês de `paid_at` (status `pago`)
-
-Tooltip mostra valores formatados em BRL. Usa `recharts` (já comum em projetos shadcn).
-
-### 6. Top 5 clientes por receita
-Tabela compacta: nome, nº de projetos, valor aprovado total. Clique na linha → `/clientes/:id`.
-
-### 7. Alertas acionáveis (lista com ícones)
-Cards/itens vermelhos/amarelos quando relevante:
-- Propostas com `data_fup` vencida
-- Recebíveis vencidos (`due_date` < hoje, status `pendente`)
-- Propostas em negociação há > 30 dias sem atualização
-- Projetos em `iniciado` há > 14 dias sem virar `minuta`
-
-Cada alerta é clicável e leva ao item específico.
-
-### 8. Atividade recente (timeline)
-Últimos 8 eventos misturando: propostas criadas/ganhas, projetos assinados, recebíveis pagos. Ordenado por data desc, com ícone por tipo e link.
-
-### Layout proposto
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│ Dashboard                            [Período ▼] [+ Proposta] │
-├─────────────────────────────────────────────────────────┤
-│ [Receita] [Pipeline] [Conversão] [A Receber]   ← KPIs   │
-├──────────────────────────┬──────────────────────────────┤
-│ Pipeline de Propostas    │ Funil de Projetos            │
-│ (barras horizontais)     │ (cards por etapa)            │
-├──────────────────────────┴──────────────────────────────┤
-│ Fluxo de Caixa — próximos 6 meses (gráfico área)        │
-├──────────────────────────┬──────────────────────────────┤
-│ Top 5 Clientes           │ Alertas                      │
-├──────────────────────────┴──────────────────────────────┤
-│ Atividade Recente (timeline)                            │
-└─────────────────────────────────────────────────────────┘
-```
-
-Responsivo: em telas estreitas vira 1 coluna.
-
-### Detalhes técnicos
-
-- **Arquivo único**: reescrever `src/pages/Dashboard.tsx`, dividindo em subcomponentes locais (`KpiCard`, `PipelineChart`, `CashflowChart`, `TopClients`, `AlertsList`, `ActivityFeed`) no mesmo arquivo ou em `src/components/dashboard/*`.
-- **Dados**: reaproveitar `useProposals`, `useProjects`, `useClients`, `useReceivables` — todos já trazem joins suficientes. Cálculos derivados em `useMemo` no componente, sem novas queries.
-- **Gráficos**: usar `recharts` (instalar se ainda não estiver no projeto) com wrapper de `src/components/ui/chart.tsx` que já existe.
-- **Formatação**: `formatCurrency` de `@/lib/format`, datas em `dd/MM/yyyy`.
-- **Filtro de período**: helper local que retorna `{ start, end, prevStart, prevEnd }` para cálculo de delta.
-- **Navegação clicável**: `useNavigate` + querystring (ex.: `/propostas?status=ganha`) — Propostas já lê filtros da URL? Se não, apenas navegar sem filtro automático nesta entrega; o filtro fica como melhoria futura.
-- **Empty states**: cada bloco mostra mensagem amigável quando não há dados no período.
-
-### Fora do escopo desta entrega
-- Drag-and-drop / customização de widgets pelo usuário.
-- Exportação do dashboard em PDF.
-- Comparação entre múltiplos períodos arbitrários.
-- Sincronizar querystring com filtros das telas internas (Propostas/Projetos) — pode virar tarefa separada.
+### Fase 3 — Análises avançadas
+9. **Distribuição por tipo de projeto** — donut/pie chart das ganhas no período por `tipo_projeto`.
+10. **Heatmap de atividade comercial** — grid mostrando volume de propostas criadas por dia da semana × semana do período.
 
 ### Arquivos
-- **Editar**: `src/pages/Dashboard.tsx` (reescrita completa).
-- **Criar (opcional, se preferir modular)**: `src/components/dashboard/KpiCard.tsx`, `PipelineChart.tsx`, `CashflowChart.tsx`, `TopClients.tsx`, `AlertsList.tsx`, `ActivityFeed.tsx`.
-- **Dependência**: garantir `recharts` instalado (`bun add recharts` se faltar).
+- `src/pages/Dashboard.tsx` — refatoração principal
+- `src/lib/dashboardFilters.ts` — novo helper para isolar lógica de períodos e ranges
