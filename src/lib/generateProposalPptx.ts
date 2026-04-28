@@ -125,7 +125,7 @@ export async function generateProposalPptx(data: ProposalPptxData) {
   const isPercent = totalEtapas > 0 && totalEtapas <= 100;
 
   const replacements: Record<string, string> = {
-    "{{NUMERO_PROPOSTA}}": data.proposal_number || "#N/A#",
+    "{{NUMERO_PROPOSTA}}": [data.proposal_number, data.title].filter(Boolean).join(" - ") || "#N/A#",
     "{{NOME_CONTATO}}": data.client_contato || "#N/A#",
     "{{RAZAO_SOCIAL}}": data.client_razao_social || "#N/A#",
     "{{NOME_CLIENTE}}": data.client_name || "#N/A#",
