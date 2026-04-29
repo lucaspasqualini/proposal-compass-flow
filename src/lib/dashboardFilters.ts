@@ -129,8 +129,88 @@ export function getPeriodRange(period: PeriodKey): PeriodRange {
     return { start, end, prevStart, prevEnd, label: fmtRange(start, end) };
   }
 
+  // Mês de um ano específico: "mes_ano:YYYY-MM"
+  if (period.startsWith("mes_ano:")) {
+    const [y, m] = period.slice(8).split("-").map(Number);
+    if (!y || !m) {
+      return { start: null, end: endOfDay(now), prevStart: null, prevEnd: null, label: "—" };
+    }
+    const start = startOfMonth(y, m - 1);
+    const end = endOfMonth(y, m - 1);
+    const prevStart = startOfMonth(y, m - 2);
+    const prevEnd = endOfMonth(y, m - 2);
+    return { start, end, prevStart, prevEnd, label: fmtRange(start, end) };
+  }
+
+  // Ano inteiro: "ano:YYYY"
+  if (period.startsWith("ano:")) {
+    const y = Number(period.slice(4));
+    if (!y) {
+      return { start: null, end: endOfDay(now), prevStart: null, prevEnd: null, label: "—" };
+    }
+    const start = startOfMonth(y, 0);
+    const end = endOfMonth(y, 11);
+    const prevStart = startOfMonth(y - 1, 0);
+    const prevEnd = endOfMonth(y - 1, 11);
+    return { start, end, prevStart, prevEnd, label: fmtRange(start, end) };
+  }
+
+  // Mês X de todos os anos: "mes_all:MM" — usamos range "tudo" mas marcamos via filterByMonth
+  if (period.startsWith("mes_all:")) {
+    const m = Number(period.slice(8));
+    const monthName = MONTH_NAMES_PT[m - 1] ?? "—";
+    return {
+      start: null,
+      end: endOfDay(now),
+      prevStart: null,
+      prevEnd: null,
+      label: `${monthName} (todos os anos)`,
+    };
+  }
+
+  // Período customizado: "custom:YYYY-MM-DD_YYYY-MM-DD"
+  if (period.startsWith("custom:")) {
+    const [s, e] = period.slice(7).split("_");
+    if (!s || !e) {
+      return { start: null, end: endOfDay(now), prevStart: null, prevEnd: null, label: "—" };
+    }
+    const start = new Date(`${s}T00:00:00`);
+    const end = new Date(`${e}T23:59:59.999`);
+    const spanMs = +end - +start;
+    const prevEnd = new Date(+start - 1);
+    const prevStart = new Date(+prevEnd - spanMs);
+    return { start, end, prevStart, prevEnd, label: fmtRange(start, end) };
+  }
+
   return { start: null, end: endOfDay(now), prevStart: null, prevEnd: null, label: "—" };
 }
+
+/** Filtro adicional: se period for "mes_all:MM", restringe a esse mês do ano. */
+export function passesMonthFilter(period: PeriodKey, dateStr: string | null | undefined): boolean {
+  if (!period.startsWith("mes_all:")) return true;
+  if (!dateStr) return false;
+  const m = Number(period.slice(8));
+  const d = new Date(dateStr);
+  return !isNaN(+d) && d.getMonth() + 1 === m;
+}
+
+/** Lista de anos presentes nos dados (mais recente primeiro). Sempre inclui o ano atual. */
+export function buildYearOptions(dates: (string | null | undefined)[]): number[] {
+  const set = new Set<number>();
+  for (const d of dates) {
+    if (!d) continue;
+    const dt = new Date(d);
+    if (isNaN(+dt)) continue;
+    set.add(dt.getFullYear());
+  }
+  set.add(new Date().getFullYear());
+  return Array.from(set).sort((a, b) => b - a);
+}
+
+export const MONTHS_PT_FULL = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 
 export function inRange(
   dateStr: string | null | undefined,
