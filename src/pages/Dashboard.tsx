@@ -171,19 +171,49 @@ export default function Dashboard() {
   const { data: clients } = useClients();
   const { data: receivables } = useReceivables();
 
-  const monthOptions = useMemo(
+  const yearOptions = useMemo(
     () =>
-      buildMonthOptions([
+      buildYearOptions([
         ...(proposals ?? []).map((p) => p.created_at),
         ...(proposals ?? []).map((p) => p.data_aprovacao),
       ]),
     [proposals]
   );
 
-  // Valor selecionado no segundo dropdown (mês específico)
-  const selectedMonthKey = period.startsWith("mes:") ? period.slice(4) : "";
+  // Decompõe period em (mês, ano) para os dois dropdowns.
+  // Retorna ALL quando "todos".
+  const { selMonth, selYear, isCustom } = useMemo(() => {
+    if (period.startsWith("mes_ano:")) {
+      const [y, m] = period.slice(8).split("-");
+      return { selMonth: m, selYear: y, isCustom: false };
+    }
+    if (period.startsWith("ano:")) {
+      return { selMonth: ALL, selYear: period.slice(4), isCustom: false };
+    }
+    if (period.startsWith("mes_all:")) {
+      return { selMonth: period.slice(8), selYear: ALL, isCustom: false };
+    }
+    if (period.startsWith("mes:")) {
+      // legado
+      const [y, m] = period.slice(4).split("-");
+      return { selMonth: m, selYear: y, isCustom: false };
+    }
+    if (period === "tudo") return { selMonth: ALL, selYear: ALL, isCustom: false };
+    if (period.startsWith("custom:")) return { selMonth: ALL, selYear: ALL, isCustom: true };
+    // Demais presets (mes_atual, ultimos_3 etc.) — mostramos como "personalizado" no UI
+    return { selMonth: ALL, selYear: ALL, isCustom: false };
+  }, [period]);
 
-  const inCurrent = (d?: string | null) => inRange(d, range.start, range.end);
+  // Combina os dois dropdowns em um PeriodKey
+  const applyMonthYear = (month: string, year: string) => {
+    if (month === ALL && year === ALL) return setPeriod("tudo");
+    if (month !== ALL && year !== ALL) return setPeriod(`mes_ano:${year}-${month}` as PeriodKey);
+    if (month === ALL && year !== ALL) return setPeriod(`ano:${year}` as PeriodKey);
+    if (month !== ALL && year === ALL) return setPeriod(`mes_all:${month}` as PeriodKey);
+  };
+
+  const inCurrent = (d?: string | null) =>
+    inRange(d, range.start, range.end) && passesMonthFilter(period, d);
   const inPrev = (d?: string | null) =>
     range.prevStart && range.prevEnd ? inRange(d, range.prevStart, range.prevEnd) : false;
 
