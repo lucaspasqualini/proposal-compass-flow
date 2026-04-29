@@ -20,7 +20,6 @@ import { compareProjectNumbers } from "@/lib/projectNumber";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, Download } from "lucide-react";
 import { exportToExcel } from "@/lib/exportExcel";
 import ProjectDetailDialog from "@/components/ProjectDetailDialog";
-import ImportWorkbook from "@/components/ImportWorkbook";
 import { RoleGuard } from "@/components/RoleGuard";
 
 type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
@@ -312,9 +311,6 @@ export default function Projetos() {
           >
             <Download className="h-4 w-4 mr-1" /> Exportar
           </Button>
-          <RoleGuard allowed={["socio", "gerente_projetos", "consultor_projetos"]}>
-            <ImportWorkbook defaultTab="projects" />
-          </RoleGuard>
           <Button onClick={() => navigate("/projetos/novo")}>
             <Plus className="h-4 w-4 mr-1" /> Novo Projeto
           </Button>
