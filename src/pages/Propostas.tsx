@@ -21,7 +21,7 @@ import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar
 import { exportToExcel } from "@/lib/exportExcel";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ImportProposals from "@/components/ImportProposals";
+import ImportWorkbook from "@/components/ImportWorkbook";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 import { RoleGuard } from "@/components/RoleGuard";
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
@@ -207,7 +207,7 @@ export default function Propostas() {
           <p className="text-muted-foreground">Gerencie suas propostas comerciais</p>
         </div>
         <div className="flex gap-2">
-          <ImportProposals />
+          <ImportWorkbook defaultTab="proposals" />
           <Button
             variant="outline"
             onClick={() => {
