@@ -1326,3 +1326,75 @@ function Heatmap({
     </div>
   );
 }
+
+// ─────────────────────── CustomRangePicker ───────────────────────
+function CustomRangePicker({
+  value,
+  onChange,
+  onClear,
+}: {
+  value: string | null;
+  onChange: (p: PeriodKey) => void;
+  onClear: () => void;
+}) {
+  const parsed = useMemo(() => {
+    if (!value || !value.startsWith("custom:")) return { from: undefined, to: undefined };
+    const [s, e] = value.slice(7).split("_");
+    return {
+      from: s ? new Date(`${s}T00:00:00`) : undefined,
+      to: e ? new Date(`${e}T00:00:00`) : undefined,
+    };
+  }, [value]);
+
+  const [range, setRange] = useState<{ from?: Date; to?: Date }>(parsed);
+  const [open, setOpen] = useState(false);
+
+  const apply = () => {
+    if (!range.from || !range.to) return;
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    onChange(`custom:${fmt(range.from)}_${fmt(range.to)}` as PeriodKey);
+    setOpen(false);
+  };
+
+  const isActive = !!value;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant={isActive ? "default" : "outline"} size="sm" className="gap-1">
+          <CalendarIcon className="h-4 w-4" />
+          {isActive && parsed.from && parsed.to
+            ? `${format(parsed.from, "dd/MM/yy", { locale: ptBR })} → ${format(parsed.to, "dd/MM/yy", { locale: ptBR })}`
+            : "Período específico"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <Calendar
+          mode="range"
+          selected={range as any}
+          onSelect={(r: any) => setRange(r ?? {})}
+          numberOfMonths={2}
+          locale={ptBR}
+          className={cn("p-3 pointer-events-auto")}
+        />
+        <div className="flex items-center justify-between gap-2 p-3 border-t">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setRange({});
+              onClear();
+              setOpen(false);
+            }}
+          >
+            Limpar
+          </Button>
+          <Button size="sm" onClick={apply} disabled={!range.from || !range.to}>
+            Aplicar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
