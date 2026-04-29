@@ -108,23 +108,40 @@ export default function ImportWorkbook({ defaultTab = "proposals", triggerLabel 
     reader.onload = (evt) => {
       try {
         const sheets = readWorkbookFromArrayBuffer(evt.target?.result as ArrayBuffer);
-        const propSheet = findSheet(sheets, ["proposta", "proposals"]);
-        const projSheet = findSheet(sheets, ["projeto", "projects"]);
+        const sheetNames = Object.keys(sheets);
+        console.log("[Import] Abas encontradas:", sheetNames);
+
+        let propSheet = findSheet(sheets, ["proposta", "proposals"]);
+        let projSheet = findSheet(sheets, ["projeto", "projects"]);
+
+        // Fallback: se só existe uma aba e nenhuma bateu, assume conforme defaultTab
+        if (!propSheet && !projSheet && sheetNames.length === 1) {
+          const only = sheets[sheetNames[0]];
+          if (defaultTab === "projects") projSheet = only;
+          else propSheet = only;
+          console.log(`[Import] Aba única "${sheetNames[0]}" tratada como ${defaultTab}`);
+        }
 
         if (!propSheet && !projSheet) {
-          setError("Nenhuma aba 'Propostas' ou 'Projetos' encontrada no arquivo.");
+          setError(`Nenhuma aba 'Propostas' ou 'Projetos' encontrada. Abas no arquivo: ${sheetNames.join(", ")}`);
           return;
         }
 
         const props = (propSheet ?? []).map(parseProposalRow).filter((r): r is ProposalRow => !!r);
         const projs = (projSheet ?? []).map(parseProjectRow).filter((r): r is ProjectRow => !!r);
+        console.log(`[Import] Parseadas ${props.length} propostas, ${projs.length} projetos`);
+
+        if (props.length === 0 && projs.length === 0) {
+          setError("Arquivo lido, mas nenhuma linha válida encontrada. Verifique se há uma coluna 'Projeto' / 'Título' preenchida.");
+          return;
+        }
 
         setProposals(props);
         setProjects(projs);
         if (props.length > 0 && (defaultTab === "proposals" || projs.length === 0)) setActiveTab("proposals");
         else if (projs.length > 0) setActiveTab("projects");
       } catch (err) {
-        console.error(err);
+        console.error("[Import] Erro:", err);
         setError("Erro ao ler o arquivo. Verifique o formato.");
       }
     };
