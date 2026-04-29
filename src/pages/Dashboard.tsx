@@ -843,7 +843,7 @@ export default function Dashboard() {
                 margin={{ left: 10, right: 20, top: 10, bottom: 0 }}
                 onClick={(e: any) => {
                   const k = e?.activePayload?.[0]?.payload?.key;
-                  if (k) setPeriod(`mes:${k}` as PeriodKey);
+                  if (k) setPeriod(`mes_ano:${k}` as PeriodKey);
                 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
