@@ -678,52 +678,55 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Mês */}
           <Select
-            value={period.startsWith("mes:") ? "mes_especifico" : period}
-            onValueChange={(v) => {
-              if (v === "mes_especifico") {
-                // aplica o primeiro mês disponível
-                const first = monthOptions[0]?.key;
-                if (first) setPeriod(`mes:${first}` as PeriodKey);
-              } else {
-                setPeriod(v as PeriodKey);
-              }
-            }}
+            value={selMonth}
+            onValueChange={(v) => applyMonthYear(v, selYear)}
+            disabled={isCustom}
           >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Mês" />
             </SelectTrigger>
             <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Períodos</SelectLabel>
-                {PERIOD_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+              <SelectItem value={ALL}>Todos os meses</SelectItem>
               <SelectSeparator />
-              <SelectItem value="mes_especifico">Mês específico…</SelectItem>
+              {MONTHS_PT_FULL.map((name, i) => {
+                const v = String(i + 1).padStart(2, "0");
+                return (
+                  <SelectItem key={v} value={v}>
+                    {name}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
 
-          {period.startsWith("mes:") && (
-            <Select
-              value={selectedMonthKey}
-              onValueChange={(v) => setPeriod(`mes:${v}` as PeriodKey)}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((m) => (
-                  <SelectItem key={m.key} value={m.key}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Ano */}
+          <Select
+            value={selYear}
+            onValueChange={(v) => applyMonthYear(selMonth, v)}
+            disabled={isCustom}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos os anos</SelectItem>
+              <SelectSeparator />
+              {yearOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Período específico */}
+          <CustomRangePicker
+            value={period.startsWith("custom:") ? period : null}
+            onChange={(p) => setPeriod(p)}
+            onClear={() => setPeriod("tudo")}
+          />
 
           <Button size="sm" onClick={() => navigate("/propostas")}>
             <Plus className="h-4 w-4 mr-1" /> Proposta
