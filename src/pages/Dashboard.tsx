@@ -51,6 +51,7 @@ import {
   Clock,
   Receipt,
   CalendarRange,
+  CalendarIcon,
 } from "lucide-react";
 import { useProposals } from "@/hooks/useProposals";
 import { useProjects } from "@/hooks/useProjects";
@@ -69,20 +70,19 @@ import {
   getPeriodRange,
   inRange,
   pctDelta,
-  buildMonthOptions,
+  buildYearOptions,
+  passesMonthFilter,
   monthKey,
   monthLabel,
+  MONTHS_PT_FULL,
 } from "@/lib/dashboardFilters";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
-  { value: "mes_atual", label: "Este mês" },
-  { value: "mes_anterior", label: "Mês anterior" },
-  { value: "ultimos_3", label: "Últimos 3 meses" },
-  { value: "ultimos_6", label: "Últimos 6 meses" },
-  { value: "ano_atual", label: "Este ano" },
-  { value: "ano_anterior", label: "Ano anterior" },
-  { value: "tudo", label: "Tudo" },
-];
+// Valor especial para "todos" nos selects de mês/ano
+const ALL = "all";
 
 // Paleta para o donut de tipo de projeto (todas semanticas)
 const PIE_COLORS = [
@@ -171,19 +171,49 @@ export default function Dashboard() {
   const { data: clients } = useClients();
   const { data: receivables } = useReceivables();
 
-  const monthOptions = useMemo(
+  const yearOptions = useMemo(
     () =>
-      buildMonthOptions([
+      buildYearOptions([
         ...(proposals ?? []).map((p) => p.created_at),
         ...(proposals ?? []).map((p) => p.data_aprovacao),
       ]),
     [proposals]
   );
 
-  // Valor selecionado no segundo dropdown (mês específico)
-  const selectedMonthKey = period.startsWith("mes:") ? period.slice(4) : "";
+  // Decompõe period em (mês, ano) para os dois dropdowns.
+  // Retorna ALL quando "todos".
+  const { selMonth, selYear, isCustom } = useMemo(() => {
+    if (period.startsWith("mes_ano:")) {
+      const [y, m] = period.slice(8).split("-");
+      return { selMonth: m, selYear: y, isCustom: false };
+    }
+    if (period.startsWith("ano:")) {
+      return { selMonth: ALL, selYear: period.slice(4), isCustom: false };
+    }
+    if (period.startsWith("mes_all:")) {
+      return { selMonth: period.slice(8), selYear: ALL, isCustom: false };
+    }
+    if (period.startsWith("mes:")) {
+      // legado
+      const [y, m] = period.slice(4).split("-");
+      return { selMonth: m, selYear: y, isCustom: false };
+    }
+    if (period === "tudo") return { selMonth: ALL, selYear: ALL, isCustom: false };
+    if (period.startsWith("custom:")) return { selMonth: ALL, selYear: ALL, isCustom: true };
+    // Demais presets (mes_atual, ultimos_3 etc.) — mostramos como "personalizado" no UI
+    return { selMonth: ALL, selYear: ALL, isCustom: false };
+  }, [period]);
 
-  const inCurrent = (d?: string | null) => inRange(d, range.start, range.end);
+  // Combina os dois dropdowns em um PeriodKey
+  const applyMonthYear = (month: string, year: string) => {
+    if (month === ALL && year === ALL) return setPeriod("tudo");
+    if (month !== ALL && year !== ALL) return setPeriod(`mes_ano:${year}-${month}` as PeriodKey);
+    if (month === ALL && year !== ALL) return setPeriod(`ano:${year}` as PeriodKey);
+    if (month !== ALL && year === ALL) return setPeriod(`mes_all:${month}` as PeriodKey);
+  };
+
+  const inCurrent = (d?: string | null) =>
+    inRange(d, range.start, range.end) && passesMonthFilter(period, d);
   const inPrev = (d?: string | null) =>
     range.prevStart && range.prevEnd ? inRange(d, range.prevStart, range.prevEnd) : false;
 
@@ -648,52 +678,55 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Mês */}
           <Select
-            value={period.startsWith("mes:") ? "mes_especifico" : period}
-            onValueChange={(v) => {
-              if (v === "mes_especifico") {
-                // aplica o primeiro mês disponível
-                const first = monthOptions[0]?.key;
-                if (first) setPeriod(`mes:${first}` as PeriodKey);
-              } else {
-                setPeriod(v as PeriodKey);
-              }
-            }}
+            value={selMonth}
+            onValueChange={(v) => applyMonthYear(v, selYear)}
+            disabled={isCustom}
           >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Mês" />
             </SelectTrigger>
             <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Períodos</SelectLabel>
-                {PERIOD_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+              <SelectItem value={ALL}>Todos os meses</SelectItem>
               <SelectSeparator />
-              <SelectItem value="mes_especifico">Mês específico…</SelectItem>
+              {MONTHS_PT_FULL.map((name, i) => {
+                const v = String(i + 1).padStart(2, "0");
+                return (
+                  <SelectItem key={v} value={v}>
+                    {name}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
 
-          {period.startsWith("mes:") && (
-            <Select
-              value={selectedMonthKey}
-              onValueChange={(v) => setPeriod(`mes:${v}` as PeriodKey)}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((m) => (
-                  <SelectItem key={m.key} value={m.key}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Ano */}
+          <Select
+            value={selYear}
+            onValueChange={(v) => applyMonthYear(selMonth, v)}
+            disabled={isCustom}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos os anos</SelectItem>
+              <SelectSeparator />
+              {yearOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Período específico */}
+          <CustomRangePicker
+            value={period.startsWith("custom:") ? period : null}
+            onChange={(p) => setPeriod(p)}
+            onClear={() => setPeriod("tudo")}
+          />
 
           <Button size="sm" onClick={() => navigate("/propostas")}>
             <Plus className="h-4 w-4 mr-1" /> Proposta
@@ -810,7 +843,7 @@ export default function Dashboard() {
                 margin={{ left: 10, right: 20, top: 10, bottom: 0 }}
                 onClick={(e: any) => {
                   const k = e?.activePayload?.[0]?.payload?.key;
-                  if (k) setPeriod(`mes:${k}` as PeriodKey);
+                  if (k) setPeriod(`mes_ano:${k}` as PeriodKey);
                 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -1291,5 +1324,77 @@ function Heatmap({
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────── CustomRangePicker ───────────────────────
+function CustomRangePicker({
+  value,
+  onChange,
+  onClear,
+}: {
+  value: string | null;
+  onChange: (p: PeriodKey) => void;
+  onClear: () => void;
+}) {
+  const parsed = useMemo(() => {
+    if (!value || !value.startsWith("custom:")) return { from: undefined, to: undefined };
+    const [s, e] = value.slice(7).split("_");
+    return {
+      from: s ? new Date(`${s}T00:00:00`) : undefined,
+      to: e ? new Date(`${e}T00:00:00`) : undefined,
+    };
+  }, [value]);
+
+  const [range, setRange] = useState<{ from?: Date; to?: Date }>(parsed);
+  const [open, setOpen] = useState(false);
+
+  const apply = () => {
+    if (!range.from || !range.to) return;
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    onChange(`custom:${fmt(range.from)}_${fmt(range.to)}` as PeriodKey);
+    setOpen(false);
+  };
+
+  const isActive = !!value;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant={isActive ? "default" : "outline"} size="sm" className="gap-1">
+          <CalendarIcon className="h-4 w-4" />
+          {isActive && parsed.from && parsed.to
+            ? `${format(parsed.from, "dd/MM/yy", { locale: ptBR })} → ${format(parsed.to, "dd/MM/yy", { locale: ptBR })}`
+            : "Período específico"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <Calendar
+          mode="range"
+          selected={range as any}
+          onSelect={(r: any) => setRange(r ?? {})}
+          numberOfMonths={2}
+          locale={ptBR}
+          className={cn("p-3 pointer-events-auto")}
+        />
+        <div className="flex items-center justify-between gap-2 p-3 border-t">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setRange({});
+              onClear();
+              setOpen(false);
+            }}
+          >
+            Limpar
+          </Button>
+          <Button size="sm" onClick={apply} disabled={!range.from || !range.to}>
+            Aplicar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
