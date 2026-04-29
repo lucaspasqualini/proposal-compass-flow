@@ -51,6 +51,7 @@ import {
   Clock,
   Receipt,
   CalendarRange,
+  CalendarIcon,
 } from "lucide-react";
 import { useProposals } from "@/hooks/useProposals";
 import { useProjects } from "@/hooks/useProjects";
@@ -69,20 +70,19 @@ import {
   getPeriodRange,
   inRange,
   pctDelta,
-  buildMonthOptions,
+  buildYearOptions,
+  passesMonthFilter,
   monthKey,
   monthLabel,
+  MONTHS_PT_FULL,
 } from "@/lib/dashboardFilters";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
-  { value: "mes_atual", label: "Este mês" },
-  { value: "mes_anterior", label: "Mês anterior" },
-  { value: "ultimos_3", label: "Últimos 3 meses" },
-  { value: "ultimos_6", label: "Últimos 6 meses" },
-  { value: "ano_atual", label: "Este ano" },
-  { value: "ano_anterior", label: "Ano anterior" },
-  { value: "tudo", label: "Tudo" },
-];
+// Valor especial para "todos" nos selects de mês/ano
+const ALL = "all";
 
 // Paleta para o donut de tipo de projeto (todas semanticas)
 const PIE_COLORS = [
