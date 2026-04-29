@@ -8,7 +8,11 @@ export type PeriodKey =
   | "ano_atual"
   | "ano_anterior"
   | "tudo"
-  | `mes:${string}`; // ex: "mes:2026-04"
+  | `mes:${string}` // legado: "mes:2026-04"
+  | `mes_ano:${string}` // "mes_ano:2026-04" (mês X do ano Y)
+  | `ano:${string}` // "ano:2026" (ano inteiro)
+  | `mes_all:${string}` // "mes_all:04" (mês X de todos os anos)
+  | `custom:${string}`; // "custom:2026-01-15_2026-04-20"
 
 export interface PeriodRange {
   start: Date | null;
