@@ -719,5 +719,6 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         </Dialog>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
