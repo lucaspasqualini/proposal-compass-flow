@@ -15,10 +15,13 @@ type ProposalForSync = Pick<Proposal, "id" | "status" | "title" | "client_id" | 
 export async function syncProposalProjectStatus({
   proposal,
   previousStatus,
+  parcelasOverride,
 }: {
   proposal: ProposalForSync;
   previousStatus?: Proposal["status"] | null;
+  parcelasOverride?: any[] | null;
 }): Promise<ProjectSyncAction> {
+  const effectiveParcelas = parcelasOverride ?? proposal.parcelas;
   if (!proposal.id || previousStatus === proposal.status) return null;
 
   if (proposal.status === "ganha" && previousStatus !== "ganha") {
@@ -44,7 +47,7 @@ export async function syncProposalProjectStatus({
         id: proposal.id,
         client_id: proposal.client_id,
         value: proposal.value,
-        parcelas: proposal.parcelas,
+        parcelas: effectiveParcelas,
         payment_type: proposal.payment_type ?? null,
       });
 
@@ -67,7 +70,7 @@ export async function syncProposalProjectStatus({
       id: proposal.id,
       client_id: proposal.client_id,
       value: proposal.value,
-      parcelas: proposal.parcelas,
+      parcelas: effectiveParcelas,
       payment_type: proposal.payment_type ?? null,
     });
 

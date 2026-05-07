@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
+import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { RoleGuard } from "@/components/RoleGuard";
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
@@ -43,6 +44,7 @@ export default function Propostas() {
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const parcelasPrompt = useParcelasPrompt();
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -162,9 +164,26 @@ export default function Propostas() {
     try {
       const currentProposal = proposals?.find((proposal) => proposal.id === id);
       const updatedProposal = await updateProposal.mutateAsync({ id, status: newStatus as any });
+
+      let parcelasOverride: any[] | null = null;
+      const becomingGanha = newStatus === "ganha" && currentProposal?.status !== "ganha";
+      const noParcelas = !Array.isArray((updatedProposal as any).parcelas) || (updatedProposal as any).parcelas.length === 0;
+      if (becomingGanha && noParcelas) {
+        const count = await parcelasPrompt.ask((updatedProposal as any).title);
+        if (count == null) {
+          // revert status
+          await updateProposal.mutateAsync({ id, status: (currentProposal?.status ?? "em_elaboracao") as any });
+          toast({ title: "Alteração cancelada" });
+          return;
+        }
+        parcelasOverride = buildParcelasFromCount(count);
+        await updateProposal.mutateAsync({ id, parcelas: parcelasOverride } as any);
+      }
+
       const syncAction = await syncProposalProjectStatus({
         proposal: updatedProposal,
         previousStatus: currentProposal?.status,
+        parcelasOverride,
       });
 
       if (syncAction) {
@@ -475,6 +494,8 @@ export default function Propostas() {
         onOpenChange={setShowNewDialog}
         isNew
       />
+
+      {parcelasPrompt.dialog}
     </div>
   );
 }

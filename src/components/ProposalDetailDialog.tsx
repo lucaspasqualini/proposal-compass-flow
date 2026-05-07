@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels, proposalStatusColors, formatCurrency } from "@/lib/format";
 import { generateProposalPptx } from "@/lib/generateProposalPptx";
 import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
+import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -61,6 +62,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const createProposal = useCreateProposal();
   const createClient = useCreateClient();
   const { toast } = useToast();
+  const parcelasPrompt = useParcelasPrompt();
 
   const { data: templates } = useQuery({
     queryKey: ["proposal-templates"],
@@ -265,9 +267,24 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         const updatedProposal = await updateProposal.mutateAsync({ id: proposalId!, ...payload });
         toast({ title: "Proposta atualizada" });
 
+        let parcelasOverride: any[] | null = null;
+        const becomingGanha = updatedProposal.status === "ganha" && oldStatus !== "ganha";
+        if (becomingGanha && (!Array.isArray(savedParcelas) || savedParcelas.length === 0)) {
+          const count = await parcelasPrompt.ask(updatedProposal.title);
+          if (count == null) {
+            await updateProposal.mutateAsync({ id: proposalId!, status: (oldStatus ?? "em_elaboracao") as any });
+            toast({ title: "Alteração de status cancelada" });
+            onOpenChange(false);
+            return;
+          }
+          parcelasOverride = buildParcelasFromCount(count);
+          await updateProposal.mutateAsync({ id: proposalId!, parcelas: parcelasOverride } as any);
+        }
+
         const syncAction = await syncProposalProjectStatus({
           proposal: updatedProposal,
           previousStatus: oldStatus,
+          parcelasOverride,
         });
 
         if (syncAction) {
@@ -283,9 +300,20 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         }
       } else {
         const createdProposal = await createProposal.mutateAsync({ ...payload, created_by: user?.id ?? null });
+
+        let parcelasOverride: any[] | null = null;
+        if (createdProposal.status === "ganha" && (!Array.isArray(savedParcelas) || savedParcelas.length === 0)) {
+          const count = await parcelasPrompt.ask(createdProposal.title);
+          if (count != null) {
+            parcelasOverride = buildParcelasFromCount(count);
+            await updateProposal.mutateAsync({ id: createdProposal.id, parcelas: parcelasOverride } as any);
+          }
+        }
+
         const syncAction = await syncProposalProjectStatus({
           proposal: createdProposal,
           previousStatus: null,
+          parcelasOverride,
         });
 
         if (syncAction) {
@@ -317,6 +345,8 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   };
 
   return (
+    <>
+    {parcelasPrompt.dialog}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[95vh] overflow-hidden flex flex-col" style={{ paddingTop: '1.5rem' }}>
         <DialogHeader>
@@ -689,5 +719,6 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         </Dialog>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
