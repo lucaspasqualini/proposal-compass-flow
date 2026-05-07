@@ -257,7 +257,25 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <p className="text-xs text-muted-foreground">Valor Líquido</p>
                 <p className="text-lg font-bold text-success">{formatCurrency(valorLiquido)}</p>
               </div>
+              </div>
             </div>
+
+            {(receivable.valor_proposta != null || receivable.valor_nf != null || receivable.valor_recebido != null) && (
+              <div className="grid grid-cols-3 gap-4 rounded-md border bg-muted/30 p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Proposta</p>
+                  <p className="text-sm font-medium">{receivable.valor_proposta != null ? formatCurrency(receivable.valor_proposta) : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor NF</p>
+                  <p className="text-sm font-medium">{receivable.valor_nf != null ? formatCurrency(receivable.valor_nf) : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Recebido</p>
+                  <p className="text-sm font-medium">{receivable.valor_recebido != null ? formatCurrency(receivable.valor_recebido) : "—"}</p>
+                </div>
+              </div>
+            )}
 
             <Separator />
 
