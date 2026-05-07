@@ -164,9 +164,26 @@ export default function Propostas() {
     try {
       const currentProposal = proposals?.find((proposal) => proposal.id === id);
       const updatedProposal = await updateProposal.mutateAsync({ id, status: newStatus as any });
+
+      let parcelasOverride: any[] | null = null;
+      const becomingGanha = newStatus === "ganha" && currentProposal?.status !== "ganha";
+      const noParcelas = !Array.isArray((updatedProposal as any).parcelas) || (updatedProposal as any).parcelas.length === 0;
+      if (becomingGanha && noParcelas) {
+        const count = await parcelasPrompt.ask((updatedProposal as any).title);
+        if (count == null) {
+          // revert status
+          await updateProposal.mutateAsync({ id, status: (currentProposal?.status ?? "em_elaboracao") as any });
+          toast({ title: "Alteração cancelada" });
+          return;
+        }
+        parcelasOverride = buildParcelasFromCount(count);
+        await updateProposal.mutateAsync({ id, parcelas: parcelasOverride } as any);
+      }
+
       const syncAction = await syncProposalProjectStatus({
         proposal: updatedProposal,
         previousStatus: currentProposal?.status,
+        parcelasOverride,
       });
 
       if (syncAction) {
