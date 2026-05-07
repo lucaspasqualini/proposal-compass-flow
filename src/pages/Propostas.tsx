@@ -58,15 +58,19 @@ export default function Propostas() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
+  const getFilterDate = (p: any): string => {
+    if (p.status === "ganha" || p.status === "perdida") {
+      return p.data_aprovacao ?? p.data_envio ?? "";
+    }
+    return p.data_envio ?? "";
+  };
+
   const availableYears = useMemo(() => {
     if (!proposals) return [];
     const years = new Set<string>();
     proposals.forEach((p) => {
-      const d = (p as any).data_envio;
-      if (d) {
-        const y = d.substring(0, 4);
-        years.add(y);
-      }
+      const d = getFilterDate(p);
+      if (d) years.add(d.substring(0, 4));
     });
     return Array.from(years).sort().reverse();
   }, [proposals]);
@@ -82,8 +86,9 @@ export default function Propostas() {
         ((p as any).empresa ?? "").toLowerCase().includes(s);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
-      const matchYear = yearFilter === "all" || ((p as any).data_envio ?? "").startsWith(yearFilter);
-      const matchMonth = monthFilter === "all" || ((p as any).data_envio ?? "").substring(5, 7) === monthFilter;
+      const filterDate = getFilterDate(p);
+      const matchYear = yearFilter === "all" || filterDate.startsWith(yearFilter);
+      const matchMonth = monthFilter === "all" || filterDate.substring(5, 7) === monthFilter;
       const matchHide = !hidePerdida || p.status !== "perdida";
       return matchSearch && matchStatus && matchEmpresa && matchYear && matchMonth && matchHide;
     });
