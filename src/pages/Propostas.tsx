@@ -494,6 +494,8 @@ export default function Propostas() {
         onOpenChange={setShowNewDialog}
         isNew
       />
+
+      {parcelasPrompt.dialog}
     </div>
   );
 }
