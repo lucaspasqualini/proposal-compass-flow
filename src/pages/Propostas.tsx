@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ImportProposals from "@/components/ImportProposals";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
+import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { RoleGuard } from "@/components/RoleGuard";
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
