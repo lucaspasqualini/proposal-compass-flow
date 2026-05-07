@@ -5,12 +5,22 @@ export function useReceivables() {
   return useQuery({
     queryKey: ["receivables"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("receivables")
-        .select("*, proposals(proposal_number, title, empresa, tipo_projeto), clients(name, cnpj, contact_name, email)")
-        .order("due_date", { ascending: true });
-      if (error) throw error;
-      return data;
+      const PAGE = 1000;
+      let offset = 0;
+      const all: any[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("receivables")
+          .select("*, proposals(proposal_number, title, empresa, tipo_projeto), clients(name, cnpj, contact_name, email)")
+          .order("due_date", { ascending: true })
+          .range(offset, offset + PAGE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < PAGE) break;
+        offset += PAGE;
+      }
+      return all;
     },
   });
 }
