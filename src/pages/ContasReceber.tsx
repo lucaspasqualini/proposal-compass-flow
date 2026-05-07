@@ -269,7 +269,6 @@ export default function ContasReceber() {
       let va: string | number, vb: string | number;
       switch (parcelaSortKey) {
         case "title": va = (a.proposals as any)?.title || ""; vb = (b.proposals as any)?.title || ""; break;
-        case "title": va = (a.proposals as any)?.title || ""; vb = (b.proposals as any)?.title || ""; break;
         case "parcela": va = a.parcela_index; vb = b.parcela_index; break;
         case "amount": va = a.amount || 0; vb = b.amount || 0; break;
         case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
