@@ -62,6 +62,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const createProposal = useCreateProposal();
   const createClient = useCreateClient();
   const { toast } = useToast();
+  const parcelasPrompt = useParcelasPrompt();
 
   const { data: templates } = useQuery({
     queryKey: ["proposal-templates"],
