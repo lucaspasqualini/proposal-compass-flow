@@ -267,9 +267,24 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         const updatedProposal = await updateProposal.mutateAsync({ id: proposalId!, ...payload });
         toast({ title: "Proposta atualizada" });
 
+        let parcelasOverride: any[] | null = null;
+        const becomingGanha = updatedProposal.status === "ganha" && oldStatus !== "ganha";
+        if (becomingGanha && (!Array.isArray(savedParcelas) || savedParcelas.length === 0)) {
+          const count = await parcelasPrompt.ask(updatedProposal.title);
+          if (count == null) {
+            await updateProposal.mutateAsync({ id: proposalId!, status: (oldStatus ?? "em_elaboracao") as any });
+            toast({ title: "Alteração de status cancelada" });
+            onOpenChange(false);
+            return;
+          }
+          parcelasOverride = buildParcelasFromCount(count);
+          await updateProposal.mutateAsync({ id: proposalId!, parcelas: parcelasOverride } as any);
+        }
+
         const syncAction = await syncProposalProjectStatus({
           proposal: updatedProposal,
           previousStatus: oldStatus,
+          parcelasOverride,
         });
 
         if (syncAction) {
@@ -285,9 +300,20 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
         }
       } else {
         const createdProposal = await createProposal.mutateAsync({ ...payload, created_by: user?.id ?? null });
+
+        let parcelasOverride: any[] | null = null;
+        if (createdProposal.status === "ganha" && (!Array.isArray(savedParcelas) || savedParcelas.length === 0)) {
+          const count = await parcelasPrompt.ask(createdProposal.title);
+          if (count != null) {
+            parcelasOverride = buildParcelasFromCount(count);
+            await updateProposal.mutateAsync({ id: createdProposal.id, parcelas: parcelasOverride } as any);
+          }
+        }
+
         const syncAction = await syncProposalProjectStatus({
           proposal: createdProposal,
           previousStatus: null,
+          parcelasOverride,
         });
 
         if (syncAction) {
