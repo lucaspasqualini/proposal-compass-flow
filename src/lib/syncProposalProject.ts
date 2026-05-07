@@ -47,7 +47,7 @@ export async function syncProposalProjectStatus({
         id: proposal.id,
         client_id: proposal.client_id,
         value: proposal.value,
-        parcelas: proposal.parcelas,
+        parcelas: effectiveParcelas,
         payment_type: proposal.payment_type ?? null,
       });
 
@@ -70,7 +70,7 @@ export async function syncProposalProjectStatus({
       id: proposal.id,
       client_id: proposal.client_id,
       value: proposal.value,
-      parcelas: proposal.parcelas,
+      parcelas: effectiveParcelas,
       payment_type: proposal.payment_type ?? null,
     });
 
