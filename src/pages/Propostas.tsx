@@ -58,15 +58,19 @@ export default function Propostas() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
+  const getFilterDate = (p: any): string => {
+    if (p.status === "ganha" || p.status === "perdida") {
+      return p.data_aprovacao ?? p.data_envio ?? "";
+    }
+    return p.data_envio ?? "";
+  };
+
   const availableYears = useMemo(() => {
     if (!proposals) return [];
     const years = new Set<string>();
     proposals.forEach((p) => {
-      const d = (p as any).data_envio;
-      if (d) {
-        const y = d.substring(0, 4);
-        years.add(y);
-      }
+      const d = getFilterDate(p);
+      if (d) years.add(d.substring(0, 4));
     });
     return Array.from(years).sort().reverse();
   }, [proposals]);
