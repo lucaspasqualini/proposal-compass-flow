@@ -1,67 +1,31 @@
-# Importar alocações da planilha (aba Projeto, mock-6)
+## Problema
 
-## O que a planilha tem agora
+A função `generate_proposal_number` gerou `MA_0201_26` para a nova proposta da Kanastra, quando deveria ter gerado `MA_0103_26` (a anterior é `MA_0102_26`).
 
-- Aba **Projeto**: 1.183 linhas com `NUM.` preenchido (formato `MA_XXXX_YY`)
-- **568 linhas** com pelo menos 1 colaborador alocado
-- Filtrando 2021+ → ~390 projetos com alocação
-- Estrutura: matriz 0/1 com 23 colunas-membro + 5 colunas-texto `COLABORADOR 1-5` (redundantes; vou usar a matriz como fonte canônica)
+**Causa raiz:** existe no banco a proposta `MA_0200_21_26` (proposta de 2021 com sufixo extra `_26`, importada da planilha histórica). A função atual:
 
-## Mapeamento de nomes (planilha → team_members)
+- Filtra por `LIKE 'MA_%_26'` → captura tanto `MA_XXXX_26` quanto `MA_XXXX_21_26`
+- Extrai sequência com `SUBSTRING(... FROM 4 FOR 4)` → para `MA_0200_21_26` lê `0200`
+- Resultado: `MAX(0200, 0102) + 1 = 0201`
 
-Match fuzzy por primeiro nome / palavra-chave:
+## Correção
 
-| Planilha | team_members |
-|---|---|
-| Maurício | Mauricio Emerick |
-| Fellipe | Fellipe Franco |
-| Lucas | Lucas Pasqualini |
-| Nicolau | Antônio Nicolau |
-| João Gabriel | Gabriel Paes Orenstein *(confirmar)* |
-| Breno | Breno Franco Pereira Sassi |
-| Victor | Victor Ribeiro de Souza |
-| Giovanni | Giovanni Borges de Paula |
-| Rodrigo Barbosa | *(não existe na equipe — pular ou criar?)* |
-| João Cobalea | João Pedro Salgado Cobalea |
-| Gabriel Venturim | Gabriel Venturim |
-| Alessandro Sansone | Alessandro Sansone |
-| Marina | Marina Vianello de Souza |
-| Bernardo | *(ambíguo: Bernardo Brandão Salles; "Salles" também aparece — provavelmente são a mesma pessoa)* |
-| Salles | Bernardo Brandão Salles |
-| Leonardo | Leonardo Lourenço Gomes |
-| Fabio | Fabio Tozo Pagotto |
-| Hugo | Hugo Gerd Véras Schulz |
-| Maria Eduarda | Maria Eduarda Monteiro de Barros |
-| Giovana | Giovana Amaral Figueiredo |
-| Caio | Caio Lima Falcao |
-| Técnico Externo | *(não existe — pular)* |
-| Desalocado | *(ignorar — não é alocação real)* |
+Reescrever a função `generate_proposal_number` para considerar **apenas** números no formato canônico `MA_NNNN_AA` (sem sufixo de subprojeto), usando regex:
 
-**Pontos a confirmar antes da importação** (vou listar e te perguntar se houver dúvida real):
-- "João Gabriel" da planilha = Gabriel Paes Orenstein? Ou outra pessoa?
-- "Rodrigo Barbosa" não está cadastrado na Equipe — **pular essas alocações** ou criar membro?
-- "Bernardo" e "Salles" como colunas separadas: vou tratar ambos como Bernardo Brandão Salles (mesma pessoa). Se um projeto tiver os dois marcados, gera só 1 alocação.
-- "Técnico Externo" / "Desalocado" → **ignorar**.
+```sql
+WHERE proposal_number ~ ('^MA_\d{4}_' || current_year || '$')
+```
 
-## Como vou executar
+E extrair a sequência com regex (`substring(proposal_number from 'MA_(\d{4})_')`) em vez de posição fixa.
 
-1. Ler aba Projeto, filtrar `NUM.` com ano ≥ 21
-2. Para cada linha, extrair lista de membros marcados na matriz (valor ≠ 0)
-3. Match `proposal_number` → `project_id` (apenas projetos já existentes na base, ~918)
-4. Aplicar mapa de nomes → `team_member_id`
-5. Inserir em `project_allocations` com `INSERT ... ON CONFLICT DO NOTHING` por `(project_id, team_member_id)` — para não duplicar se rodar de novo
-6. Reportar:
-   - Total de alocações inseridas
-   - Linhas da planilha sem projeto correspondente no banco (NUM. não encontrado)
-   - Nomes não mapeados (se algum)
+### Comportamento esperado após o fix
 
-## Resultado esperado
+- Próxima proposta de 2026: `MA_0103_26` (ignora `MA_0200_21_26`)
+- Subprojetos/aditivos no formato `MA_XXXX_AA_NN` continuam existindo como dados, mas não interferem na numeração.
 
-- ~1.000–1.500 registros novos em `project_allocations`
-- Aparecendo automaticamente em /projetos, /alocacao e no detalhe de cada projeto
+## Próximo passo
 
-## Detalhes técnicos
+1. Migration que substitui a função `generate_proposal_number`.
+2. Renumerar a proposta da Kanastra de `MA_0201_26` para `MA_0103_26` (UPDATE manual).
 
-- Script Python (pandas) para parsear o XLSX e gerar SQL
-- Inserção via tool de DB do Lovable Cloud
-- Garantia de idempotência: `ON CONFLICT (project_id, team_member_id) DO NOTHING` (preciso adicionar índice único antes — ou simplesmente fazer SELECT prévio para deduplicar no script). Vou usar a 2ª via para não criar índice desnecessário.
+Confirma para eu aplicar?
