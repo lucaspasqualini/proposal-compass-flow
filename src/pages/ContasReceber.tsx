@@ -289,6 +289,10 @@ export default function ContasReceber() {
   const sortedProjects = useMemo(() => {
     if (!projectSortKey) return byProject;
     return [...byProject].sort((a, b) => {
+      if (projectSortKey === "number") {
+        const cmp = compareProjectNumbers(a.proposalNumber, b.proposalNumber);
+        return projectSortDir === "asc" ? cmp : -cmp;
+      }
       let va: string | number, vb: string | number;
       switch (projectSortKey) {
         case "number": va = a.proposalNumber; vb = b.proposalNumber; break;
