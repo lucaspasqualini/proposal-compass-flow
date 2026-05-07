@@ -259,7 +259,13 @@ export default function ContasReceber() {
 
   const sortedParcelas = useMemo(() => {
     if (!parcelaSortKey) return filtered;
-    return [...filtered].sort((a, b) => {
+     return [...filtered].sort((a, b) => {
+      if (parcelaSortKey === "number") {
+        const pnA = (a.proposals as any)?.proposal_number || "";
+        const pnB = (b.proposals as any)?.proposal_number || "";
+        const cmp = compareProjectNumbers(pnA, pnB);
+        return parcelaSortDir === "asc" ? cmp : -cmp;
+      }
       let va: string | number, vb: string | number;
       switch (parcelaSortKey) {
         case "number": va = (a.proposals as any)?.proposal_number || ""; vb = (b.proposals as any)?.proposal_number || ""; break;
