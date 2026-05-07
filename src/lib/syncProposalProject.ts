@@ -15,10 +15,13 @@ type ProposalForSync = Pick<Proposal, "id" | "status" | "title" | "client_id" | 
 export async function syncProposalProjectStatus({
   proposal,
   previousStatus,
+  parcelasOverride,
 }: {
   proposal: ProposalForSync;
   previousStatus?: Proposal["status"] | null;
+  parcelasOverride?: any[] | null;
 }): Promise<ProjectSyncAction> {
+  const effectiveParcelas = parcelasOverride ?? proposal.parcelas;
   if (!proposal.id || previousStatus === proposal.status) return null;
 
   if (proposal.status === "ganha" && previousStatus !== "ganha") {
