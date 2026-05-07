@@ -259,10 +259,15 @@ export default function ContasReceber() {
 
   const sortedParcelas = useMemo(() => {
     if (!parcelaSortKey) return filtered;
-    return [...filtered].sort((a, b) => {
+     return [...filtered].sort((a, b) => {
+      if (parcelaSortKey === "number") {
+        const pnA = (a.proposals as any)?.proposal_number || "";
+        const pnB = (b.proposals as any)?.proposal_number || "";
+        const cmp = compareProjectNumbers(pnA, pnB);
+        return parcelaSortDir === "asc" ? cmp : -cmp;
+      }
       let va: string | number, vb: string | number;
       switch (parcelaSortKey) {
-        case "number": va = (a.proposals as any)?.proposal_number || ""; vb = (b.proposals as any)?.proposal_number || ""; break;
         case "title": va = (a.proposals as any)?.title || ""; vb = (b.proposals as any)?.title || ""; break;
         case "parcela": va = a.parcela_index; vb = b.parcela_index; break;
         case "amount": va = a.amount || 0; vb = b.amount || 0; break;
@@ -284,9 +289,12 @@ export default function ContasReceber() {
   const sortedProjects = useMemo(() => {
     if (!projectSortKey) return byProject;
     return [...byProject].sort((a, b) => {
+      if (projectSortKey === "number") {
+        const cmp = compareProjectNumbers(a.proposalNumber, b.proposalNumber);
+        return projectSortDir === "asc" ? cmp : -cmp;
+      }
       let va: string | number, vb: string | number;
       switch (projectSortKey) {
-        case "number": va = a.proposalNumber; vb = b.proposalNumber; break;
         case "client": va = a.client; vb = b.client; break;
         case "title": va = a.title; vb = b.title; break;
         case "total": va = a.total; vb = b.total; break;
