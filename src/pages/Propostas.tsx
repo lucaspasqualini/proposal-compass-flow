@@ -44,6 +44,7 @@ export default function Propostas() {
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const parcelasPrompt = useParcelasPrompt();
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
