@@ -296,7 +296,6 @@ export default function ContasReceber() {
       let va: string | number, vb: string | number;
       switch (projectSortKey) {
         case "client": va = a.client; vb = b.client; break;
-        case "client": va = a.client; vb = b.client; break;
         case "title": va = a.title; vb = b.title; break;
         case "total": va = a.total; vb = b.total; break;
         case "received": va = a.received; vb = b.received; break;
