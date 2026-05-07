@@ -345,6 +345,8 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   };
 
   return (
+    <>
+    {parcelasPrompt.dialog}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[95vh] overflow-hidden flex flex-col" style={{ paddingTop: '1.5rem' }}>
         <DialogHeader>
