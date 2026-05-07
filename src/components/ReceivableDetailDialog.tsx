@@ -257,7 +257,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <p className="text-xs text-muted-foreground">Valor Líquido</p>
                 <p className="text-lg font-bold text-success">{formatCurrency(valorLiquido)}</p>
               </div>
-              </div>
             </div>
 
             {(receivable.valor_proposta != null || receivable.valor_nf != null || receivable.valor_recebido != null) && (
