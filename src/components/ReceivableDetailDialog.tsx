@@ -189,6 +189,32 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             <Separator />
 
+            {/* Responsável / Previsão NF / Parcela / Origem */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Responsável</p>
+                <p className="text-sm">{receivable.responsavel_projeto || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Previsão NF</p>
+                <p className="text-sm">{receivable.previsao_nf ? formatDate(receivable.previsao_nf) : "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Parcela</p>
+                <p className="text-sm">{receivable.parcela_label || `${(receivable.parcela_index ?? 0) + 1}`}</p>
+              </div>
+            </div>
+
+            {receivable.status_origem && /A MAIS|A MENOS|SEM NF/i.test(receivable.status_origem) && (
+              <div>
+                <Badge variant="outline" className="text-xs">
+                  {receivable.status_origem.replace(/^\(\d+\)\s*/, "")}
+                </Badge>
+              </div>
+            )}
+
+            <Separator />
+
             {/* NFe & Status */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -232,6 +258,23 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <p className="text-lg font-bold text-success">{formatCurrency(valorLiquido)}</p>
               </div>
             </div>
+
+            {(receivable.valor_proposta != null || receivable.valor_nf != null || receivable.valor_recebido != null) && (
+              <div className="grid grid-cols-3 gap-4 rounded-md border bg-muted/30 p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Proposta</p>
+                  <p className="text-sm font-medium">{receivable.valor_proposta != null ? formatCurrency(receivable.valor_proposta) : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor NF</p>
+                  <p className="text-sm font-medium">{receivable.valor_nf != null ? formatCurrency(receivable.valor_nf) : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Valor Recebido</p>
+                  <p className="text-sm font-medium">{receivable.valor_recebido != null ? formatCurrency(receivable.valor_recebido) : "—"}</p>
+                </div>
+              </div>
+            )}
 
             <Separator />
 

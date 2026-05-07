@@ -512,10 +512,17 @@ export type Database = {
           notes: string | null
           paid_at: string | null
           parcela_index: number
+          parcela_label: string | null
           pis: number | null
+          previsao_nf: string | null
           proposal_id: string
+          responsavel_projeto: string | null
           status: string
+          status_origem: string | null
           updated_at: string
+          valor_nf: number | null
+          valor_proposta: number | null
+          valor_recebido: number | null
         }
         Insert: {
           amount?: number | null
@@ -532,10 +539,17 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           parcela_index?: number
+          parcela_label?: string | null
           pis?: number | null
+          previsao_nf?: string | null
           proposal_id: string
+          responsavel_projeto?: string | null
           status?: string
+          status_origem?: string | null
           updated_at?: string
+          valor_nf?: number | null
+          valor_proposta?: number | null
+          valor_recebido?: number | null
         }
         Update: {
           amount?: number | null
@@ -552,10 +566,17 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           parcela_index?: number
+          parcela_label?: string | null
           pis?: number | null
+          previsao_nf?: string | null
           proposal_id?: string
+          responsavel_projeto?: string | null
           status?: string
+          status_origem?: string | null
           updated_at?: string
+          valor_nf?: number | null
+          valor_proposta?: number | null
+          valor_recebido?: number | null
         }
         Relationships: [
           {
