@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { proposalStatusLabels, proposalStatusColors, formatCurrency } from "@/lib/format";
 import { generateProposalPptx } from "@/lib/generateProposalPptx";
 import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
+import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
