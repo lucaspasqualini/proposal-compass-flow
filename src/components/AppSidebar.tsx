@@ -71,7 +71,10 @@ export function AppSidebar() {
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
 
-  const mainItems = allItems.filter((item) => canAccessRoute(role, item.url));
+  const mainItems = [
+    ...allItems.filter((item) => canAccessRoute(role, item.url)),
+    { title: "Instalar app", url: "/instalar", icon: Smartphone },
+  ];
   const displayName = myProfile?.full_name?.trim() || myProfile?.email || user?.email || "Usuário";
   const roleLabel = role ? ROLE_LABELS[role] : "Sem acesso";
 
