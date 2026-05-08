@@ -20,6 +20,7 @@ import Templates from "@/pages/Templates";
 import ContasReceber from "@/pages/ContasReceber";
 import Usuarios from "@/pages/Usuarios";
 import AguardandoAcesso from "@/pages/AguardandoAcesso";
+import Instalar from "@/pages/Instalar";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/contas-a-receber" element={<RoleProtectedRoute><ContasReceber /></RoleProtectedRoute>} />
               <Route path="/templates" element={<RoleProtectedRoute><Templates /></RoleProtectedRoute>} />
               <Route path="/usuarios" element={<RoleProtectedRoute allowed={["socio"]}><Usuarios /></RoleProtectedRoute>} />
+              <Route path="/instalar" element={<Instalar />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
