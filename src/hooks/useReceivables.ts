@@ -12,7 +12,8 @@ export function useReceivables() {
         const { data, error } = await supabase
           .from("receivables")
           .select("*, proposals(proposal_number, title, empresa, tipo_projeto), clients(name, cnpj, contact_name, email)")
-          .order("due_date", { ascending: true })
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("id", { ascending: true })
           .range(offset, offset + PAGE - 1);
         if (error) throw error;
         if (!data || data.length === 0) break;
