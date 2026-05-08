@@ -15,3 +15,5 @@ try {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+registerServiceWorker();
