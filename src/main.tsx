@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { clearPersistedFilters } from "./hooks/usePersistedState";
+import { registerServiceWorker } from "./lib/pwa";
 
 // Reset filtros persistidos quando o usuário recarrega a página (F5 / refresh)
 try {
