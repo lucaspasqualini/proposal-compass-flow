@@ -182,19 +182,20 @@ export default function ContasReceber() {
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
-    let totalPendente = 0, totalPago = 0, totalAtrasado = 0, countAtrasado = 0, previsaoMes = 0;
+    let totalPendente = 0, totalPago = 0, totalAtrasado = 0, countAtrasado = 0, previsaoMes = 0, totalEmitir = 0, countEmitir = 0;
     enriched.forEach((r) => {
       const amt = r.amount || 0;
       if (r.effectiveStatus === "pago") totalPago += amt;
       else if (r.effectiveStatus === "atrasado") { totalAtrasado += amt; countAtrasado++; totalPendente += amt; }
       else if (r.effectiveStatus === "cancelado" || r.effectiveStatus === "pdd") { /* skip */ }
       else { totalPendente += amt; }
+      if (r.precisaEmitir) { totalEmitir += amt; countEmitir++; }
       if (r.effectiveStatus !== "pago" && r.effectiveStatus !== "cancelado" && r.effectiveStatus !== "pdd" && r.due_date) {
         const d = new Date(r.due_date);
         if (d >= monthStart && d <= monthEnd) previsaoMes += amt;
       }
     });
-    return { totalPendente, totalPago, totalAtrasado, countAtrasado, previsaoMes };
+    return { totalPendente, totalPago, totalAtrasado, countAtrasado, previsaoMes, totalEmitir, countEmitir };
   }, [enriched]);
 
   // Project-level aggregation
