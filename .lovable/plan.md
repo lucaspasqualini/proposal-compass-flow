@@ -1,81 +1,61 @@
-# Plano de Otimização de Performance
+# Sub-abas no Dashboard
 
-## Diagnóstico
+## Objetivo
+Transformar o Dashboard atual (1.400 linhas, tudo numa página só) em um painel com sub-abas por domínio, no mesmo padrão visual das abas "Por Projeto / Por Parcela" do Contas a Receber. Cada aba foca num tipo de informação, abrindo espaço para gráficos/KPIs novos sem poluir a tela.
 
-Olhando o código, identifiquei 5 gargalos principais que explicam a lentidão:
+## Estrutura proposta de abas
 
-1. **Bundle inicial enorme** — `src/App.tsx` importa todas as páginas de forma síncrona (Dashboard 1400 linhas, ContasReceber 618, Propostas 610, Projetos 581, Clientes/Usuarios). Tudo é baixado e parseado antes da primeira tela aparecer.
+```text
+Dashboard
+├── Visão Geral      ← KPIs consolidados + destaques (já existe hoje)
+├── Propostas        ← funil, conversão, ticket médio, pipeline por status/tipo
+├── Projetos         ← projetos ativos, etapas, prazos, distribuição por tipo
+├── Clientes         ← top clientes, novos x recorrentes, concentração de receita
+├── Alocação         ← carga por colaborador, ocupação, projetos por pessoa
+├── Contas a Receber ← faturamento previsto x realizado, atrasos, "a emitir"
+└── Contas a Pagar   ← (placeholder até existir o módulo)
+```
 
-2. **Queries pesadas e duplicadas no Dashboard** — `Dashboard.tsx` chama `useProposals` + `useProjects` + `useClients` + `useReceivables` simultaneamente. Cada um traz `select("*")` com joins aninhados (ex.: projects traz `proposals(...)`, `clients(name)` e `project_allocations → team_members`). É muito mais dado do que o dashboard usa.
+Filtros globais (período, ano, mês, empresa) ficam **acima das abas** e se aplicam à aba ativa — exatamente como o `Tabs` em `ContasReceber.tsx`.
 
-3. **Cache curto + invalidações amplas** — `staleTime: 30s` faz tudo refazer fetch a cada navegação rápida. Toda mutation invalida a query inteira (`["projects"]`, `["proposals"]`, `["receivables"]`), forçando recarregar 1000+ linhas para mudar 1 campo.
+## Plano de execução
 
-4. **Auth lock contention** — os warnings `Lock "lock:sb-...-auth-token" was not released within 5000ms` no console mostram que muitos hooks disparam em paralelo no boot, todos chamando `getSession()` e serializando no lock do GoTrue. Isso atrasa o primeiro render em vários segundos.
+### Fase 1 — Refatoração estrutural (sem mudar conteúdo)
+1. Quebrar `src/pages/Dashboard.tsx` em componentes por aba dentro de `src/components/dashboard/`:
+   - `OverviewTab.tsx` (conteúdo atual condensado: KPIs principais + alertas)
+   - `PropostasTab.tsx` (gráficos de funil/pipeline já existentes)
+   - `ProjetosTab.tsx` (etapas, status, tipo)
+   - `ClientesTab.tsx` (placeholder inicial com top clientes)
+   - `AlocacaoTab.tsx` (placeholder inicial)
+   - `ReceberTab.tsx` (resumo financeiro já existente)
+   - `PagarTab.tsx` (placeholder "Em breve")
+2. `Dashboard.tsx` passa a ser um shell:
+   - cabeçalho + filtros globais (mantidos)
+   - `<Tabs>` com `usePersistedState("dashboard:tab", "overview")` para lembrar a aba
+   - cada `TabsContent` renderiza o componente correspondente
+3. Hooks de dados (`useProposals`, `useProjects`, `useClients`, `useReceivables`) ficam no shell e os dados já filtrados são passados via props para cada aba — evita re-fetch e mantém o cache único.
 
-5. **Service Worker contraproducente para dados** — `public/sw.js` usa NetworkFirst para `/rest/`. Como ele faz `fetch` antes de devolver cache, não acelera nada e ainda adiciona overhead. Pior: re-cachea respostas de 1000 linhas a cada navegação.
+### Fase 2 — Conteúdo das novas abas
+Para cada aba criada vazia, definir 3–5 widgets relevantes. Sugestões iniciais:
 
-## O que vamos mudar
+- **Propostas**: funil (em elaboração → enviada → ganha/perdida), taxa de conversão, ticket médio, top tipos de projeto, propostas vencendo (`validity_date`).
+- **Projetos**: projetos por etapa, projetos por status, prazo médio iniciado→assinado, projetos sem alocação.
+- **Clientes**: top 10 por valor ganho, novos clientes no período, % de receita concentrada nos top 5.
+- **Alocação**: horas/colaborador, colaboradores sobre/subalocados, projetos sem responsável.
+- **Contas a Receber**: previsto vs recebido por mês, parcelas atrasadas, "a emitir" por etapa, aging.
+- **Contas a Pagar**: aba reservada com mensagem "Módulo em desenvolvimento" (sem backend ainda).
 
-### 1. Code-splitting das rotas (impacto alto, risco baixo)
-Em `src/App.tsx`, converter cada página em `React.lazy(() => import(...))` e envolver `<Routes>` em `<Suspense fallback={<PageSkeleton />}>`. Reduz drasticamente o JS do primeiro carregamento — só Login + Dashboard sobem inicialmente.
+> Esta fase pode ir por aba — não precisa entregar tudo de uma vez.
 
-### 2. Hooks especializados e leves (impacto alto)
-Criar variantes "list" das hooks pesadas para uso em listagens/dashboard:
-- `useProposalsList()` — `select("id, proposal_number, title, status, value, created_at, client_id, payment_type, tipo_projeto, clients(name)")`
-- `useProjectsList()` — sem `project_allocations` aninhado (já temos `useTeamAllocations` quando precisamos)
-- `useDashboardSummary()` — uma única query agregada (ou conjunto enxuto) só com os campos que o Dashboard usa, evitando trazer `parcelas`, `scope`, `description`, etc.
-
-As hooks "completas" continuam disponíveis para telas de detalhe.
-
-### 3. Cache mais agressivo no React Query
-Em `src/App.tsx`:
-- `staleTime: 5 * 60_000` (5 min) para listas estáveis.
-- `gcTime: 30 * 60_000`.
-- Manter `refetchOnWindowFocus: false`.
-
-### 4. Invalidação cirúrgica nas mutations
-Trocar `invalidateQueries({ queryKey: [...] })` por:
-- `setQueryData(..., updater)` quando temos a linha atualizada (update/insert single).
-- Invalidar apenas a chave da entidade quando estritamente necessário.
-
-Isso elimina os ciclos "muda 1 parcela → re-baixa 1000 receivables".
-
-### 5. Reduzir contenção do auth lock no boot
-- Em `src/contexts/AuthContext.tsx`, expor a sessão e atrasar a primeira "leva" de queries até o auth resolver (já faz, mas garantir que `useUserRole`/`useTeamMembers` etc. tenham `enabled: !!session`).
-- Em queries chamadas no boot, agrupar com `enabled` baseado em sessão para evitar 5+ chamadas paralelas competindo pelo lock do GoTrue.
-
-### 6. Service Worker — não interceptar Supabase
-Em `public/sw.js`, remover o handler de `/rest/` (ou trocar por StaleWhileRevalidate só para GETs marcados). Hoje ele só adiciona latência e memória de cache.
-
-### 7. Limpezas pontuais
-- `Dashboard.tsx` (1400 linhas): extrair seções pesadas em componentes memoizados (`React.memo`) e usar `useMemo` nos agregados. Não vou reescrever a lógica, só evitar recomputar tudo a cada render.
-- `useReceivables`: trocar paginação manual por uma única request `range(0, 4999)` (mais que suficiente) e remover o loop quando o volume é menor que 1000, evitando 2 round-trips.
+### Fase 3 — Performance
+- Lazy-load das abas pesadas com `React.lazy` + `Suspense` dentro de `Dashboard.tsx`, para que abas não visitadas não montem gráficos do Recharts.
 
 ## Detalhes técnicos
-
-Arquivos afetados:
-```
-src/App.tsx                       # lazy + Suspense + QueryClient defaults
-src/hooks/useProposals.ts         # adicionar useProposalsList()
-src/hooks/useProjects.ts          # adicionar useProjectsList()
-src/hooks/useReceivables.ts       # range único + setQueryData no update
-src/hooks/useClientStats.ts       # selects mais enxutos
-src/pages/Dashboard.tsx           # trocar hooks pelos *List + memos
-src/pages/Propostas.tsx           # trocar para useProposalsList
-src/pages/Projetos.tsx            # trocar para useProjectsList
-src/pages/ContasReceber.tsx       # usar useProjectsList (só id+etapa)
-src/contexts/AuthContext.tsx      # garantir gating de queries
-public/sw.js                      # remover intercept de /rest/
-```
-
-Ordem de execução: 1 → 3 → 6 → 2 → 4 → 5 → 7 (entrega valor cedo).
-
-## Resultado esperado
-
-- Tempo de primeiro render: −50% a −70% (menos JS, menos dados, sem lock contention).
-- Navegação entre abas: praticamente instantânea (cache 5 min).
-- Edição de linha (status de receivable, etapa de projeto): sem refetch da lista inteira.
+- Componente de tabs: `@/components/ui/tabs` (já em uso no projeto).
+- Persistência da aba ativa: `usePersistedState` (já em uso, ex.: `Alocacao.tsx`).
+- Filtros globais ficam no shell; cada sub-componente recebe `{ proposals, projects, clients, receivables, period, year, month, empresa }` via props.
+- Nenhuma mudança de schema / backend nesta etapa.
+- Visual idêntico ao `Tabs` do `ContasReceber.tsx` (linha 437–608) para consistência.
 
 ## Pergunta antes de implementar
-
-Posso seguir com **todas** as 7 mudanças, ou prefere que eu vá em fases (ex.: só 1+3+6 primeiro, medir, e depois o resto)?
+Posso seguir essa estrutura de **7 abas** (Visão Geral, Propostas, Projetos, Clientes, Alocação, Contas a Receber, Contas a Pagar) e começar pela **Fase 1** (refatorar o Dashboard atual em abas, mantendo o conteúdo de hoje na "Visão Geral" e criando as outras como esqueletos)? Ou você prefere já entrar com widgets específicos em alguma aba primeiro?
