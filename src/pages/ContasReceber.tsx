@@ -55,6 +55,7 @@ type SortDir = "asc" | "desc";
 
 export default function ContasReceber() {
   const { data: receivables, isLoading } = useReceivables();
+  const { data: projects } = useProjects();
   const updateReceivable = useUpdateReceivable();
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("contasreceber:search", "");
@@ -69,6 +70,15 @@ export default function ContasReceber() {
   const [projectSortKey, setProjectSortKey] = usePersistedState<ProjectSortKey | null>("contasreceber:projectSortKey", null);
   const [projectSortDir, setProjectSortDir] = usePersistedState<SortDir>("contasreceber:projectSortDir", "asc");
 
+  // proposal_id -> { etapa, status }
+  const projectByProposal = useMemo(() => {
+    const map = new Map<string, { etapa: string | null; status: string | null }>();
+    (projects || []).forEach((p: any) => {
+      if (p.proposal_id) map.set(p.proposal_id, { etapa: p.etapa ?? null, status: p.status ?? null });
+    });
+    return map;
+  }, [projects]);
+
   // Count total parcelas per proposal for X/Y format
   const parcelaTotals = useMemo(() => {
     if (!receivables) return new Map<string, number>();
@@ -79,7 +89,7 @@ export default function ContasReceber() {
     return map;
   }, [receivables]);
 
-  // Derive effective status (overdue check)
+  // Derive effective status (overdue check) and "precisa emitir" flag
   const enriched = useMemo(() => {
     if (!receivables) return [];
     const today = startOfDay(new Date());
@@ -88,9 +98,28 @@ export default function ContasReceber() {
       if (r.status === "pendente" && r.due_date && isBefore(new Date(r.due_date), today)) {
         effectiveStatus = "atrasado";
       }
-      return { ...r, effectiveStatus };
+
+      // Precisa emitir: proposta por etapas + etapa do projeto >= etapa da parcela
+      let precisaEmitir = false;
+      const paymentType = (r.proposals as any)?.payment_type;
+      if (
+        paymentType === "etapas" &&
+        (r.status === "pendente")
+      ) {
+        const proj = projectByProposal.get(r.proposal_id);
+        const projEtapa = proj?.etapa || "iniciado";
+        if (projEtapa !== "cancelado") {
+          const projRank = ETAPA_RANK[projEtapa] ?? 0;
+          const parcRank = PARCELA_ETAPA_RANK[(r.description || "").toLowerCase()] ?? 0;
+          if (parcRank > 0 && projRank >= parcRank) {
+            precisaEmitir = true;
+          }
+        }
+      }
+
+      return { ...r, effectiveStatus, precisaEmitir };
     });
-  }, [receivables]);
+  }, [receivables, projectByProposal]);
 
   // Filters
   const years = useMemo(() => {
