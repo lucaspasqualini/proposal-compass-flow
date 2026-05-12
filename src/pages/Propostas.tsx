@@ -478,58 +478,132 @@ export default function Propostas() {
   );
 }
 
-interface MultiSelectFilterProps {
-  label: string;
-  allLabel: string;
-  width?: string;
-  options: { value: string; label: string }[];
-  selected: string[];
+const MONTH_LABELS: [string, string][] = [
+  ["01", "Janeiro"], ["02", "Fevereiro"], ["03", "Março"], ["04", "Abril"],
+  ["05", "Maio"], ["06", "Junho"], ["07", "Julho"], ["08", "Agosto"],
+  ["09", "Setembro"], ["10", "Outubro"], ["11", "Novembro"], ["12", "Dezembro"],
+];
+
+interface DateTreeFilterProps {
+  years: string[];
+  selected: string[]; // entries are "YYYY-MM"
   onChange: (next: string[]) => void;
 }
 
-function MultiSelectFilter({ label, allLabel, width = "w-40", options, selected, onChange }: MultiSelectFilterProps) {
-  const display =
-    selected.length === 0
-      ? allLabel
-      : selected.length <= 2
-        ? options
-            .filter((o) => selected.includes(o.value))
-            .map((o) => o.label)
-            .join(", ")
-        : `${selected.length} ${label.toLowerCase()}s`;
+function DateTreeFilter({ years, selected, onChange }: DateTreeFilterProps) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    if (years[0]) init[years[0]] = true;
+    return init;
+  });
 
-  const toggle = (value: string) => {
-    if (selected.includes(value)) onChange(selected.filter((v) => v !== value));
-    else onChange([...selected, value]);
+  const selectedSet = new Set(selected);
+  const yearKeys = (y: string) => MONTH_LABELS.map(([m]) => `${y}-${m}`);
+  const yearState = (y: string): "all" | "some" | "none" => {
+    const keys = yearKeys(y);
+    const count = keys.filter((k) => selectedSet.has(k)).length;
+    if (count === 0) return "none";
+    if (count === 12) return "all";
+    return "some";
   };
+
+  const toggleYear = (y: string) => {
+    const keys = yearKeys(y);
+    const state = yearState(y);
+    const next = new Set(selected);
+    if (state === "all") keys.forEach((k) => next.delete(k));
+    else keys.forEach((k) => next.add(k));
+    onChange(Array.from(next));
+  };
+
+  const toggleMonth = (key: string) => {
+    const next = new Set(selected);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange(Array.from(next));
+  };
+
+  const display = (() => {
+    if (selected.length === 0) return "Todos os Períodos";
+    // Group by year
+    const byYear = new Map<string, string[]>();
+    for (const k of selected) {
+      const [y, m] = k.split("-");
+      if (!byYear.has(y)) byYear.set(y, []);
+      byYear.get(y)!.push(m);
+    }
+    const parts: string[] = [];
+    for (const [y, months] of Array.from(byYear.entries()).sort((a, b) => b[0].localeCompare(a[0]))) {
+      if (months.length === 12) parts.push(y);
+      else if (months.length <= 2) parts.push(`${months.sort().map((m) => MONTH_LABELS[Number(m) - 1][1].slice(0, 3)).join("/")}/${y.slice(2)}`);
+      else parts.push(`${months.length}m/${y.slice(2)}`);
+    }
+    if (parts.length <= 2) return parts.join(", ");
+    return `${parts.length} períodos`;
+  })();
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={`${width} justify-between font-normal`}>
+        <Button variant="outline" className="w-56 justify-between font-normal">
           <span className="truncate">{display}</span>
-          <ArrowUpDown className="h-3 w-3 ml-2 opacity-50 shrink-0" />
+          <CalendarIcon className="h-3 w-3 ml-2 opacity-50 shrink-0" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
+      <PopoverContent className="w-64 p-2" align="start">
         <button
           type="button"
           onClick={() => onChange([])}
           className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent text-muted-foreground"
         >
-          {allLabel}
+          Todos os Períodos
         </button>
         <div className="h-px bg-border my-1" />
-        <div className="max-h-72 overflow-auto">
-          {options.map((o) => (
-            <label
-              key={o.value}
-              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
-            >
-              <Checkbox checked={selected.includes(o.value)} onCheckedChange={() => toggle(o.value)} />
-              <span>{o.label}</span>
-            </label>
-          ))}
+        <div className="max-h-80 overflow-auto">
+          {years.map((y) => {
+            const state = yearState(y);
+            const isOpen = !!expanded[y];
+            return (
+              <div key={y}>
+                <div className="flex items-center gap-1 px-1 py-1 rounded hover:bg-accent">
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((e) => ({ ...e, [y]: !e[y] }))}
+                    className="p-0.5 rounded hover:bg-muted"
+                    aria-label={isOpen ? "Recolher" : "Expandir"}
+                  >
+                    {isOpen ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3 rotate-90" />}
+                  </button>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm flex-1">
+                    <Checkbox
+                      checked={state === "all" ? true : state === "some" ? "indeterminate" : false}
+                      onCheckedChange={() => toggleYear(y)}
+                    />
+                    <span className="font-medium">{y}</span>
+                  </label>
+                </div>
+                {isOpen && (
+                  <div className="ml-6 border-l border-border pl-2">
+                    {MONTH_LABELS.map(([m, label]) => {
+                      const key = `${y}-${m}`;
+                      return (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-sm"
+                        >
+                          <Checkbox
+                            checked={selectedSet.has(key)}
+                            onCheckedChange={() => toggleMonth(key)}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>
