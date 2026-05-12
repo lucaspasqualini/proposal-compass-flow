@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useReceivables, useUpdateReceivable } from "@/hooks/useReceivables";
+import { useProjects } from "@/hooks/useProjects";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
-import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
+const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
 
 const receivableStatusLabels: Record<string, string> = {
   pendente: "Pendente",
