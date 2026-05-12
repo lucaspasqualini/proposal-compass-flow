@@ -321,25 +321,10 @@ export default function Propostas() {
             ))}
           </SelectContent>
         </Select>
-        <MultiSelectFilter
-          label="Ano"
-          allLabel="Todos os Anos"
-          width="w-36"
-          options={availableYears.map((y) => ({ value: y, label: y }))}
-          selected={yearFilters}
-          onChange={setYearFilters}
-        />
-        <MultiSelectFilter
-          label="Mês"
-          allLabel="Todos os Meses"
-          width="w-40"
-          options={[
-            ["01", "Janeiro"], ["02", "Fevereiro"], ["03", "Março"], ["04", "Abril"],
-            ["05", "Maio"], ["06", "Junho"], ["07", "Julho"], ["08", "Agosto"],
-            ["09", "Setembro"], ["10", "Outubro"], ["11", "Novembro"], ["12", "Dezembro"],
-          ].map(([value, label]) => ({ value, label }))}
-          selected={monthFilters}
-          onChange={setMonthFilters}
+        <DateTreeFilter
+          years={availableYears}
+          selected={dateFilters}
+          onChange={setDateFilters}
         />
         <div className="flex items-center gap-2">
           <Checkbox id="hide-perdida" checked={hidePerdida} onCheckedChange={(v) => setHidePerdida(!!v)} />
