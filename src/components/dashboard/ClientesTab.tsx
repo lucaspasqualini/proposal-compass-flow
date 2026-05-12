@@ -138,6 +138,43 @@ export default function ClientesTab() {
         </Card>
       </div>
 
+      {/* Top 5 clientes do período (vindo da Visão Geral) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top 5 clientes por receita — período selecionado</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topPeriodo.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sem propostas ganhas no período.</p>
+          ) : (
+            <div className="divide-y">
+              {topPeriodo.map((c, i) => (
+                <button
+                  key={c.clientId}
+                  onClick={() => navigate(`/clientes/${c.clientId}`)}
+                  className="w-full flex items-center justify-between py-3 hover:bg-accent/50 px-2 -mx-2 rounded transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                      {i + 1}
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="font-medium text-sm truncate">{c.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.projetos} proposta(s) ganha(s)
+                      </div>
+                    </div>
+                  </div>
+                  <div className="font-semibold text-sm flex-shrink-0">
+                    {formatCurrency(c.receita)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
