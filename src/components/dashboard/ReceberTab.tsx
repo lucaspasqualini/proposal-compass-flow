@@ -153,7 +153,15 @@ export default function ReceberTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          label="A receber (30 dias)"
+          value={formatCurrency(aReceber30)}
+          delta={null}
+          icon={DollarSign}
+          accent="bg-warning/10 text-warning"
+          hint="pendentes até 30 dias"
+        />
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground font-medium">Total pendente</CardTitle>
