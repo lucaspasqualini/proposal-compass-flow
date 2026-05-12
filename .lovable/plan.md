@@ -1,57 +1,38 @@
-# Plano: Transformar o app em PWA instalável
+# Sincronização entre abas — diagnóstico e correção
 
-Vou configurar o app como **Progressive Web App (PWA)** para que você possa instalá-lo na tela inicial do iPhone ou Android e usá-lo como um app nativo, com suporte offline e notificações push.
+## O que já funciona hoje
 
-## O que será feito
+- **Propostas → Projetos / Contas a Receber (edição manual)**: ao mudar o status de uma proposta para `ganha` em `ProposalDetailDialog`, o `syncProposalProjectStatus` cria o projeto e gera os receivables. Voltando atrás, apaga ambos.
+- **Projetos ↔ Alocação (alocar/remover pessoa)**: `useCreateAllocation` / `useDeleteAllocation` fazem optimistic update e invalidam `["projects"]` e `["alocacao-projects"]`. A aba Alocação compartilha o namespace `["projects"]`, então recarrega.
 
-### 1. Configuração base do PWA
-- Instalar `vite-plugin-pwa` e configurar no `vite.config.ts`
-- Criar `manifest.json` com nome do app, ícones, cores (teal #0D7377) e `display: standalone` (abre em tela cheia, sem barra do navegador)
-- Adicionar meta tags mobile no `index.html` (theme-color, apple-touch-icon, viewport otimizado)
-- Gerar ícones do app em vários tamanhos (192x192, 512x512, Apple touch icon 180x180)
+## Lacunas que estão causando o problema
 
-### 2. Suporte offline
-- Configurar Service Worker via Workbox (incluso no `vite-plugin-pwa`)
-- Estratégia **NetworkFirst** para navegação HTML (sempre tenta buscar versão nova, usa cache se offline)
-- Estratégia **CacheFirst** para assets estáticos (CSS, JS, fontes, imagens)
-- Cache de respostas da API do Lovable Cloud para leitura offline (Propostas, Projetos, Clientes, Contas a Receber)
-- Indicador visual no app quando estiver offline
+1. **Importação em massa de Propostas (`ImportProposals.tsx`)** insere direto no banco e só invalida `["proposals"]`. **Não cria projetos nem receivables** para linhas com status `ganha`/`aprovada`. É por isso que importar uma planilha não “puxa” para Projetos e Contas a Receber.
+2. **Mapeamento de status do importador** aceita `aprovada` e `ganha` como valores distintos, mas a regra de negócio que dispara projeto+receivables só roda em `ganha`. Linhas marcadas como `aprovada` ficam órfãs.
+3. **Alocação (`/alocacao`) usa querykey `["projects","alocacao-light"]`** com select reduzido. As mutações de alocação invalidam `["projects"]` (prefixo bate, então recarrega), mas o **optimistic update não atinge essa lista** — há um pequeno delay até o refetch. Em telas lentas dá impressão de “não atualizou”.
+4. Não há nenhum trigger no banco garantindo a sincronia: tudo depende do código do front. Se alguém inserir/alterar uma proposta por outro caminho (importador, edição direta), a cadeia quebra.
 
-### 3. Notificações push
-- Criar tabela `push_subscriptions` no Lovable Cloud para armazenar inscrições por usuário
-- Gerar par de chaves VAPID (será necessário adicionar como secrets: `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY`)
-- Componente de UI para o usuário ativar/desativar notificações (em Configurações)
-- Edge Function `send-push-notification` para disparar notificações
-- Triggers iniciais sugeridos (a confirmar com você):
-  - Nova proposta criada
-  - Conta a receber vencendo em X dias
-  - Status de projeto alterado
+## Plano de correção
 
-### 4. Página de instalação
-- Criar rota `/instalar` com instruções passo a passo:
-  - **iPhone (Safari)**: Compartilhar → Adicionar à Tela de Início
-  - **Android (Chrome)**: Menu → Instalar app
-- Botão "Instalar app" que aparece automaticamente quando o navegador suporta (`beforeinstallprompt`)
+### 1. Sincronizar importação de propostas
+No `ImportProposals.handleImport`:
+- Após `insert(...).select()`, percorrer as linhas retornadas e, para cada proposta com status `ganha`, chamar `syncProposalProjectStatus({ proposal, previousStatus: null })`.
+- Tratar `aprovada` como sinônimo de `ganha` na importação (ou normalizar para `ganha` no `STATUS_MAP`) — alinhar com a regra única de negócio.
+- Invalidar também `["projects"]` e `["receivables"]` ao final.
+- Mostrar no toast quantos projetos e parcelas foram gerados.
 
-### 5. Validação
-- Testar instalação no preview publicado
-- Verificar que abre em tela cheia
-- Confirmar que funciona offline
-- Testar notificação push de teste
+### 2. Garantir sincronização no banco (defesa em profundidade)
+Criar um **trigger** em `proposals` (`AFTER INSERT OR UPDATE OF status`) que:
+- Quando `status` passar a `ganha` e não existir projeto vinculado: cria projeto (`status='em_andamento'`, copia título/cliente/valor) e gera receivables a partir de `parcelas` (ou parcela única).
+- Quando sair de `ganha`: apaga projeto e receivables vinculados.
+Assim qualquer caminho (importação, edição manual, SQL direto, futura API) mantém a cadeia consistente — o front passa a ser apenas “acelerador” via optimistic update.
 
-## Detalhes técnicos
+### 3. Otimistic update na aba Alocação
+Em `useCreateAllocation` / `useDeleteAllocation`, estender o optimistic update para também atualizar queries com prefixo `["projects","alocacao-light"]`, não só `["projects"]` puro e `["alocacao-projects"]`. Mantém a sensação de instantâneo na aba Alocação.
 
-**Importante sobre o preview do Lovable:** O Service Worker e as notificações push **só funcionam na versão publicada** (URL `*.lovable.app`), não no editor. Você precisará clicar em **Publish** antes de instalar no celular.
+### 4. Backfill único
+Migration de dados (executada uma vez) para varrer propostas existentes com `status='ganha'` que não tenham projeto/receivables e gerar o que está faltando — assim a base atual fica coerente antes do trigger entrar em ação.
 
-**Limitações de push no iOS:**
-- Notificações push em PWA no iPhone só funcionam a partir do **iOS 16.4+**
-- O usuário precisa **primeiro instalar o app na tela inicial** e abrir a partir dela para que push funcione (limitação da Apple, não do Lovable)
-- No Android funciona normalmente sem instalar
+## Resposta direta à sua pergunta
 
-**Cache offline:** Por padrão vou cachear as últimas leituras das tabelas principais. Edição/criação offline com sincronização posterior é um projeto bem maior — não está incluso neste plano.
-
-## Perguntas antes de implementar
-
-1. Quais eventos devem disparar notificação push? (sugeri 3 acima, mas pode escolher outros)
-2. Quer que eu use o nome "Compass" / "Proposal Compass" no app instalado, ou outro nome?
-3. Usar o ícone atual do projeto ou gerar um novo (posso criar um com a cor teal da marca)?
+**Parcialmente.** Edição manual de uma proposta já propaga para Projetos e Contas a Receber. Alocação atualiza Projetos e vice-versa. Mas **importação em massa de propostas hoje não dispara essa cadeia**, e não há salvaguarda no banco. O plano acima fecha esses buracos.

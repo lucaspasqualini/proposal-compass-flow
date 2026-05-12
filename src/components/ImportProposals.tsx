@@ -149,8 +149,16 @@ export default function ImportProposals() {
     if (insertError) {
       toast({ title: "Erro ao importar", description: insertError.message, variant: "destructive" });
     } else {
-      toast({ title: `${inserts.length} propostas importadas com sucesso!` });
+      const ganhas = inserts.filter((i) => i.status === "ganha").length;
+      toast({
+        title: `${inserts.length} propostas importadas com sucesso!`,
+        description: ganhas > 0
+          ? `${ganhas} marcada(s) como ganha geraram projeto e contas a receber automaticamente.`
+          : undefined,
+      });
       qc.invalidateQueries({ queryKey: ["proposals"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["receivables"] });
       setRows([]);
       setOpen(false);
     }

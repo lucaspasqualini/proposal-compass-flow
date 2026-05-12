@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.sync_proposal_to_project_receivables() FROM PUBLIC, anon, authenticated;
