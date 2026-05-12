@@ -15,8 +15,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useProjects } from "@/hooks/useProjects";
-import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { Briefcase, Clock } from "lucide-react";
+import { formatCurrency, projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
+import { Briefcase, Clock, Circle } from "lucide-react";
+import { Badge as BadgeUI } from "@/components/ui/badge";
+import { useDashboardPeriod } from "./_shared";
 
 const ETAPA_FILL: Record<string, string> = {
   iniciado: "hsl(var(--info))",
