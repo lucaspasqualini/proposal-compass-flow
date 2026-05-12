@@ -1,25 +1,23 @@
-Diagnóstico confirmado: não é filtro ativo. A aba Propostas está carregando somente os 1000 registros mais recentes por causa do limite padrão do backend. A CSN tem 6 propostas no banco, mas apenas 1 está dentro desse lote recente; por isso a busca por “CSN” mostra só a proposta perdida. A aba Clientes calcula os números a partir de outro carregamento que, hoje, está retornando as 6 propostas da CSN, daí a divergência.
+## Objetivo
+Permitir selecionar múltiplos anos e múltiplos meses simultaneamente nos filtros da página de Propostas.
 
-Plano de correção:
+## Mudanças
 
-1. Criar um helper reutilizável para paginação completa
-   - Buscar registros em páginas de 1000 usando `.range(...)` até não haver mais dados.
-   - Manter ordenação estável quando necessário.
-   - Evitar mexer no cliente de backend gerado automaticamente.
+### 1. `src/pages/Propostas.tsx`
+- Trocar `yearFilter: string` e `monthFilter: string` por arrays persistidos:
+  - `yearFilters: string[]` (ex: `["2024","2025"]`, `[]` = todos)
+  - `monthFilters: string[]` (ex: `["01","04"]`, `[]` = todos)
+- Substituir os dois componentes `<Select>` de Ano e Mês por um `<Popover>` cada, com:
+  - Trigger estilo `Button variant="outline"` mostrando: "Todos os Anos" / "2024" / "2024, 2025" / "3 anos" (acima de 2 itens), idem para meses.
+  - Conteúdo: lista de `<Checkbox>` + label, mais um item "Todos" (limpa a seleção).
+- Atualizar a lógica de filtro:
+  - `matchYear = yearFilters.length === 0 || yearFilters.includes(filterDate.substring(0,4))`
+  - `matchMonth = monthFilters.length === 0 || monthFilters.includes(filterDate.substring(5,7))`
+- Adicionar dependências corretas em `useMemo`.
 
-2. Corrigir a aba Propostas
-   - Atualizar `useProposals()` para carregar todas as propostas, não só as primeiras 1000.
-   - Preservar o join com clientes e a ordenação atual por `created_at desc`.
-   - Isso fará a busca por “CSN” mostrar as 6 propostas.
+### 2. Compatibilidade com filtros antigos persistidos
+- `usePersistedState` lê valores antigos (string `"all"` ou `"2025"`) que não são arrays. Inicializar como `[]` e ignorar valores inválidos para evitar quebra (o sessionStorage é por aba, então o impacto é mínimo, mas vamos fazer um guard simples: se o valor lido não for array, tratar como `[]`).
 
-3. Corrigir telas relacionadas para evitar a mesma classe de erro
-   - Atualizar `useProjects()` e a consulta da aba Alocação, pois também listam tabelas que podem ultrapassar 1000 registros.
-   - Revisar `useClientStats()` para garantir que Clientes, Propostas e Projetos usem carregamento completo de forma consistente.
-
-4. Validar com dados reais
-   - Confirmar no banco que CSN tem 6 propostas e R$ 1.220.500 em propostas ganhas.
-   - Confirmar que a lógica corrigida não depende de filtros locais para exibir esses registros.
-
-Resultado esperado:
-- Na aba Propostas, buscar “CSN” deve exibir as 6 propostas existentes.
-- A aba Clientes e a aba Propostas passam a usar bases completas e consistentes, eliminando a divergência causada por truncamento de dados.
+## Fora de escopo
+- Outras páginas (Projetos, Dashboard etc.) mantêm seus filtros atuais.
+- Sem mudanças no backend ou hooks.
