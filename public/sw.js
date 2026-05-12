@@ -62,26 +62,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Supabase REST/RPC: NetworkFirst com cache fallback (leitura offline)
-  if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/')) {
-    event.respondWith(
-      (async () => {
-        try {
-          const fresh = await fetch(request);
-          if (fresh.ok) {
-            const cache = await caches.open(API_CACHE);
-            cache.put(request, fresh.clone());
-          }
-          return fresh;
-        } catch {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          throw new Error('offline');
-        }
-      })()
-    );
-    return;
-  }
+  // Supabase REST/RPC: não interceptar (deixa o navegador lidar diretamente).
+  // O React Query já cuida de cache em memória; interceptar aqui só adiciona overhead.
+  if (url.hostname.endsWith('.supabase.co')) return;
 
   // Assets estáticos (mesma origem): CacheFirst
   if (url.origin === self.location.origin) {
