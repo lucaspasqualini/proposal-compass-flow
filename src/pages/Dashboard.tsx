@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PropostasTab from "@/components/dashboard/PropostasTab";
+import ProjetosTab from "@/components/dashboard/ProjetosTab";
+import ClientesTab from "@/components/dashboard/ClientesTab";
+import AlocacaoTab from "@/components/dashboard/AlocacaoTab";
+import ReceberTab from "@/components/dashboard/ReceberTab";
 import {
   ResponsiveContainer,
   BarChart,
@@ -1254,19 +1259,19 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="propostas" className="mt-6">
-          <PlaceholderTab title="Dashboard de Propostas" />
+          <PropostasTab />
         </TabsContent>
         <TabsContent value="projetos" className="mt-6">
-          <PlaceholderTab title="Dashboard de Projetos" />
+          <ProjetosTab />
         </TabsContent>
         <TabsContent value="clientes" className="mt-6">
-          <PlaceholderTab title="Dashboard de Clientes" />
+          <ClientesTab />
         </TabsContent>
         <TabsContent value="alocacao" className="mt-6">
-          <PlaceholderTab title="Dashboard de Alocação" />
+          <AlocacaoTab />
         </TabsContent>
         <TabsContent value="receber" className="mt-6">
-          <PlaceholderTab title="Dashboard de Contas a Receber" />
+          <ReceberTab />
         </TabsContent>
         <TabsContent value="pagar" className="mt-6">
           <PlaceholderTab title="Dashboard de Contas a Pagar" comingSoon />
