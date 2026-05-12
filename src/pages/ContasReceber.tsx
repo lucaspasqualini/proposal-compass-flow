@@ -409,6 +409,7 @@ export default function ContasReceber() {
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="precisa_emitir">A Emitir (etapa)</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
             <SelectItem value="lancado">Lançado</SelectItem>
             <SelectItem value="pago">Pago</SelectItem>
