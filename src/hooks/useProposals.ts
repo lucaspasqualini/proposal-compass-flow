@@ -6,6 +6,9 @@ import { fetchAllPaginated } from "@/lib/fetchAll";
 type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
 
+const LIST_COLUMNS =
+  "id, proposal_number, title, status, value, created_at, updated_at, client_id, payment_type, parcelas, tipo_projeto, data_envio, data_aprovacao, data_fup, validity_date, empresa, cliente_contato, indicador, observacoes, clients(name)";
+
 export function useProposals() {
   return useQuery({
     queryKey: ["proposals"],
@@ -13,7 +16,7 @@ export function useProposals() {
       return await fetchAllPaginated(() =>
         supabase
           .from("proposals")
-          .select("*, clients(name)")
+          .select(LIST_COLUMNS)
           .order("created_at", { ascending: false })
       );
     },
@@ -52,11 +55,16 @@ export function useUpdateProposal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Proposal> & { id: string }) => {
-      const { data, error } = await supabase.from("proposals").update(updates).eq("id", id).select().single();
+      const { data, error } = await supabase.from("proposals").update(updates).eq("id", id).select("*, clients(name)").single();
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["proposals"] }),
+    onSuccess: (data) => {
+      qc.setQueryData<any[]>(["proposals"], (old) =>
+        old ? old.map((p) => (p.id === data.id ? { ...p, ...data } : p)) : old
+      );
+      qc.setQueryData(["proposals", data.id], data);
+    },
   });
 }
 
@@ -66,7 +74,10 @@ export function useDeleteProposal() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("proposals").delete().eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["proposals"] }),
+    onSuccess: (id) => {
+      qc.setQueryData<any[]>(["proposals"], (old) => (old ? old.filter((p) => p.id !== id) : old));
+    },
   });
 }
