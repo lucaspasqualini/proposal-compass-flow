@@ -11,7 +11,7 @@ export function useReceivables() {
       while (true) {
         const { data, error } = await supabase
           .from("receivables")
-          .select("*, proposals(proposal_number, title, empresa, tipo_projeto), clients(name, cnpj, contact_name, email)")
+          .select("*, proposals(proposal_number, title, empresa, tipo_projeto, payment_type, projects(etapa, status)), clients(name, cnpj, contact_name, email)")
           .order("due_date", { ascending: true, nullsFirst: false })
           .order("id", { ascending: true })
           .range(offset, offset + PAGE - 1);
