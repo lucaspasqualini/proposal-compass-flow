@@ -30,7 +30,34 @@ const PIE_COLORS = [
 
 export default function ClientesTab() {
   const { data: clients } = useClientsWithStats();
+  const { data: proposals } = useProposals();
   const navigate = useNavigate();
+  const { range, inCurrent } = useDashboardPeriod();
+
+  // Top 5 clientes do período (vindo da Visão Geral)
+  const topPeriodo = useMemo(() => {
+    const ps = proposals ?? [];
+    const cs = clients ?? [];
+    const map = new Map<string, { receita: number; projetos: Set<string> }>();
+    for (const p of ps as any[]) {
+      if (p.status !== "ganha" || !p.client_id) continue;
+      if (!inCurrent(p.data_aprovacao ?? p.created_at)) continue;
+      if (!map.has(p.client_id)) map.set(p.client_id, { receita: 0, projetos: new Set() });
+      const item = map.get(p.client_id)!;
+      item.receita += Number(p.value) || 0;
+      item.projetos.add(p.id);
+    }
+    const arr = Array.from(map.entries()).map(([clientId, v]) => ({
+      clientId,
+      name: cs.find((c: any) => c.id === clientId)?.name ?? "—",
+      receita: v.receita,
+      projetos: v.projetos.size,
+    }));
+    arr.sort((a, b) => b.receita - a.receita);
+    return arr.slice(0, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposals, clients, range]);
+
 
   const top10 = useMemo(() => {
     const cs = clients ?? [];
