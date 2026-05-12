@@ -13,10 +13,14 @@ import {
   CartesianGrid,
   Legend,
   BarChart,
+  AreaChart,
+  Area,
 } from "recharts";
 import { useReceivables } from "@/hooks/useReceivables";
 import { formatCurrency } from "@/lib/format";
-import { AlertTriangle, FileWarning } from "lucide-react";
+import { AlertTriangle, FileWarning, DollarSign } from "lucide-react";
+import { KpiCard } from "./_shared";
+import { monthKey, monthLabel } from "@/lib/dashboardFilters";
 
 const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
 const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
@@ -95,6 +99,48 @@ export default function ReceberTab() {
     return Array.from(map.values()).sort((a, b) => b.valor - a.valor).slice(0, 8);
   }, [receivables]);
 
+  // Próximos 6 meses (forward-looking) — vindo da Visão Geral
+  const cashflow = useMemo(() => {
+    const rs = receivables ?? [];
+    const months: { key: string; label: string; previsto: number; recebido: number }[] = [];
+    const now = new Date();
+    for (let i = -1; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      months.push({ key: monthKey(d), label: monthLabel(d), previsto: 0, recebido: 0 });
+    }
+    const idx = new Map(months.map((m, i) => [m.key, i]));
+    for (const r of rs as any[]) {
+      const amount = Number(r.amount) || 0;
+      if (r.status === "pendente" && r.due_date) {
+        const d = new Date(r.due_date);
+        const i = idx.get(monthKey(d));
+        if (i != null) months[i].previsto += amount;
+      }
+      if (r.status === "pago" && r.paid_at) {
+        const d = new Date(r.paid_at);
+        const i = idx.get(monthKey(d));
+        if (i != null) months[i].recebido += amount;
+      }
+    }
+    return months;
+  }, [receivables]);
+
+  // A receber 30 dias (vindo da Visão Geral)
+  const aReceber30 = useMemo(() => {
+    const hoje = new Date();
+    const em30 = new Date();
+    em30.setDate(hoje.getDate() + 30);
+    return (receivables ?? [])
+      .filter(
+        (r: any) =>
+          r.status === "pendente" &&
+          r.due_date &&
+          new Date(r.due_date) <= em30 &&
+          new Date(r.due_date) >= new Date(hoje.toDateString())
+      )
+      .reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
+  }, [receivables]);
+
   const totalAtrasado = aging.reduce((s, b) => s + b.valor, 0);
   const totalPendente = useMemo(
     () =>
@@ -107,7 +153,15 @@ export default function ReceberTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          label="A receber (30 dias)"
+          value={formatCurrency(aReceber30)}
+          delta={null}
+          icon={DollarSign}
+          accent="bg-warning/10 text-warning"
+          hint="pendentes até 30 dias"
+        />
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground font-medium">Total pendente</CardTitle>
@@ -163,6 +217,51 @@ export default function ReceberTab() {
               <Line type="monotone" dataKey="recebido" name="Recebido" stroke="hsl(var(--success))" strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Fluxo de caixa próximos 6 meses (vindo da Visão Geral) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Fluxo de caixa — próximos 6 meses</CardTitle>
+          <p className="text-xs text-muted-foreground">Snapshot atual</p>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={cashflow} margin={{ left: 10, right: 20, top: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="grad-prev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="grad-rec" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number) => formatCurrency(v)}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="previsto" name="Previsto" stroke="hsl(var(--primary))" fill="url(#grad-prev)" strokeWidth={2} />
+                <Area type="monotone" dataKey="recebido" name="Recebido" stroke="hsl(var(--success))" fill="url(#grad-rec)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
 

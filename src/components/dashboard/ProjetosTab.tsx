@@ -15,8 +15,9 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useProjects } from "@/hooks/useProjects";
-import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
-import { Briefcase, Clock } from "lucide-react";
+import { formatCurrency, projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
+import { Briefcase, Clock, Circle } from "lucide-react";
+import { useDashboardPeriod } from "./_shared";
 
 const ETAPA_FILL: Record<string, string> = {
   iniciado: "hsl(var(--info))",
@@ -35,6 +36,27 @@ const STATUS_FILL: Record<string, string> = {
 export default function ProjetosTab() {
   const { data: projects } = useProjects();
   const navigate = useNavigate();
+  const { range, inCurrent } = useDashboardPeriod();
+
+  // Funil de projetos do período (vindo da Visão Geral)
+  const projetosFunil = useMemo(() => {
+    const pj = projects ?? [];
+    const etapas: Record<string, { qtd: number; valor: number }> = {
+      iniciado: { qtd: 0, valor: 0 },
+      minuta: { qtd: 0, valor: 0 },
+      assinado: { qtd: 0, valor: 0 },
+    };
+    for (const p of pj as any[]) {
+      const e = (p.etapa ?? "iniciado") as keyof typeof etapas;
+      if (!etapas[e]) continue;
+      const dateRef = e === "assinado" ? p.etapa_assinado_at ?? p.created_at : p.created_at;
+      if (!inCurrent(dateRef)) continue;
+      etapas[e].qtd += 1;
+      etapas[e].valor += Number(p.budget) || 0;
+    }
+    return etapas;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, range]);
 
   const porEtapa = useMemo(() => {
     const ps = projects ?? [];
@@ -132,6 +154,50 @@ export default function ProjetosTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Funil de projetos (período) — vindo da Visão Geral */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Funil de projetos — período selecionado</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(["iniciado", "minuta", "assinado"] as const).map((etapa) => {
+            const v = projetosFunil[etapa];
+            const total =
+              projetosFunil.iniciado.qtd +
+              projetosFunil.minuta.qtd +
+              projetosFunil.assinado.qtd;
+            const pct = total ? (v.qtd / total) * 100 : 0;
+            return (
+              <button
+                key={etapa}
+                onClick={() => navigate("/projetos")}
+                className="w-full text-left p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Circle className="h-3 w-3 text-primary" />
+                    <span className="font-medium text-sm">{projectEtapaLabels[etapa]}</span>
+                  </div>
+                  <Badge variant="secondary">{v.qtd}</Badge>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>{pct.toFixed(0)}% do total</span>
+                  <span>{formatCurrency(v.valor)}</span>
+                </div>
+              </button>
+            );
+          })}
+          {projetosFunil.iniciado.qtd + projetosFunil.minuta.qtd + projetosFunil.assinado.qtd === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhum projeto no período selecionado.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
