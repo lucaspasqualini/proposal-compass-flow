@@ -156,6 +156,50 @@ export default function ProjetosTab() {
         </Card>
       </div>
 
+      {/* Funil de projetos (período) — vindo da Visão Geral */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Funil de projetos — período selecionado</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(["iniciado", "minuta", "assinado"] as const).map((etapa) => {
+            const v = projetosFunil[etapa];
+            const total =
+              projetosFunil.iniciado.qtd +
+              projetosFunil.minuta.qtd +
+              projetosFunil.assinado.qtd;
+            const pct = total ? (v.qtd / total) * 100 : 0;
+            return (
+              <button
+                key={etapa}
+                onClick={() => navigate("/projetos")}
+                className="w-full text-left p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Circle className="h-3 w-3 text-primary" />
+                    <span className="font-medium text-sm">{projectEtapaLabels[etapa]}</span>
+                  </div>
+                  <BadgeUI variant="secondary">{v.qtd}</BadgeUI>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>{pct.toFixed(0)}% do total</span>
+                  <span>{formatCurrency(v.valor)}</span>
+                </div>
+              </button>
+            );
+          })}
+          {projetosFunil.iniciado.qtd + projetosFunil.minuta.qtd + projetosFunil.assinado.qtd === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhum projeto no período selecionado.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
