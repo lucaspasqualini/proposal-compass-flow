@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { fetchAllPaginated } from "@/lib/fetchAll";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
@@ -9,12 +10,12 @@ export function useProjects() {
   return useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*, clients(name), proposals(proposal_number, tipo_projeto), project_allocations(team_member_id, team_members(id, name))")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      return await fetchAllPaginated(() =>
+        supabase
+          .from("projects")
+          .select("*, clients(name), proposals(proposal_number, tipo_projeto), project_allocations(team_member_id, team_members(id, name))")
+          .order("created_at", { ascending: false })
+      );
     },
   });
 }
