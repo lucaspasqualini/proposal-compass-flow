@@ -179,7 +179,7 @@ export default function ProjetosTab() {
                     <Circle className="h-3 w-3 text-primary" />
                     <span className="font-medium text-sm">{projectEtapaLabels[etapa]}</span>
                   </div>
-                  <BadgeUI variant="secondary">{v.qtd}</BadgeUI>
+                  <Badge variant="secondary">{v.qtd}</Badge>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                   <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
