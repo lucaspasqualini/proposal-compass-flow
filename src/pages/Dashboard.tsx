@@ -735,6 +735,18 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="propostas">Propostas</TabsTrigger>
+          <TabsTrigger value="projetos">Projetos</TabsTrigger>
+          <TabsTrigger value="clientes">Clientes</TabsTrigger>
+          <TabsTrigger value="alocacao">Alocação</TabsTrigger>
+          <TabsTrigger value="receber">Contas a Receber</TabsTrigger>
+          <TabsTrigger value="pagar">Contas a Pagar</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 mt-6">
       {/* KPIs principais */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
