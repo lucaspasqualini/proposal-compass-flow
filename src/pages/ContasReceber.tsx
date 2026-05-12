@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useReceivables, useUpdateReceivable } from "@/hooks/useReceivables";
+import { useProjects } from "@/hooks/useProjects";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
-import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
+const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
 
 const receivableStatusLabels: Record<string, string> = {
   pendente: "Pendente",
@@ -51,6 +55,7 @@ type SortDir = "asc" | "desc";
 
 export default function ContasReceber() {
   const { data: receivables, isLoading } = useReceivables();
+  const { data: projects } = useProjects();
   const updateReceivable = useUpdateReceivable();
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("contasreceber:search", "");
@@ -65,6 +70,15 @@ export default function ContasReceber() {
   const [projectSortKey, setProjectSortKey] = usePersistedState<ProjectSortKey | null>("contasreceber:projectSortKey", null);
   const [projectSortDir, setProjectSortDir] = usePersistedState<SortDir>("contasreceber:projectSortDir", "asc");
 
+  // proposal_id -> { etapa, status }
+  const projectByProposal = useMemo(() => {
+    const map = new Map<string, { etapa: string | null; status: string | null }>();
+    (projects || []).forEach((p: any) => {
+      if (p.proposal_id) map.set(p.proposal_id, { etapa: p.etapa ?? null, status: p.status ?? null });
+    });
+    return map;
+  }, [projects]);
+
   // Count total parcelas per proposal for X/Y format
   const parcelaTotals = useMemo(() => {
     if (!receivables) return new Map<string, number>();
@@ -75,7 +89,7 @@ export default function ContasReceber() {
     return map;
   }, [receivables]);
 
-  // Derive effective status (overdue check)
+  // Derive effective status (overdue check) and "precisa emitir" flag
   const enriched = useMemo(() => {
     if (!receivables) return [];
     const today = startOfDay(new Date());
@@ -84,9 +98,28 @@ export default function ContasReceber() {
       if (r.status === "pendente" && r.due_date && isBefore(new Date(r.due_date), today)) {
         effectiveStatus = "atrasado";
       }
-      return { ...r, effectiveStatus };
+
+      // Precisa emitir: proposta por etapas + etapa do projeto >= etapa da parcela
+      let precisaEmitir = false;
+      const paymentType = (r.proposals as any)?.payment_type;
+      if (
+        paymentType === "etapas" &&
+        (r.status === "pendente")
+      ) {
+        const proj = projectByProposal.get(r.proposal_id);
+        const projEtapa = proj?.etapa || "iniciado";
+        if (projEtapa !== "cancelado") {
+          const projRank = ETAPA_RANK[projEtapa] ?? 0;
+          const parcRank = PARCELA_ETAPA_RANK[(r.description || "").toLowerCase()] ?? 0;
+          if (parcRank > 0 && projRank >= parcRank) {
+            precisaEmitir = true;
+          }
+        }
+      }
+
+      return { ...r, effectiveStatus, precisaEmitir };
     });
-  }, [receivables]);
+  }, [receivables, projectByProposal]);
 
   // Filters
   const years = useMemo(() => {
@@ -120,7 +153,9 @@ export default function ContasReceber() {
         const title = (r.proposals as any)?.title || "";
         const q = search.toLowerCase();
         if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
-        if (statusFilter !== "all" && r.effectiveStatus !== statusFilter) return false;
+        if (statusFilter === "precisa_emitir") {
+          if (!r.precisaEmitir) return false;
+        } else if (statusFilter !== "all" && r.effectiveStatus !== statusFilter) return false;
         if (yearFilter !== "all") {
           const yr = r.due_date?.substring(0, 4) || "";
           const pnYr = pn.match(/_(\d{2})$/)?.[1];
@@ -147,19 +182,20 @@ export default function ContasReceber() {
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
-    let totalPendente = 0, totalPago = 0, totalAtrasado = 0, countAtrasado = 0, previsaoMes = 0;
+    let totalPendente = 0, totalPago = 0, totalAtrasado = 0, countAtrasado = 0, previsaoMes = 0, totalEmitir = 0, countEmitir = 0;
     enriched.forEach((r) => {
       const amt = r.amount || 0;
       if (r.effectiveStatus === "pago") totalPago += amt;
       else if (r.effectiveStatus === "atrasado") { totalAtrasado += amt; countAtrasado++; totalPendente += amt; }
       else if (r.effectiveStatus === "cancelado" || r.effectiveStatus === "pdd") { /* skip */ }
       else { totalPendente += amt; }
+      if (r.precisaEmitir) { totalEmitir += amt; countEmitir++; }
       if (r.effectiveStatus !== "pago" && r.effectiveStatus !== "cancelado" && r.effectiveStatus !== "pdd" && r.due_date) {
         const d = new Date(r.due_date);
         if (d >= monthStart && d <= monthEnd) previsaoMes += amt;
       }
     });
-    return { totalPendente, totalPago, totalAtrasado, countAtrasado, previsaoMes };
+    return { totalPendente, totalPago, totalAtrasado, countAtrasado, previsaoMes, totalEmitir, countEmitir };
   }, [enriched]);
 
   // Project-level aggregation
@@ -317,7 +353,7 @@ export default function ContasReceber() {
       <h1 className="text-2xl font-bold">Contas a Receber</h1>
 
       {/* Dashboard Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
@@ -342,6 +378,17 @@ export default function ContasReceber() {
             <div className="text-xl font-bold text-destructive">{stats.countAtrasado} ({formatCurrency(stats.totalAtrasado)})</div>
           </CardContent>
         </Card>
+        <Card
+          className={stats.countEmitir > 0 ? "cursor-pointer ring-1 ring-warning/40 hover:ring-warning" : ""}
+          onClick={() => stats.countEmitir > 0 && setStatusFilter("precisa_emitir")}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <FileWarning className="h-4 w-4" /> A Emitir (etapa)
+            </div>
+            <div className="text-xl font-bold text-warning">{stats.countEmitir} ({formatCurrency(stats.totalEmitir)})</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
@@ -362,6 +409,7 @@ export default function ContasReceber() {
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="precisa_emitir">A Emitir (etapa)</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
             <SelectItem value="lancado">Lançado</SelectItem>
             <SelectItem value="pago">Pago</SelectItem>
@@ -496,21 +544,32 @@ export default function ContasReceber() {
                            </Popover>
                          </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Select
-                            value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
-                            onValueChange={(val) => handleStatusChange(r.id, val)}
-                          >
-                            <SelectTrigger className="h-7 w-[120px] text-xs">
-                              <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
-                                {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
+                              onValueChange={(val) => handleStatusChange(r.id, val)}
+                            >
+                              <SelectTrigger className="h-7 w-[120px] text-xs">
+                                <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
+                                  {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {editableStatuses.map((s) => (
+                                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {r.precisaEmitir && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] border-warning text-warning gap-1 px-1.5"
+                                title="Etapa do projeto já atingiu esta parcela — emitir NF"
+                              >
+                                <FileWarning className="h-3 w-3" /> Emitir
                               </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {editableStatuses.map((s) => (
-                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{r.paid_at ? formatDate(r.paid_at) : "—"}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
