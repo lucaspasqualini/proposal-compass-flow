@@ -99,6 +99,48 @@ export default function ReceberTab() {
     return Array.from(map.values()).sort((a, b) => b.valor - a.valor).slice(0, 8);
   }, [receivables]);
 
+  // Próximos 6 meses (forward-looking) — vindo da Visão Geral
+  const cashflow = useMemo(() => {
+    const rs = receivables ?? [];
+    const months: { key: string; label: string; previsto: number; recebido: number }[] = [];
+    const now = new Date();
+    for (let i = -1; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      months.push({ key: monthKey(d), label: monthLabel(d), previsto: 0, recebido: 0 });
+    }
+    const idx = new Map(months.map((m, i) => [m.key, i]));
+    for (const r of rs as any[]) {
+      const amount = Number(r.amount) || 0;
+      if (r.status === "pendente" && r.due_date) {
+        const d = new Date(r.due_date);
+        const i = idx.get(monthKey(d));
+        if (i != null) months[i].previsto += amount;
+      }
+      if (r.status === "pago" && r.paid_at) {
+        const d = new Date(r.paid_at);
+        const i = idx.get(monthKey(d));
+        if (i != null) months[i].recebido += amount;
+      }
+    }
+    return months;
+  }, [receivables]);
+
+  // A receber 30 dias (vindo da Visão Geral)
+  const aReceber30 = useMemo(() => {
+    const hoje = new Date();
+    const em30 = new Date();
+    em30.setDate(hoje.getDate() + 30);
+    return (receivables ?? [])
+      .filter(
+        (r: any) =>
+          r.status === "pendente" &&
+          r.due_date &&
+          new Date(r.due_date) <= em30 &&
+          new Date(r.due_date) >= new Date(hoje.toDateString())
+      )
+      .reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
+  }, [receivables]);
+
   const totalAtrasado = aging.reduce((s, b) => s + b.valor, 0);
   const totalPendente = useMemo(
     () =>
