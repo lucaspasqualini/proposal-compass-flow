@@ -13,10 +13,14 @@ import {
   CartesianGrid,
   Legend,
   BarChart,
+  AreaChart,
+  Area,
 } from "recharts";
 import { useReceivables } from "@/hooks/useReceivables";
 import { formatCurrency } from "@/lib/format";
-import { AlertTriangle, FileWarning } from "lucide-react";
+import { AlertTriangle, FileWarning, DollarSign } from "lucide-react";
+import { KpiCard } from "./_shared";
+import { monthKey, monthLabel } from "@/lib/dashboardFilters";
 
 const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
 const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
