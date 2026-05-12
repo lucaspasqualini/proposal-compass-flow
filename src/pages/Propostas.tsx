@@ -37,8 +37,10 @@ export default function Propostas() {
   const [search, setSearch] = usePersistedState("propostas:search", "");
   const [statusFilter, setStatusFilter] = usePersistedState<string>("propostas:status", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("propostas:empresa", "all");
-  const [yearFilter, setYearFilter] = usePersistedState<string>("propostas:year", "all");
-  const [monthFilter, setMonthFilter] = usePersistedState<string>("propostas:month", "all");
+  const [yearFiltersRaw, setYearFilters] = usePersistedState<string[]>("propostas:years", []);
+  const [monthFiltersRaw, setMonthFilters] = usePersistedState<string[]>("propostas:months", []);
+  const yearFilters = Array.isArray(yearFiltersRaw) ? yearFiltersRaw : [];
+  const monthFilters = Array.isArray(monthFiltersRaw) ? monthFiltersRaw : [];
   const [sortKey, setSortKey] = usePersistedState<SortKey>("propostas:sortKey", "status");
   const [sortDir, setSortDir] = usePersistedState<SortDir>("propostas:sortDir", "asc");
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
@@ -89,8 +91,8 @@ export default function Propostas() {
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
       const filterDate = getFilterDate(p);
-      const matchYear = yearFilter === "all" || filterDate.startsWith(yearFilter);
-      const matchMonth = monthFilter === "all" || filterDate.substring(5, 7) === monthFilter;
+      const matchYear = yearFilters.length === 0 || yearFilters.includes(filterDate.substring(0, 4));
+      const matchMonth = monthFilters.length === 0 || monthFilters.includes(filterDate.substring(5, 7));
       const matchHide = !hidePerdida || p.status !== "perdida";
       return matchSearch && matchStatus && matchEmpresa && matchYear && matchMonth && matchHide;
     });
@@ -138,7 +140,7 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, yearFilter, monthFilter, sortKey, sortDir, hidePerdida]);
+  }, [proposals, search, statusFilter, empresaFilter, yearFilters, monthFilters, sortKey, sortDir, hidePerdida]);
 
   const stats = useMemo(() => {
     const ganhas = filtered.filter((p) => p.status === "ganha");
@@ -322,32 +324,26 @@ export default function Propostas() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={yearFilter} onValueChange={setYearFilter}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Ano" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Anos</SelectItem>
-            {availableYears.map((y) => (
-              <SelectItem key={y} value={y}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={monthFilter} onValueChange={setMonthFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Mês" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Meses</SelectItem>
-            {[
-              ["01", "Janeiro"], ["02", "Fevereiro"], ["03", "Março"], ["04", "Abril"],
-              ["05", "Maio"], ["06", "Junho"], ["07", "Julho"], ["08", "Agosto"],
-              ["09", "Setembro"], ["10", "Outubro"], ["11", "Novembro"], ["12", "Dezembro"],
-            ].map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label="Ano"
+          allLabel="Todos os Anos"
+          width="w-36"
+          options={availableYears.map((y) => ({ value: y, label: y }))}
+          selected={yearFilters}
+          onChange={setYearFilters}
+        />
+        <MultiSelectFilter
+          label="Mês"
+          allLabel="Todos os Meses"
+          width="w-40"
+          options={[
+            ["01", "Janeiro"], ["02", "Fevereiro"], ["03", "Março"], ["04", "Abril"],
+            ["05", "Maio"], ["06", "Junho"], ["07", "Julho"], ["08", "Agosto"],
+            ["09", "Setembro"], ["10", "Outubro"], ["11", "Novembro"], ["12", "Dezembro"],
+          ].map(([value, label]) => ({ value, label }))}
+          selected={monthFilters}
+          onChange={setMonthFilters}
+        />
         <div className="flex items-center gap-2">
           <Checkbox id="hide-perdida" checked={hidePerdida} onCheckedChange={(v) => setHidePerdida(!!v)} />
           <label htmlFor="hide-perdida" className="text-sm text-muted-foreground cursor-pointer select-none">Ocultar perdidas</label>
@@ -497,5 +493,63 @@ export default function Propostas() {
 
       {parcelasPrompt.dialog}
     </div>
+  );
+}
+
+interface MultiSelectFilterProps {
+  label: string;
+  allLabel: string;
+  width?: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}
+
+function MultiSelectFilter({ label, allLabel, width = "w-40", options, selected, onChange }: MultiSelectFilterProps) {
+  const display =
+    selected.length === 0
+      ? allLabel
+      : selected.length <= 2
+        ? options
+            .filter((o) => selected.includes(o.value))
+            .map((o) => o.label)
+            .join(", ")
+        : `${selected.length} ${label.toLowerCase()}s`;
+
+  const toggle = (value: string) => {
+    if (selected.includes(value)) onChange(selected.filter((v) => v !== value));
+    else onChange([...selected, value]);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className={`${width} justify-between font-normal`}>
+          <span className="truncate">{display}</span>
+          <ArrowUpDown className="h-3 w-3 ml-2 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent text-muted-foreground"
+        >
+          {allLabel}
+        </button>
+        <div className="h-px bg-border my-1" />
+        <div className="max-h-72 overflow-auto">
+          {options.map((o) => (
+            <label
+              key={o.value}
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+            >
+              <Checkbox checked={selected.includes(o.value)} onCheckedChange={() => toggle(o.value)} />
+              <span>{o.label}</span>
+            </label>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
