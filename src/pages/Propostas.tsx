@@ -495,3 +495,61 @@ export default function Propostas() {
     </div>
   );
 }
+
+interface MultiSelectFilterProps {
+  label: string;
+  allLabel: string;
+  width?: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}
+
+function MultiSelectFilter({ label, allLabel, width = "w-40", options, selected, onChange }: MultiSelectFilterProps) {
+  const display =
+    selected.length === 0
+      ? allLabel
+      : selected.length <= 2
+        ? options
+            .filter((o) => selected.includes(o.value))
+            .map((o) => o.label)
+            .join(", ")
+        : `${selected.length} ${label.toLowerCase()}s`;
+
+  const toggle = (value: string) => {
+    if (selected.includes(value)) onChange(selected.filter((v) => v !== value));
+    else onChange([...selected, value]);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className={`${width} justify-between font-normal`}>
+          <span className="truncate">{display}</span>
+          <ArrowUpDown className="h-3 w-3 ml-2 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent text-muted-foreground"
+        >
+          {allLabel}
+        </button>
+        <div className="h-px bg-border my-1" />
+        <div className="max-h-72 overflow-auto">
+          {options.map((o) => (
+            <label
+              key={o.value}
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+            >
+              <Checkbox checked={selected.includes(o.value)} onCheckedChange={() => toggle(o.value)} />
+              <span>{o.label}</span>
+            </label>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
