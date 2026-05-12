@@ -220,6 +220,51 @@ export default function ReceberTab() {
         </CardContent>
       </Card>
 
+      {/* Fluxo de caixa próximos 6 meses (vindo da Visão Geral) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Fluxo de caixa — próximos 6 meses</CardTitle>
+          <p className="text-xs text-muted-foreground">Snapshot atual</p>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={cashflow} margin={{ left: 10, right: 20, top: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="grad-prev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="grad-rec" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number) => formatCurrency(v)}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="previsto" name="Previsto" stroke="hsl(var(--primary))" fill="url(#grad-prev)" strokeWidth={2} />
+                <Area type="monotone" dataKey="recebido" name="Recebido" stroke="hsl(var(--success))" fill="url(#grad-rec)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
