@@ -544,21 +544,32 @@ export default function ContasReceber() {
                            </Popover>
                          </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Select
-                            value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
-                            onValueChange={(val) => handleStatusChange(r.id, val)}
-                          >
-                            <SelectTrigger className="h-7 w-[120px] text-xs">
-                              <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
-                                {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
+                              onValueChange={(val) => handleStatusChange(r.id, val)}
+                            >
+                              <SelectTrigger className="h-7 w-[120px] text-xs">
+                                <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
+                                  {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {editableStatuses.map((s) => (
+                                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {r.precisaEmitir && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] border-warning text-warning gap-1 px-1.5"
+                                title="Etapa do projeto já atingiu esta parcela — emitir NF"
+                              >
+                                <FileWarning className="h-3 w-3" /> Emitir
                               </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {editableStatuses.map((s) => (
-                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{r.paid_at ? formatDate(r.paid_at) : "—"}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
