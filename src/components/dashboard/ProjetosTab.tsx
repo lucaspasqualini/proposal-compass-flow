@@ -37,6 +37,27 @@ const STATUS_FILL: Record<string, string> = {
 export default function ProjetosTab() {
   const { data: projects } = useProjects();
   const navigate = useNavigate();
+  const { range, inCurrent } = useDashboardPeriod();
+
+  // Funil de projetos do período (vindo da Visão Geral)
+  const projetosFunil = useMemo(() => {
+    const pj = projects ?? [];
+    const etapas: Record<string, { qtd: number; valor: number }> = {
+      iniciado: { qtd: 0, valor: 0 },
+      minuta: { qtd: 0, valor: 0 },
+      assinado: { qtd: 0, valor: 0 },
+    };
+    for (const p of pj as any[]) {
+      const e = (p.etapa ?? "iniciado") as keyof typeof etapas;
+      if (!etapas[e]) continue;
+      const dateRef = e === "assinado" ? p.etapa_assinado_at ?? p.created_at : p.created_at;
+      if (!inCurrent(dateRef)) continue;
+      etapas[e].qtd += 1;
+      etapas[e].valor += Number(p.budget) || 0;
+    }
+    return etapas;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, range]);
 
   const porEtapa = useMemo(() => {
     const ps = projects ?? [];
