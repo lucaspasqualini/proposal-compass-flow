@@ -15,7 +15,9 @@ import {
   Cell,
 } from "recharts";
 import { useClientsWithStats } from "@/hooks/useClientStats";
+import { useProposals } from "@/hooks/useProposals";
 import { formatCurrency } from "@/lib/format";
+import { useDashboardPeriod } from "./_shared";
 
 const PIE_COLORS = [
   "hsl(var(--primary))",
