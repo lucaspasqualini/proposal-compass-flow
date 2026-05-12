@@ -353,7 +353,7 @@ export default function ContasReceber() {
       <h1 className="text-2xl font-bold">Contas a Receber</h1>
 
       {/* Dashboard Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
@@ -376,6 +376,17 @@ export default function ContasReceber() {
               <AlertTriangle className="h-4 w-4" /> Atrasadas
             </div>
             <div className="text-xl font-bold text-destructive">{stats.countAtrasado} ({formatCurrency(stats.totalAtrasado)})</div>
+          </CardContent>
+        </Card>
+        <Card
+          className={stats.countEmitir > 0 ? "cursor-pointer ring-1 ring-warning/40 hover:ring-warning" : ""}
+          onClick={() => stats.countEmitir > 0 && setStatusFilter("precisa_emitir")}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <FileWarning className="h-4 w-4" /> A Emitir (etapa)
+            </div>
+            <div className="text-xl font-bold text-warning">{stats.countEmitir} ({formatCurrency(stats.totalEmitir)})</div>
           </CardContent>
         </Card>
         <Card>
