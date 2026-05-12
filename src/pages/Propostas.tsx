@@ -89,8 +89,7 @@ export default function Propostas() {
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchEmpresa = empresaFilter === "all" || (p as any).empresa === empresaFilter;
       const filterDate = getFilterDate(p);
-      const matchYear = yearFilters.length === 0 || yearFilters.includes(filterDate.substring(0, 4));
-      const matchMonth = monthFilters.length === 0 || monthFilters.includes(filterDate.substring(5, 7));
+      const matchDate = dateFilters.length === 0 || (filterDate ? dateFilters.includes(filterDate.substring(0, 7)) : false);
       const matchHide = !hidePerdida || p.status !== "perdida";
       return matchSearch && matchStatus && matchEmpresa && matchYear && matchMonth && matchHide;
     });
