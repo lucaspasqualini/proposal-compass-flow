@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ResponsiveContainer,
   BarChart,
@@ -734,6 +735,18 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="propostas">Propostas</TabsTrigger>
+          <TabsTrigger value="projetos">Projetos</TabsTrigger>
+          <TabsTrigger value="clientes">Clientes</TabsTrigger>
+          <TabsTrigger value="alocacao">Alocação</TabsTrigger>
+          <TabsTrigger value="receber">Contas a Receber</TabsTrigger>
+          <TabsTrigger value="pagar">Contas a Pagar</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 mt-6">
       {/* KPIs principais */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -1238,7 +1251,45 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="propostas" className="mt-6">
+          <PlaceholderTab title="Dashboard de Propostas" />
+        </TabsContent>
+        <TabsContent value="projetos" className="mt-6">
+          <PlaceholderTab title="Dashboard de Projetos" />
+        </TabsContent>
+        <TabsContent value="clientes" className="mt-6">
+          <PlaceholderTab title="Dashboard de Clientes" />
+        </TabsContent>
+        <TabsContent value="alocacao" className="mt-6">
+          <PlaceholderTab title="Dashboard de Alocação" />
+        </TabsContent>
+        <TabsContent value="receber" className="mt-6">
+          <PlaceholderTab title="Dashboard de Contas a Receber" />
+        </TabsContent>
+        <TabsContent value="pagar" className="mt-6">
+          <PlaceholderTab title="Dashboard de Contas a Pagar" comingSoon />
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+function PlaceholderTab({ title, comingSoon }: { title: string; comingSoon?: boolean }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">
+          {comingSoon
+            ? "Módulo em desenvolvimento. Em breve disponibilizaremos indicadores específicos aqui."
+            : "Em breve: indicadores específicos para esta visão. Os dados consolidados continuam disponíveis na aba Visão Geral."}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
