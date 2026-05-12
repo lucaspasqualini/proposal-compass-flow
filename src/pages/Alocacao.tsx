@@ -53,14 +53,15 @@ export default function Alocacao() {
     // Compartilha namespace com ["projects"] para que invalidações de alocação propaguem
     queryKey: ["projects", "alocacao-light"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select(
-          "id, title, status, etapa, clients(name), proposals(proposal_number), project_allocations(id, team_member_id, team_members(id, name))"
-        )
-        .order("title");
-      if (error) throw error;
-      return data;
+      const { fetchAllPaginated } = await import("@/lib/fetchAll");
+      return await fetchAllPaginated(() =>
+        supabase
+          .from("projects")
+          .select(
+            "id, title, status, etapa, clients(name), proposals(proposal_number), project_allocations(id, team_member_id, team_members(id, name))"
+          )
+          .order("title")
+      );
     },
   });
 

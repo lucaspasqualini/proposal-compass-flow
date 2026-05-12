@@ -1,38 +1,25 @@
-# Sincronização entre abas — diagnóstico e correção
+Diagnóstico confirmado: não é filtro ativo. A aba Propostas está carregando somente os 1000 registros mais recentes por causa do limite padrão do backend. A CSN tem 6 propostas no banco, mas apenas 1 está dentro desse lote recente; por isso a busca por “CSN” mostra só a proposta perdida. A aba Clientes calcula os números a partir de outro carregamento que, hoje, está retornando as 6 propostas da CSN, daí a divergência.
 
-## O que já funciona hoje
+Plano de correção:
 
-- **Propostas → Projetos / Contas a Receber (edição manual)**: ao mudar o status de uma proposta para `ganha` em `ProposalDetailDialog`, o `syncProposalProjectStatus` cria o projeto e gera os receivables. Voltando atrás, apaga ambos.
-- **Projetos ↔ Alocação (alocar/remover pessoa)**: `useCreateAllocation` / `useDeleteAllocation` fazem optimistic update e invalidam `["projects"]` e `["alocacao-projects"]`. A aba Alocação compartilha o namespace `["projects"]`, então recarrega.
+1. Criar um helper reutilizável para paginação completa
+   - Buscar registros em páginas de 1000 usando `.range(...)` até não haver mais dados.
+   - Manter ordenação estável quando necessário.
+   - Evitar mexer no cliente de backend gerado automaticamente.
 
-## Lacunas que estão causando o problema
+2. Corrigir a aba Propostas
+   - Atualizar `useProposals()` para carregar todas as propostas, não só as primeiras 1000.
+   - Preservar o join com clientes e a ordenação atual por `created_at desc`.
+   - Isso fará a busca por “CSN” mostrar as 6 propostas.
 
-1. **Importação em massa de Propostas (`ImportProposals.tsx`)** insere direto no banco e só invalida `["proposals"]`. **Não cria projetos nem receivables** para linhas com status `ganha`/`aprovada`. É por isso que importar uma planilha não “puxa” para Projetos e Contas a Receber.
-2. **Mapeamento de status do importador** aceita `aprovada` e `ganha` como valores distintos, mas a regra de negócio que dispara projeto+receivables só roda em `ganha`. Linhas marcadas como `aprovada` ficam órfãs.
-3. **Alocação (`/alocacao`) usa querykey `["projects","alocacao-light"]`** com select reduzido. As mutações de alocação invalidam `["projects"]` (prefixo bate, então recarrega), mas o **optimistic update não atinge essa lista** — há um pequeno delay até o refetch. Em telas lentas dá impressão de “não atualizou”.
-4. Não há nenhum trigger no banco garantindo a sincronia: tudo depende do código do front. Se alguém inserir/alterar uma proposta por outro caminho (importador, edição direta), a cadeia quebra.
+3. Corrigir telas relacionadas para evitar a mesma classe de erro
+   - Atualizar `useProjects()` e a consulta da aba Alocação, pois também listam tabelas que podem ultrapassar 1000 registros.
+   - Revisar `useClientStats()` para garantir que Clientes, Propostas e Projetos usem carregamento completo de forma consistente.
 
-## Plano de correção
+4. Validar com dados reais
+   - Confirmar no banco que CSN tem 6 propostas e R$ 1.220.500 em propostas ganhas.
+   - Confirmar que a lógica corrigida não depende de filtros locais para exibir esses registros.
 
-### 1. Sincronizar importação de propostas
-No `ImportProposals.handleImport`:
-- Após `insert(...).select()`, percorrer as linhas retornadas e, para cada proposta com status `ganha`, chamar `syncProposalProjectStatus({ proposal, previousStatus: null })`.
-- Tratar `aprovada` como sinônimo de `ganha` na importação (ou normalizar para `ganha` no `STATUS_MAP`) — alinhar com a regra única de negócio.
-- Invalidar também `["projects"]` e `["receivables"]` ao final.
-- Mostrar no toast quantos projetos e parcelas foram gerados.
-
-### 2. Garantir sincronização no banco (defesa em profundidade)
-Criar um **trigger** em `proposals` (`AFTER INSERT OR UPDATE OF status`) que:
-- Quando `status` passar a `ganha` e não existir projeto vinculado: cria projeto (`status='em_andamento'`, copia título/cliente/valor) e gera receivables a partir de `parcelas` (ou parcela única).
-- Quando sair de `ganha`: apaga projeto e receivables vinculados.
-Assim qualquer caminho (importação, edição manual, SQL direto, futura API) mantém a cadeia consistente — o front passa a ser apenas “acelerador” via optimistic update.
-
-### 3. Otimistic update na aba Alocação
-Em `useCreateAllocation` / `useDeleteAllocation`, estender o optimistic update para também atualizar queries com prefixo `["projects","alocacao-light"]`, não só `["projects"]` puro e `["alocacao-projects"]`. Mantém a sensação de instantâneo na aba Alocação.
-
-### 4. Backfill único
-Migration de dados (executada uma vez) para varrer propostas existentes com `status='ganha'` que não tenham projeto/receivables e gerar o que está faltando — assim a base atual fica coerente antes do trigger entrar em ação.
-
-## Resposta direta à sua pergunta
-
-**Parcialmente.** Edição manual de uma proposta já propaga para Projetos e Contas a Receber. Alocação atualiza Projetos e vice-versa. Mas **importação em massa de propostas hoje não dispara essa cadeia**, e não há salvaguarda no banco. O plano acima fecha esses buracos.
+Resultado esperado:
+- Na aba Propostas, buscar “CSN” deve exibir as 6 propostas existentes.
+- A aba Clientes e a aba Propostas passam a usar bases completas e consistentes, eliminando a divergência causada por truncamento de dados.

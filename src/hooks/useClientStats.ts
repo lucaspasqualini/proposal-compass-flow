@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaginated } from "@/lib/fetchAll";
 
 export interface ClientWithStats {
   id: string;
@@ -23,19 +24,17 @@ export function useClientsWithStats() {
   return useQuery({
     queryKey: ["clients-with-stats"],
     queryFn: async () => {
-      const { data: clients, error: cErr } = await supabase
-        .from("clients")
-        .select("*")
-        .order("name");
-      if (cErr) throw cErr;
+      const clients = await fetchAllPaginated<any>(() =>
+        supabase.from("clients").select("*").order("name")
+      );
 
-      const { data: proposals } = await supabase
-        .from("proposals")
-        .select("client_id, status, value, created_at");
+      const proposals = await fetchAllPaginated<any>(() =>
+        supabase.from("proposals").select("client_id, status, value, created_at")
+      );
 
-      const { data: projects } = await supabase
-        .from("projects")
-        .select("client_id, etapa, etapa_assinado_at");
+      const projects = await fetchAllPaginated<any>(() =>
+        supabase.from("projects").select("client_id, etapa, etapa_assinado_at")
+      );
 
       const proposalsByClient = new Map<string, typeof proposals>();
       for (const p of proposals ?? []) {
