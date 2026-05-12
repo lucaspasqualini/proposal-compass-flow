@@ -91,7 +91,7 @@ export default function Propostas() {
       const filterDate = getFilterDate(p);
       const matchDate = dateFilters.length === 0 || (filterDate ? dateFilters.includes(filterDate.substring(0, 7)) : false);
       const matchHide = !hidePerdida || p.status !== "perdida";
-      return matchSearch && matchStatus && matchEmpresa && matchYear && matchMonth && matchHide;
+      return matchSearch && matchStatus && matchEmpresa && matchDate && matchHide;
     });
 
     const statusPriority: Record<string, number> = {
