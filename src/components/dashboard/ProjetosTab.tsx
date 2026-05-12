@@ -17,7 +17,6 @@ import {
 import { useProjects } from "@/hooks/useProjects";
 import { formatCurrency, projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEtapaColors } from "@/lib/format";
 import { Briefcase, Clock, Circle } from "lucide-react";
-import { Badge as BadgeUI } from "@/components/ui/badge";
 import { useDashboardPeriod } from "./_shared";
 
 const ETAPA_FILL: Record<string, string> = {
