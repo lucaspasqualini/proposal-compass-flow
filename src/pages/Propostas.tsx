@@ -140,7 +140,7 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, yearFilter, monthFilter, sortKey, sortDir, hidePerdida]);
+  }, [proposals, search, statusFilter, empresaFilter, yearFilters, monthFilters, sortKey, sortDir, hidePerdida]);
 
   const stats = useMemo(() => {
     const ganhas = filtered.filter((p) => p.status === "ganha");
