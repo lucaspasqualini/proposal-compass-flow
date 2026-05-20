@@ -381,7 +381,10 @@ export default function ContasReceber() {
             <div className="text-xl font-bold text-success">{formatCurrency(stats.totalPago)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className={stats.countAtrasado > 0 ? "cursor-pointer ring-1 ring-destructive/40 hover:ring-destructive" : ""}
+          onClick={() => stats.countAtrasado > 0 && setAlertasFilter("atrasado")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <AlertTriangle className="h-4 w-4" /> Atrasadas
@@ -391,7 +394,7 @@ export default function ContasReceber() {
         </Card>
         <Card
           className={stats.countEmitir > 0 ? "cursor-pointer ring-1 ring-warning/40 hover:ring-warning" : ""}
-          onClick={() => stats.countEmitir > 0 && setStatusFilter("precisa_emitir")}
+          onClick={() => stats.countEmitir > 0 && setAlertasFilter("precisa_emitir")}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
