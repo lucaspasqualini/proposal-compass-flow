@@ -508,6 +508,7 @@ export default function ContasReceber() {
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão de recebimento <ParcelaSortIcon col="due_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("invoice_date")}>Emissão <ParcelaSortIcon col="invoice_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("status")}>Status <ParcelaSortIcon col="status" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("alertas")}>Alertas <ParcelaSortIcon col="alertas" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("paid_at")}>Recebimento <ParcelaSortIcon col="paid_at" /></button></TableHead>
                      <TableHead className="w-[100px]">Ação</TableHead>
                   </TableRow>
