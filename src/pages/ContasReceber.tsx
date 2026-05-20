@@ -50,7 +50,7 @@ const editableStatuses = [
   { value: "pdd", label: "PDD" },
 ];
 
-type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "paid_at";
+type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "alertas" | "paid_at";
 type ProjectSortKey = "number" | "client" | "title" | "total" | "received" | "pending";
 type SortDir = "asc" | "desc";
 
@@ -315,7 +315,11 @@ export default function ContasReceber() {
         case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
         case "due_date": va = a.due_date || "9999"; vb = b.due_date || "9999"; break;
         case "invoice_date": va = a.invoice_date || "9999"; vb = b.invoice_date || "9999"; break;
-        case "status": va = a.effectiveStatus; vb = b.effectiveStatus; break;
+        case "status": va = a.status; vb = b.status; break;
+        case "alertas": {
+          const rank = (x: any) => x.effectiveStatus === "atrasado" ? 0 : x.precisaEmitir ? 1 : 2;
+          va = rank(a); vb = rank(b); break;
+        }
         case "paid_at": va = a.paid_at || "9999"; vb = b.paid_at || "9999"; break;
         default: va = ""; vb = "";
       }
@@ -504,6 +508,7 @@ export default function ContasReceber() {
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão de recebimento <ParcelaSortIcon col="due_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("invoice_date")}>Emissão <ParcelaSortIcon col="invoice_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("status")}>Status <ParcelaSortIcon col="status" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("alertas")}>Alertas <ParcelaSortIcon col="alertas" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("paid_at")}>Recebimento <ParcelaSortIcon col="paid_at" /></button></TableHead>
                      <TableHead className="w-[100px]">Ação</TableHead>
                   </TableRow>
@@ -549,22 +554,32 @@ export default function ContasReceber() {
                            </Popover>
                          </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1">
-                            <Select
-                              value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
-                              onValueChange={(val) => handleStatusChange(r.id, val)}
-                            >
-                              <SelectTrigger className="h-7 w-[120px] text-xs">
-                                <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
-                                  {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
-                                </Badge>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {editableStatuses.map((s) => (
-                                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          <Select
+                            value={r.status}
+                            onValueChange={(val) => handleStatusChange(r.id, val)}
+                          >
+                            <SelectTrigger className="h-7 w-[120px] text-xs">
+                              <Badge className={`${receivableStatusColors[r.status] || ""} text-xs`}>
+                                {receivableStatusLabels[r.status] || r.status}
+                              </Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {editableStatuses.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {r.effectiveStatus === "atrasado" && (
+                              <Badge
+                                className="text-[10px] bg-destructive/10 text-destructive gap-1 px-1.5"
+                                title="Nota lançada com previsão de recebimento vencida"
+                              >
+                                <AlertTriangle className="h-3 w-3" /> Atrasado
+                              </Badge>
+                            )}
                             {r.precisaEmitir && (
                               <Badge
                                 variant="outline"
@@ -573,6 +588,9 @@ export default function ContasReceber() {
                               >
                                 <FileWarning className="h-3 w-3" /> Emitir
                               </Badge>
+                            )}
+                            {r.effectiveStatus !== "atrasado" && !r.precisaEmitir && (
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
                         </TableCell>
@@ -603,7 +621,7 @@ export default function ContasReceber() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
