@@ -155,9 +155,10 @@ export default function ContasReceber() {
         const title = (r.proposals as any)?.title || "";
         const q = search.toLowerCase();
         if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
-        if (statusFilter === "precisa_emitir") {
-          if (!r.precisaEmitir) return false;
-        } else if (statusFilter !== "all" && r.effectiveStatus !== statusFilter) return false;
+        if (statusFilter !== "all" && r.status !== statusFilter) return false;
+        if (alertasFilter === "atrasado" && r.effectiveStatus !== "atrasado") return false;
+        else if (alertasFilter === "precisa_emitir" && !r.precisaEmitir) return false;
+        else if (alertasFilter === "sem_alerta" && (r.effectiveStatus === "atrasado" || r.precisaEmitir)) return false;
         if (yearFilter !== "all") {
           const yr = r.due_date?.substring(0, 4) || "";
           const pnYr = pn.match(/_(\d{2})$/)?.[1];
