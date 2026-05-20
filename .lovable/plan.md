@@ -1,61 +1,76 @@
-# Sub-abas no Dashboard
+# Contas a Receber — Novos racionais
 
-## Objetivo
-Transformar o Dashboard atual (1.400 linhas, tudo numa página só) em um painel com sub-abas por domínio, no mesmo padrão visual das abas "Por Projeto / Por Parcela" do Contas a Receber. Cada aba foca num tipo de informação, abrindo espaço para gráficos/KPIs novos sem poluir a tela.
+Reorganização da lógica de previsões, atrasos e edição na página Contas a Receber e no card de detalhes da parcela.
 
-## Estrutura proposta de abas
+## Mudanças funcionais
 
-```text
-Dashboard
-├── Visão Geral      ← KPIs consolidados + destaques (já existe hoje)
-├── Propostas        ← funil, conversão, ticket médio, pipeline por status/tipo
-├── Projetos         ← projetos ativos, etapas, prazos, distribuição por tipo
-├── Clientes         ← top clientes, novos x recorrentes, concentração de receita
-├── Alocação         ← carga por colaborador, ocupação, projetos por pessoa
-├── Contas a Receber ← faturamento previsto x realizado, atrasos, "a emitir"
-└── Contas a Pagar   ← (placeholder até existir o módulo)
-```
+### 1. Nomenclatura
+- `previsao_nf` passa a ser exibido como **"Previsão de emissão"** (card e lista).
+- `due_date` passa a ser exibido como **"Previsão de recebimento"** (card e lista, KPIs e mensagens).
 
-Filtros globais (período, ano, mês, empresa) ficam **acima das abas** e se aplicam à aba ativa — exatamente como o `Tabs` em `ContasReceber.tsx`.
+### 2. Edição de campos no card
+- **Previsão de emissão** (`previsao_nf`): hoje read-only → vira **editável** com o mesmo padrão de DateField já usado para as outras datas.
+- **Previsão de recebimento** (`due_date`): continua editável.
 
-## Plano de execução
+### 3. Cálculo de atrasos
+- Atrasado passa a ser definido como: `status === 'lancado'` **E** `due_date < hoje`.
+- Status `pendente` com `due_date` no passado deixa de ser "atrasado".
+- Atualizar:
+  - `effectiveStatus` em `ContasReceber.tsx` (linha ~98).
+  - Badge "Atrasado" no `ReceivableDetailDialog` (usa `effectiveStatus`, já vem da lista enriquecida).
+  - KPI "Atrasadas" continua somando `effectiveStatus === 'atrasado'`.
 
-### Fase 1 — Refatoração estrutural (sem mudar conteúdo)
-1. Quebrar `src/pages/Dashboard.tsx` em componentes por aba dentro de `src/components/dashboard/`:
-   - `OverviewTab.tsx` (conteúdo atual condensado: KPIs principais + alertas)
-   - `PropostasTab.tsx` (gráficos de funil/pipeline já existentes)
-   - `ProjetosTab.tsx` (etapas, status, tipo)
-   - `ClientesTab.tsx` (placeholder inicial com top clientes)
-   - `AlocacaoTab.tsx` (placeholder inicial)
-   - `ReceberTab.tsx` (resumo financeiro já existente)
-   - `PagarTab.tsx` (placeholder "Em breve")
-2. `Dashboard.tsx` passa a ser um shell:
-   - cabeçalho + filtros globais (mantidos)
-   - `<Tabs>` com `usePersistedState("dashboard:tab", "overview")` para lembrar a aba
-   - cada `TabsContent` renderiza o componente correspondente
-3. Hooks de dados (`useProposals`, `useProjects`, `useClients`, `useReceivables`) ficam no shell e os dados já filtrados são passados via props para cada aba — evita re-fetch e mantém o cache único.
+### 4. Auto-preenchimento ao marcar como "Lançado"
+Quando o usuário muda o status para `lancado` (no card ou na lista):
+- Se `invoice_date` estiver vazio → preencher com **hoje**.
+- Se `due_date` estiver vazio → preencher com `invoice_date + 5 dias úteis` (ignora sábado/domingo; feriados não considerados nesta versão).
+- Ambos os campos continuam editáveis manualmente depois.
+- Implementação centralizada em um helper (`applyLancadoDefaults`) chamado por `handleStatusChange` (lista) e pelo handler de status do `ReceivableDetailDialog`.
 
-### Fase 2 — Conteúdo das novas abas
-Para cada aba criada vazia, definir 3–5 widgets relevantes. Sugestões iniciais:
+### 5. Auto-preenchimento da Previsão de emissão pela proposta
+A `previsao_nf` deve refletir as condições de pagamento da proposta — sem deixar de ser editável.
 
-- **Propostas**: funil (em elaboração → enviada → ganha/perdida), taxa de conversão, ticket médio, top tipos de projeto, propostas vencendo (`validity_date`).
-- **Projetos**: projetos por etapa, projetos por status, prazo médio iniciado→assinado, projetos sem alocação.
-- **Clientes**: top 10 por valor ganho, novos clientes no período, % de receita concentrada nos top 5.
-- **Alocação**: horas/colaborador, colaboradores sobre/subalocados, projetos sem responsável.
-- **Contas a Receber**: previsto vs recebido por mês, parcelas atrasadas, "a emitir" por etapa, aging.
-- **Contas a Pagar**: aba reservada com mensagem "Módulo em desenvolvimento" (sem backend ainda).
+- **Proposta por prazo** (`payment_type !== 'etapas'`):
+  - No momento em que a proposta vira `ganha` (e as parcelas são geradas em `syncReceivables.ts` / `sync_proposal_to_project_receivables`), preencher `previsao_nf` de cada parcela com o `vencimento` informado nas `parcelas` da proposta.
+  - Atualização também ao reeditar parcelas da proposta (regeração já existente).
 
-> Esta fase pode ir por aba — não precisa entregar tudo de uma vez.
+- **Proposta por etapas** (`payment_type === 'etapas'`):
+  - `previsao_nf` é preenchida/atualizada quando o **projeto muda de etapa** para a etapa correspondente à parcela (mapeamento `inicio` → etapa `iniciado`, `minuta` → `minuta`, `assinatura` → `assinado`).
+  - Implementar em `useProjects` (no `useUpdateProject` ou função equivalente que altera `etapa`): após a mutação, para cada parcela `pendente` do projeto cuja etapa foi atingida, definir `previsao_nf = hoje` se estiver em branco.
+  - Não sobrescrever valor já preenchido pelo usuário.
 
-### Fase 3 — Performance
-- Lazy-load das abas pesadas com `React.lazy` + `Suspense` dentro de `Dashboard.tsx`, para que abas não visitadas não montem gráficos do Recharts.
+### 6. KPIs (cards no topo)
+- **Atrasadas**: conta itens com `effectiveStatus === 'atrasado'` (novo critério baseado em `lancado` + `due_date` vencida — "Previsão de recebimento").
+- **A Emitir**: continua baseado em `previsao_nf` (Previsão de emissão). Renomear label se necessário para refletir o novo nome. Mantém regra atual (`precisaEmitir` por etapa + também considerar pendentes cuja `previsao_nf <= hoje` para propostas por prazo — opcional, ver Perguntas).
+- **Previsão do Mês**: continua usando `due_date` (Previsão de recebimento) dentro do mês corrente.
 
 ## Detalhes técnicos
-- Componente de tabs: `@/components/ui/tabs` (já em uso no projeto).
-- Persistência da aba ativa: `usePersistedState` (já em uso, ex.: `Alocacao.tsx`).
-- Filtros globais ficam no shell; cada sub-componente recebe `{ proposals, projects, clients, receivables, period, year, month, empresa }` via props.
-- Nenhuma mudança de schema / backend nesta etapa.
-- Visual idêntico ao `Tabs` do `ContasReceber.tsx` (linha 437–608) para consistência.
 
-## Pergunta antes de implementar
-Posso seguir essa estrutura de **7 abas** (Visão Geral, Propostas, Projetos, Clientes, Alocação, Contas a Receber, Contas a Pagar) e começar pela **Fase 1** (refatorar o Dashboard atual em abas, mantendo o conteúdo de hoje na "Visão Geral" e criando as outras como esqueletos)? Ou você prefere já entrar com widgets específicos em alguma aba primeiro?
+### Arquivos a alterar
+- `src/pages/ContasReceber.tsx`
+  - Renomear cabeçalhos da tabela (`Previsão` → `Previsão de recebimento`; adicionar coluna ou tooltip de `Previsão de emissão` se ainda não exibido).
+  - Alterar regra de `effectiveStatus` (pendente→atrasado vira lancado→atrasado).
+  - `handleStatusChange`: aplicar defaults de `invoice_date` e `due_date` quando novo status for `lancado`.
+- `src/components/ReceivableDetailDialog.tsx`
+  - Trocar labels "Previsão NF" → "Previsão de emissão" e "Previsão de Faturamento" → "Previsão de recebimento".
+  - Substituir o bloco read-only de `previsao_nf` por um `DateField` editável.
+  - `handleStatusChange` aplica defaults quando muda para `lancado`.
+- `src/lib/syncReceivables.ts` e `sync_proposal_to_project_receivables` (DB function)
+  - Ao gerar parcelas com `payment_type !== 'etapas'`, gravar `previsao_nf = vencimento` da parcela.
+  - (Para a função no banco será necessária uma migration que altere a função.)
+- `src/hooks/useReceivables.ts`
+  - Aceitar `previsao_nf` no payload de `useUpdateReceivable`.
+- `src/hooks/useProjects.ts` (ou onde a `etapa` do projeto é atualizada)
+  - Após mudança de `etapa`, atualizar `previsao_nf` das parcelas correspondentes pendentes (regra do item 5).
+
+### Helper de dias úteis
+Função simples local (sem libs novas):
+```text
+addBusinessDays(date, n): pula sábado/domingo. Feriados não tratados.
+```
+
+## Perguntas para o usuário
+
+1. **Feriados nacionais** devem ser considerados no cálculo de "+5 dias úteis", ou basta pular sábado/domingo nesta primeira versão?
+2. Para **propostas por prazo**, devo também marcar como "A emitir" itens `pendente` cuja `previsao_nf` já chegou (hoje ≥ previsão), além do critério atual baseado em etapa?
+3. Quando alterar a `etapa` do projeto para uma anterior (regressão), devo **limpar** a `previsao_nf` das parcelas afetadas (se ainda não emitidas e não editadas manualmente)?
