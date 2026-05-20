@@ -23,8 +23,11 @@ export async function generateReceivables(proposal: {
     description: string;
     amount: number;
     due_date: string | null;
+    previsao_nf: string | null;
     status: string;
   }[] = [];
+
+  const isEtapas = proposal.payment_type === "etapas";
 
   if (parcelas.length === 0) {
     records.push({
@@ -34,19 +37,23 @@ export async function generateReceivables(proposal: {
       description: "Parcela Única",
       amount: totalValue,
       due_date: null,
+      previsao_nf: null,
       status: "pendente",
     });
   } else {
     parcelas.forEach((p, i) => {
       const pct = p.valor || 0;
       const amount = Math.round((pct / 100) * totalValue * 100) / 100;
+      const venc = p.vencimento || null;
       records.push({
         proposal_id: proposal.id,
         client_id: proposal.client_id,
         parcela_index: i,
         description: p.descricao || `Parcela ${i + 1}`,
         amount,
-        due_date: p.vencimento || null,
+        due_date: null,
+        // Para propostas por prazo, vencimento informado é a previsão de emissão da NF.
+        previsao_nf: !isEtapas ? venc : null,
         status: "pendente",
       });
     });
