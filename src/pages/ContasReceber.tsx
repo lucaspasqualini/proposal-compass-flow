@@ -315,7 +315,11 @@ export default function ContasReceber() {
         case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
         case "due_date": va = a.due_date || "9999"; vb = b.due_date || "9999"; break;
         case "invoice_date": va = a.invoice_date || "9999"; vb = b.invoice_date || "9999"; break;
-        case "status": va = a.effectiveStatus; vb = b.effectiveStatus; break;
+        case "status": va = a.status; vb = b.status; break;
+        case "alertas": {
+          const rank = (x: any) => x.effectiveStatus === "atrasado" ? 0 : x.precisaEmitir ? 1 : 2;
+          va = rank(a); vb = rank(b); break;
+        }
         case "paid_at": va = a.paid_at || "9999"; vb = b.paid_at || "9999"; break;
         default: va = ""; vb = "";
       }
