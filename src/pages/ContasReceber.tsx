@@ -61,6 +61,7 @@ export default function ContasReceber() {
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("contasreceber:search", "");
   const [statusFilter, setStatusFilter] = usePersistedState<string>("contasreceber:status", "all");
+  const [alertasFilter, setAlertasFilter] = usePersistedState<string>("contasreceber:alertas", "all");
   const [yearFilter, setYearFilter] = usePersistedState<string>("contasreceber:year", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("contasreceber:empresa", "all");
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
