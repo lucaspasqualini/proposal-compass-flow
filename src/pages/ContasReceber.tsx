@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
+import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
