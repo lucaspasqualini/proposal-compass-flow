@@ -279,7 +279,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             {/* Datas editáveis */}
             <div className="grid grid-cols-3 gap-4">
-              <DateField label="Previsão de Faturamento" field="due_date" value={receivable.due_date} />
+              <DateField label="Previsão de recebimento" field="due_date" value={receivable.due_date} />
               <DateField label="Emissão Fatura" field="invoice_date" value={receivable.invoice_date} />
               <DateField label="Recebimento" field="paid_at" value={receivable.paid_at} />
             </div>
