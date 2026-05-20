@@ -191,16 +191,13 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             <Separator />
 
-            {/* Responsável / Previsão NF / Parcela / Origem */}
+            {/* Responsável / Previsão de emissão / Parcela */}
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Responsável</p>
                 <p className="text-sm">{receivable.responsavel_projeto || "—"}</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Previsão NF</p>
-                <p className="text-sm">{receivable.previsao_nf ? formatDate(receivable.previsao_nf) : "—"}</p>
-              </div>
+              <DateField label="Previsão de emissão" field="previsao_nf" value={receivable.previsao_nf} />
               <div>
                 <p className="text-xs text-muted-foreground">Parcela</p>
                 <p className="text-sm">{receivable.parcela_label || `${(receivable.parcela_index ?? 0) + 1}`}</p>
