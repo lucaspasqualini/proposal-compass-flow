@@ -61,6 +61,7 @@ export default function ContasReceber() {
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("contasreceber:search", "");
   const [statusFilter, setStatusFilter] = usePersistedState<string>("contasreceber:status", "all");
+  const [alertasFilter, setAlertasFilter] = usePersistedState<string>("contasreceber:alertas", "all");
   const [yearFilter, setYearFilter] = usePersistedState<string>("contasreceber:year", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("contasreceber:empresa", "all");
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
@@ -154,9 +155,10 @@ export default function ContasReceber() {
         const title = (r.proposals as any)?.title || "";
         const q = search.toLowerCase();
         if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
-        if (statusFilter === "precisa_emitir") {
-          if (!r.precisaEmitir) return false;
-        } else if (statusFilter !== "all" && r.effectiveStatus !== statusFilter) return false;
+        if (statusFilter !== "all" && r.status !== statusFilter) return false;
+        if (alertasFilter === "atrasado" && r.effectiveStatus !== "atrasado") return false;
+        else if (alertasFilter === "precisa_emitir" && !r.precisaEmitir) return false;
+        else if (alertasFilter === "sem_alerta" && (r.effectiveStatus === "atrasado" || r.precisaEmitir)) return false;
         if (yearFilter !== "all") {
           const yr = r.due_date?.substring(0, 4) || "";
           const pnYr = pn.match(/_(\d{2})$/)?.[1];
@@ -176,7 +178,7 @@ export default function ContasReceber() {
         const pnB = (b.proposals as any)?.proposal_number || "";
         return -compareProjectNumbers(pnA, pnB);
       });
-  }, [enriched, search, statusFilter, yearFilter, empresaFilter]);
+  }, [enriched, search, statusFilter, alertasFilter, yearFilter, empresaFilter]);
 
   // Dashboard stats
   const stats = useMemo(() => {
@@ -379,7 +381,10 @@ export default function ContasReceber() {
             <div className="text-xl font-bold text-success">{formatCurrency(stats.totalPago)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className={stats.countAtrasado > 0 ? "cursor-pointer ring-1 ring-destructive/40 hover:ring-destructive" : ""}
+          onClick={() => stats.countAtrasado > 0 && setAlertasFilter("atrasado")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <AlertTriangle className="h-4 w-4" /> Atrasadas
@@ -389,7 +394,7 @@ export default function ContasReceber() {
         </Card>
         <Card
           className={stats.countEmitir > 0 ? "cursor-pointer ring-1 ring-warning/40 hover:ring-warning" : ""}
-          onClick={() => stats.countEmitir > 0 && setStatusFilter("precisa_emitir")}
+          onClick={() => stats.countEmitir > 0 && setAlertasFilter("precisa_emitir")}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
@@ -417,14 +422,21 @@ export default function ContasReceber() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="precisa_emitir">A Emitir (etapa)</SelectItem>
+            <SelectItem value="all">Todos status</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
             <SelectItem value="lancado">Lançado</SelectItem>
             <SelectItem value="pago">Pago</SelectItem>
-            <SelectItem value="atrasado">Atrasado</SelectItem>
             <SelectItem value="cancelado">Cancelado</SelectItem>
             <SelectItem value="pdd">PDD</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={alertasFilter} onValueChange={setAlertasFilter}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Alertas" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos alertas</SelectItem>
+            <SelectItem value="atrasado">Atrasado</SelectItem>
+            <SelectItem value="precisa_emitir">A emitir</SelectItem>
+            <SelectItem value="sem_alerta">Sem alertas</SelectItem>
           </SelectContent>
         </Select>
         <Select value={yearFilter} onValueChange={setYearFilter}>
