@@ -50,7 +50,7 @@ const editableStatuses = [
   { value: "pdd", label: "PDD" },
 ];
 
-type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "paid_at";
+type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "alertas" | "paid_at";
 type ProjectSortKey = "number" | "client" | "title" | "total" | "received" | "pending";
 type SortDir = "asc" | "desc";
 
