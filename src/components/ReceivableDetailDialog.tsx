@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 
 const statusLabels: Record<string, string> = {
   pendente: "Pendente",
@@ -97,6 +98,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const handleStatusChange = (newStatus: string) => {
     const updates: any = { status: newStatus };
     if (newStatus !== "pago") updates.paid_at = null;
+    if (newStatus === "lancado") Object.assign(updates, computeLancadoDefaults(receivable));
     handleUpdate(updates);
   };
 
@@ -189,16 +191,13 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             <Separator />
 
-            {/* Responsável / Previsão NF / Parcela / Origem */}
+            {/* Responsável / Previsão de emissão / Parcela */}
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Responsável</p>
                 <p className="text-sm">{receivable.responsavel_projeto || "—"}</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Previsão NF</p>
-                <p className="text-sm">{receivable.previsao_nf ? formatDate(receivable.previsao_nf) : "—"}</p>
-              </div>
+              <DateField label="Previsão de emissão" field="previsao_nf" value={receivable.previsao_nf} />
               <div>
                 <p className="text-xs text-muted-foreground">Parcela</p>
                 <p className="text-sm">{receivable.parcela_label || `${(receivable.parcela_index ?? 0) + 1}`}</p>
@@ -280,7 +279,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             {/* Datas editáveis */}
             <div className="grid grid-cols-3 gap-4">
-              <DateField label="Previsão de Faturamento" field="due_date" value={receivable.due_date} />
+              <DateField label="Previsão de recebimento" field="due_date" value={receivable.due_date} />
               <DateField label="Emissão Fatura" field="invoice_date" value={receivable.invoice_date} />
               <DateField label="Recebimento" field="paid_at" value={receivable.paid_at} />
             </div>

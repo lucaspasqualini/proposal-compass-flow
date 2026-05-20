@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
+import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -95,7 +96,7 @@ export default function ContasReceber() {
     const today = startOfDay(new Date());
     return receivables.map((r) => {
       let effectiveStatus = r.status;
-      if (r.status === "pendente" && r.due_date && isBefore(new Date(r.due_date), today)) {
+      if (r.status === "lancado" && r.due_date && isBefore(new Date(r.due_date), today)) {
         effectiveStatus = "atrasado";
       }
 
@@ -250,6 +251,10 @@ export default function ContasReceber() {
       const updates: any = { id, status: newStatus };
       if (newStatus !== "pago") {
         updates.paid_at = null;
+      }
+      if (newStatus === "lancado") {
+        const r = enriched.find((x) => x.id === id);
+        if (r) Object.assign(updates, computeLancadoDefaults(r));
       }
       await updateReceivable.mutateAsync(updates);
       toast({ title: `Status alterado para ${receivableStatusLabels[newStatus]}` });
@@ -496,7 +501,7 @@ export default function ContasReceber() {
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("parcela")}>Parcela <ParcelaSortIcon col="parcela" /></button></TableHead>
                      <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleParcelaSort("amount")}>Valor <ParcelaSortIcon col="amount" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("nfe")}># NFe <ParcelaSortIcon col="nfe" /></button></TableHead>
-                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão <ParcelaSortIcon col="due_date" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão de recebimento <ParcelaSortIcon col="due_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("invoice_date")}>Emissão <ParcelaSortIcon col="invoice_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("status")}>Status <ParcelaSortIcon col="status" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("paid_at")}>Recebimento <ParcelaSortIcon col="paid_at" /></button></TableHead>

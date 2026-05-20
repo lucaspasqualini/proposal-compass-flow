@@ -53,12 +53,53 @@ export function useCreateProject() {
   });
 }
 
+const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
+const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
+
+async function autofillPrevisaoNfFromEtapa(projectId: string, newEtapa: string) {
+  if (!newEtapa || newEtapa === "cancelado") return;
+  const projRank = ETAPA_RANK[newEtapa] ?? 0;
+  if (projRank === 0) return;
+
+  // Buscar projeto + proposta + receivables relevantes
+  const { data: project } = await supabase
+    .from("projects")
+    .select("proposal_id, proposals(payment_type)")
+    .eq("id", projectId)
+    .maybeSingle();
+  const proposalId = (project as any)?.proposal_id;
+  const paymentType = (project as any)?.proposals?.payment_type;
+  if (!proposalId || paymentType !== "etapas") return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: recs } = await supabase
+    .from("receivables")
+    .select("id, description, previsao_nf, status")
+    .eq("proposal_id", proposalId)
+    .eq("status", "pendente")
+    .is("previsao_nf", null);
+
+  const toUpdate = (recs || []).filter((r) => {
+    const parcRank = PARCELA_ETAPA_RANK[(r.description || "").toLowerCase()] ?? 0;
+    return parcRank > 0 && parcRank <= projRank;
+  });
+
+  if (toUpdate.length === 0) return;
+  await supabase
+    .from("receivables")
+    .update({ previsao_nf: today })
+    .in("id", toUpdate.map((r) => r.id));
+}
+
 export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Project> & { id: string }) => {
       const { data, error } = await supabase.from("projects").update(updates).eq("id", id).select().single();
       if (error) throw error;
+      if ("etapa" in updates && updates.etapa) {
+        await autofillPrevisaoNfFromEtapa(id, updates.etapa as string);
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -66,7 +107,7 @@ export function useUpdateProject() {
         old ? old.map((p) => (p.id === data.id ? { ...p, ...data } : p)) : old
       );
       qc.invalidateQueries({ queryKey: ["projects", data.id] });
-      // Etapa de projeto altera flags de receivables (precisaEmitir).
+      // Etapa de projeto altera flags de receivables (precisaEmitir) e pode preencher previsao_nf.
       if ("etapa" in (data as any)) {
         qc.invalidateQueries({ queryKey: ["receivables"] });
       }

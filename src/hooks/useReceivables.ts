@@ -27,6 +27,7 @@ export function useUpdateReceivable() {
       notes?: string | null;
       invoice_date?: string | null;
       due_date?: string | null;
+      previsao_nf?: string | null;
       nfe_number?: string | null;
       cofins?: number | null;
       csll?: number | null;
