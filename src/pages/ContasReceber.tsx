@@ -422,14 +422,21 @@ export default function ContasReceber() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="precisa_emitir">A Emitir (etapa)</SelectItem>
+            <SelectItem value="all">Todos status</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
             <SelectItem value="lancado">Lançado</SelectItem>
             <SelectItem value="pago">Pago</SelectItem>
-            <SelectItem value="atrasado">Atrasado</SelectItem>
             <SelectItem value="cancelado">Cancelado</SelectItem>
             <SelectItem value="pdd">PDD</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={alertasFilter} onValueChange={setAlertasFilter}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Alertas" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos alertas</SelectItem>
+            <SelectItem value="atrasado">Atrasado</SelectItem>
+            <SelectItem value="precisa_emitir">A emitir</SelectItem>
+            <SelectItem value="sem_alerta">Sem alertas</SelectItem>
           </SelectContent>
         </Select>
         <Select value={yearFilter} onValueChange={setYearFilter}>
