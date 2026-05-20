@@ -178,7 +178,7 @@ export default function ContasReceber() {
         const pnB = (b.proposals as any)?.proposal_number || "";
         return -compareProjectNumbers(pnA, pnB);
       });
-  }, [enriched, search, statusFilter, yearFilter, empresaFilter]);
+  }, [enriched, search, statusFilter, alertasFilter, yearFilter, empresaFilter]);
 
   // Dashboard stats
   const stats = useMemo(() => {
