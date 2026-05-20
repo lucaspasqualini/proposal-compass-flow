@@ -95,7 +95,7 @@ export default function ContasReceber() {
     const today = startOfDay(new Date());
     return receivables.map((r) => {
       let effectiveStatus = r.status;
-      if (r.status === "pendente" && r.due_date && isBefore(new Date(r.due_date), today)) {
+      if (r.status === "lancado" && r.due_date && isBefore(new Date(r.due_date), today)) {
         effectiveStatus = "atrasado";
       }
 
