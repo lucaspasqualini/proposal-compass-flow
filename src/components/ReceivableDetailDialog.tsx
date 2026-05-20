@@ -98,6 +98,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const handleStatusChange = (newStatus: string) => {
     const updates: any = { status: newStatus };
     if (newStatus !== "pago") updates.paid_at = null;
+    if (newStatus === "lancado") Object.assign(updates, computeLancadoDefaults(receivable));
     handleUpdate(updates);
   };
 
