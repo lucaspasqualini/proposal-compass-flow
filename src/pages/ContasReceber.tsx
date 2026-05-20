@@ -554,22 +554,32 @@ export default function ContasReceber() {
                            </Popover>
                          </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1">
-                            <Select
-                              value={r.effectiveStatus === "atrasado" ? "pendente" : r.status}
-                              onValueChange={(val) => handleStatusChange(r.id, val)}
-                            >
-                              <SelectTrigger className="h-7 w-[120px] text-xs">
-                                <Badge className={`${receivableStatusColors[r.effectiveStatus] || ""} text-xs`}>
-                                  {receivableStatusLabels[r.effectiveStatus] || r.effectiveStatus}
-                                </Badge>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {editableStatuses.map((s) => (
-                                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          <Select
+                            value={r.status}
+                            onValueChange={(val) => handleStatusChange(r.id, val)}
+                          >
+                            <SelectTrigger className="h-7 w-[120px] text-xs">
+                              <Badge className={`${receivableStatusColors[r.status] || ""} text-xs`}>
+                                {receivableStatusLabels[r.status] || r.status}
+                              </Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {editableStatuses.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {r.effectiveStatus === "atrasado" && (
+                              <Badge
+                                className="text-[10px] bg-destructive/10 text-destructive gap-1 px-1.5"
+                                title="Nota lançada com previsão de recebimento vencida"
+                              >
+                                <AlertTriangle className="h-3 w-3" /> Atrasado
+                              </Badge>
+                            )}
                             {r.precisaEmitir && (
                               <Badge
                                 variant="outline"
@@ -578,6 +588,9 @@ export default function ContasReceber() {
                               >
                                 <FileWarning className="h-3 w-3" /> Emitir
                               </Badge>
+                            )}
+                            {r.effectiveStatus !== "atrasado" && !r.precisaEmitir && (
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
                         </TableCell>
@@ -608,7 +621,7 @@ export default function ContasReceber() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
