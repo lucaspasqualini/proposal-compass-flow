@@ -104,13 +104,13 @@ export default function ContasReceber() {
       // Precisa emitir: proposta por etapas + etapa do projeto >= etapa da parcela
       let precisaEmitir = false;
       const paymentType = (r.proposals as any)?.payment_type;
-      if (
-        paymentType === "etapas" &&
-        (r.status === "pendente")
-      ) {
-        const proj = projectByProposal.get(r.proposal_id);
-        const projEtapa = proj?.etapa || "iniciado";
-        if (projEtapa !== "cancelado") {
+      const proj = projectByProposal.get(r.proposal_id);
+      if (r.status === "pendente" && proj && proj.etapa !== "cancelado") {
+        // Primeira parcela (1/x) de qualquer projeto existente sempre precisa ser emitida
+        if (r.parcela_index === 0) {
+          precisaEmitir = true;
+        } else if (paymentType === "etapas") {
+          const projEtapa = proj?.etapa || "iniciado";
           const projRank = ETAPA_RANK[projEtapa] ?? 0;
           const parcRank = PARCELA_ETAPA_RANK[(r.description || "").toLowerCase()] ?? 0;
           if (parcRank > 0 && projRank >= parcRank) {
