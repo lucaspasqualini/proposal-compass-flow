@@ -251,6 +251,10 @@ export default function ContasReceber() {
       if (newStatus !== "pago") {
         updates.paid_at = null;
       }
+      if (newStatus === "lancado") {
+        const r = enriched.find((x) => x.id === id);
+        if (r) Object.assign(updates, computeLancadoDefaults(r));
+      }
       await updateReceivable.mutateAsync(updates);
       toast({ title: `Status alterado para ${receivableStatusLabels[newStatus]}` });
     } catch {
