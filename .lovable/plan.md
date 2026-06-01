@@ -1,65 +1,35 @@
 ## Objetivo
 
-Adicionar um botão **"Importar planilha"** na página `/contas-a-receber` que leia um `.xlsx` e atualize os receivables (status, # NFe, datas de emissão/recebimento, previsão). Quando a OS da planilha não bater exatamente com nenhum `proposal_number`, mas existir uma proposta muito parecida (diferença só em sufixo, ex.: `MA_0031_21_05` vs `MA_0031_21`), abrir um diálogo para o usuário confirmar match a match.
+Atualizar `src/lib/importReceivables.ts` para refletir o novo layout das planilhas de contas a receber.
 
-## Fluxo da UX
+## Novo mapeamento (posição fixa, 0-indexed)
 
-1. Botão **"Importar planilha"** ao lado de "Exportar" no topo de `ContasReceber.tsx`.
-2. Usuário escolhe `.xlsx` → parse em memória no browser via `xlsx` (SheetJS).
-3. App resolve cada linha em uma de 4 categorias:
-   - **Match exato** — `proposal_number + parcela_index` bate.
-   - **Match fuzzy** — base `MA_XXXX_YY` igual, mas com sufixo extra (regex `^(MA_\d{4}_\d{2})(.+)$` em um lado).
-   - **Sem match** — nenhuma proposta com a base.
-   - **Sem alteração** — match exato mas dados iguais aos do banco.
-4. Mostra **Dialog de revisão** com 3 abas:
-   - **Confirmar fuzzy** — tabela com OS planilha × proposta sugerida + parcela; cada linha tem ✓ confirmar / ✗ ignorar / dropdown para escolher outra proposta. Botão "Confirmar todas com base idêntica".
-   - **Sem match** — lista somente leitura (export CSV).
-   - **Pré-visualização de mudanças** — diff por receivable: campo, valor atual → novo. Checkbox por linha (default ligado).
-5. Botão **"Aplicar X atualizações"** roda os `UPDATE`s em lote via `useUpdateReceivable` (ou um novo `useBulkUpdateReceivables`).
-6. Toast com resumo: atualizados, pulados, sem match.
+| Campo | Coluna | Índice |
+|---|---|---|
+| Status | E | 4 |
+| OS | J | 9 |
+| Parcela "X/Y" | L | 11 |
+| Previsão de Faturamento (`due_date`) | M | 12 |
+| Dt Previsão NF (`previsao_nf`) | M | 12 |
+| # NFe | T | 19 |
+| Emissão da Fatura (`invoice_date`) | V | 21 |
+| Data de Pagamento (`paid_at`) | X | 23 |
 
-## Mapeamento de colunas da planilha
+Observação: o usuário indicou a mesma coluna M para "Previsão de Faturamento" e "Dt Previsão NF". Vou usar M para ambos (mesmo valor preenchendo `due_date` e `previsao_nf`). Se for engano, me avisa qual é a coluna correta da Previsão NF.
 
-Mesmo esquema dos imports anteriores (configurável via constantes no topo do parser):
-- **OS** → `proposal_number` (coluna G nas planilhas anteriores)
-- **Parcela "X/Y"** → `parcela_index = X-1` (coluna I)
-- **Previsão de Faturamento** → `due_date` (coluna J)
-- **Emissão Fatura** → `invoice_date` (coluna K)
-- **Data Pagamento** → `paid_at` (coluna M)
-- **Status** → `status` (coluna P) com `STATUS_MAP` (`RECEBIDO*→pago`, `LANÇADO→lancado`, `PENDENTE→pendente`, `CANCELADA→cancelado`, `PDD→pdd`)
-- **# NFe** → `nfe_number` (coluna Q)
-- **Dt Previsão NF** → `previsao_nf` (se presente)
+## Mudanças no parser
 
-Cabeçalhos detectados por nome (case-insensitive) com fallback para posição. Se a planilha tiver layout diferente, o app mostra um passo prévio "mapear colunas".
+1. **Forçar posição fixa**: hoje `findColumn` busca por nome de cabeçalho. Vou mudar para usar diretamente os índices acima, ignorando os cabeçalhos (mais robusto já que o usuário descreveu por letra de coluna). O `detectedColumns` retornado vai exibir o conteúdo do cabeçalho daquela posição apenas para referência visual no diálogo.
 
-## Detecção fuzzy
+2. **Localização do header row**: manter detecção automática do header (procurar linha que contenha "OS"/"Parcela"), e a partir dela ler as colunas pelos índices fixos. Se não achar header, assumir linha 1.
 
-```
-base(os) = os.match(/^(MA_\d{4}_\d{2})/)?.[1]
-```
-- Linha não exata é candidata se `base(osPlanilha)` existe em alguma `proposals.proposal_number` (exata ou com sufixo).
-- Ranking por: (a) match base+parcela existente, (b) menor distância de sufixo, (c) proposta com receivable correspondente já criada.
-- Levanta para confirmação **apenas** quando há ≥1 candidato; senão vai para "Sem match".
+3. **Status — regra atualizada**: o `STATUS_MAP` já trata "RECEBIDO", "RECEBIDO A MAIS", "RECEBIDO A MENOS", "RECEBIDO SEM NF" → `pago`. Vou adicionar um fallback: qualquer string que comece com `RECEBIDO` é tratada como `pago` (cobre variações futuras tipo "Recebido parcialmente"). Demais mapeamentos (`LANÇADO`, `PENDENTE`, `CANCELADA`, `PDD`) inalterados.
 
-## Arquivos a criar/editar
+## Não muda
 
-**Novos**
-- `src/lib/importReceivables.ts` — parse do xlsx, normalização de status/datas, build de candidatos fuzzy, geração de `updates[]`. Sem side effects.
-- `src/components/ImportReceivablesDialog.tsx` — UI com as 3 abas, confirmação fuzzy, preview de diffs, aplicação em lote.
+- `ImportReceivablesDialog.tsx`, `useBulkUpdateReceivables`, fluxo fuzzy, regex de base OS (`^(MA_\d{4}_\d{2})`), permissões/RLS — tudo permanece.
+- Nenhuma alteração de banco.
 
-**Editados**
-- `src/pages/ContasReceber.tsx` — botão "Importar planilha" + abertura do dialog.
-- `src/hooks/useReceivables.ts` — adicionar `useBulkUpdateReceivables` (chunked updates + invalidate único no final).
+## Confirmação rápida
 
-**Dependência**
-- `xlsx` (SheetJS) — já comum em projetos Lovable; se não estiver instalado, `bun add xlsx`.
-
-## Segurança / permissões
-
-Usa as policies atuais de `receivables` (`socio | gerente_projetos | administrativo`). RLS já cobre — não precisa de migration nem edge function.
-
-## Não-objetivos (fora desta rodada)
-
-- Não cria/apaga receivables (só `UPDATE`). Linhas "sem match" ficam só no relatório.
-- Não altera `parcelas` da proposta.
-- Não toca em `amount` / `valor_proposta` / `valor_nf` / `valor_recebido` (posso adicionar depois se quiser — só sinaliza).
+A coluna **M** aparece duas vezes (Previsão de Faturamento e Dt Previsão NF). Confirma se é isso mesmo, ou se Previsão NF está em outra coluna?
