@@ -549,12 +549,10 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                 {form.payment_type === "prazo" && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Parcelas ({parcelas.length}/5)</Label>
-                      {parcelas.length < 5 && (
-                        <Button type="button" variant="outline" size="sm" onClick={addParcela}>
-                          <Plus className="h-3 w-3 mr-1" /> Adicionar Parcela
-                        </Button>
-                      )}
+                      <Label className="text-sm font-medium">Parcelas ({parcelas.length})</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addParcela}>
+                        <Plus className="h-3 w-3 mr-1" /> Adicionar Parcela
+                      </Button>
                     </div>
 
                     {parcelas.map((p, idx) => (
