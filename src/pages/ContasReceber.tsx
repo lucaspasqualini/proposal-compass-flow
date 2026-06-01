@@ -16,8 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
+import ImportReceivablesDialog from "@/components/ImportReceivablesDialog";
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
-import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning } from "lucide-react";
+import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning, Upload } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -67,6 +68,7 @@ export default function ContasReceber() {
   const [payDate, setPayDate] = useState<Date | undefined>(new Date());
   const [payingId, setPayingId] = useState<string | null>(null);
   const [selectedReceivable, setSelectedReceivable] = useState<any | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [parcelaSortKey, setParcelaSortKey] = usePersistedState<ParcelaSortKey | null>("contasreceber:parcelaSortKey", null);
   const [parcelaSortDir, setParcelaSortDir] = usePersistedState<SortDir>("contasreceber:parcelaSortDir", "asc");
   const [projectSortKey, setProjectSortKey] = usePersistedState<ProjectSortKey | null>("contasreceber:projectSortKey", null);
@@ -361,7 +363,17 @@ export default function ContasReceber() {
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-2xl font-bold">Contas a Receber</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Contas a Receber</h1>
+        <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" /> Importar planilha
+        </Button>
+      </div>
+      <ImportReceivablesDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        receivables={(receivables as any) || []}
+      />
 
       {/* Dashboard Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
