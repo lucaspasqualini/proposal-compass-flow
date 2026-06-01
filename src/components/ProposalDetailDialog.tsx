@@ -224,7 +224,6 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   }, [etapasMode, etapasSum, form.value]);
 
   const addParcela = () => {
-    if (parcelas.length >= 5) return;
     setParcelas([...parcelas, { ...emptyParcela }]);
   };
 
