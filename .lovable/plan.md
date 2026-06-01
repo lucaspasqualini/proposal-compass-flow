@@ -1,51 +1,28 @@
-# Contas a Receber — coluna de alertas + backfill de previsões
+## 1. Corrigir dados das propostas MA_0060_26 e MA_0108_26
 
-## 1. Separar "Atrasado" e "A Emitir" em coluna própria
+**Causa**: `parcelas[].valor` foi salvo como valor absoluto em R$ em vez de percentual (formato esperado). O gerador calcula `amount = (valor/100) * value`, resultando em valores ~1000x maiores. Além disso, as parcelas usam `data_vencimento` em vez de `vencimento`, então `previsao_nf` também ficou em branco.
 
-Hoje, na lista "Por Parcela", a coluna **Status** mistura o status real (`pendente`, `lancado`, `pago`, `cancelado`, `pdd`) com dois sinalizadores derivados:
+**Ações** (via `supabase--insert`):
+- Atualizar `proposals.parcelas` convertendo valores absolutos → percentuais e renomeando `data_vencimento` → `vencimento`:
+  - **MA_0060_26** (R$ 187.000): `[21.39, 21.39, 21.39, 21.39, 14.44]` — última parcela absorve arredondamento para fechar 100%.
+  - **MA_0108_26** (R$ 59.500): `[50, 50]`.
+- Apagar receivables `pendente` dessas 2 propostas e regerar com a mesma lógica do `generateReceivables` (amount correto + `previsao_nf` = vencimento da parcela). Receivables já `lancado/pago` são preservados — verifico antes; se houver, alinhamos.
 
-- **Atrasado** — substitui visualmente o status `lancado` quando a previsão de recebimento já passou.
-- **A Emitir** — badge extra ao lado, para propostas por etapas cuja etapa do projeto já chegou na parcela.
+## 2. Permitir mais de 5 parcelas (propostas por prazo)
 
-A coluna **Status** voltará a mostrar **apenas** o status real (Pendente, Lançado, Pago, Cancelado, PDD), com o select sempre exibindo o valor verdadeiro.
+Hoje `ProposalDetailDialog.tsx` trava o botão "Adicionar parcela" em 5 (`parcelas.length >= 5` na linha 227 e label `({parcelas.length}/5)` na linha 553).
 
-Será criada uma nova coluna **Alertas**, posicionada logo após **Status**, com badges independentes:
+**Ações**:
+- Remover o limite de 5 — sem teto rígido (ou usar limite alto, ex.: 24, se preferir um guard-rail).
+- Atualizar label para mostrar só a contagem atual: `Parcelas ({parcelas.length})`.
+- Aplica só ao modo **prazo** (etapas continua fixo nas 3 etapas — inicio/minuta/assinatura).
 
-- Badge vermelho **Atrasado** quando `status = lancado` e `due_date < hoje`.
-- Badge amarelo **Emitir** (atual `precisaEmitir`).
-- Quando não houver alerta, mostra "—".
+## Pergunta
 
-A coluna é ordenável (atrasado > emitir > nenhum) e segue os filtros já existentes ("Atrasado" e "Precisa Emitir" no filtro de status).
-
-## 2. Backfill retroativo das previsões
-
-Aplicar as regras de auto-preenchimento de `previsao_nf` (Previsão de emissão) sobre todas as parcelas já existentes que estão com `previsao_nf` em branco e ainda não foram lançadas (status `pendente`).
-
-### Propostas por **prazo**
-- `previsao_nf` = `parcelas[i].vencimento` da proposta (mesma regra do trigger atual).
-
-### Propostas por **etapas**
-Para cada parcela `pendente` sem `previsao_nf`, comparar o rank da etapa do projeto (`iniciado`=1, `minuta`=2, `assinado`=3) com o rank da parcela (`inicio`=1, `minuta`=2, `assinatura`=3). Se a etapa do projeto já atingiu a parcela, preencher `previsao_nf` com a data correspondente:
-
-| Parcela    | Data usada                                            |
-|------------|-------------------------------------------------------|
-| inicio     | `projects.start_date` (fallback: `projects.created_at`) |
-| minuta     | **não temos data registrada** — ver pergunta abaixo   |
-| assinatura | `projects.etapa_assinado_at`                          |
-
-Backfill é executado uma única vez via `supabase--insert` (UPDATE em lote). Não sobrescreve `previsao_nf` já preenchido.
-
-## Pergunta antes de executar
-
-A tabela `projects` não tem timestamp para quando o projeto entrou em **minuta** (só temos `etapa_assinado_at` para "assinado" e `start_date/created_at` para o início). Para parcelas tipo **minuta** em projetos cuja etapa atual seja `minuta` ou `assinado`, como preencher `previsao_nf`?
-
-- (a) usar `updated_at` do projeto (impreciso — pode ter sido alterado por outro motivo)
-- (b) usar `etapa_assinado_at` quando existir, senão `hoje`
-- (c) usar `hoje` como data de transição
-- (d) deixar em branco e preencher manualmente
+Para o item 2: prefere **sem limite** ou um **teto alto** (ex.: 24 parcelas)?
 
 ## Detalhes técnicos
 
-- Frontend: editar `src/pages/ContasReceber.tsx` — header da tabela "Por Parcela" ganha coluna Alertas; célula de Status volta a usar `r.status` no Badge; badge `precisaEmitir` e novo badge `atrasado` migram para a nova coluna; `colSpan` da linha vazia passa de 10 → 11; adicionar chave de ordenação `alertas`.
-- Backend: um `UPDATE` SQL para o caso **prazo** (join com `proposals.parcelas` via `parcela_index`) e outro para o caso **etapas** (join com `projects` para pegar `etapa` e datas), ambos filtrando `status = 'pendente'` e `previsao_nf IS NULL`.
-- Não altera triggers, hooks nem comportamento futuro — apenas corrige histórico.
+- Arquivo: `src/components/ProposalDetailDialog.tsx` linhas 227 e 553-554.
+- SQL: `UPDATE proposals SET parcelas = '...'::jsonb WHERE proposal_number IN (...)` + `DELETE FROM receivables WHERE proposal_id IN (...) AND status = 'pendente'` + `INSERT` dos novos receivables.
+- Não mexe em trigger nem no fluxo de etapas.
