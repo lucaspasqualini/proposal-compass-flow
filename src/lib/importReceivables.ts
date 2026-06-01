@@ -105,14 +105,26 @@ function parseParcelaIndex(v: any): { index: number | null; raw: string } {
   return { index: null, raw };
 }
 
-function findColumn(headers: string[], aliases: string[]): number {
-  const H = headers.map(norm);
-  for (let i = 0; i < H.length; i++) {
-    for (const a of aliases) {
-      if (H[i].includes(norm(a))) return i;
-    }
-  }
-  return -1;
+// Fixed column positions (0-indexed) — layout atual da planilha
+const COL = {
+  STATUS: 4,    // E
+  OS: 9,        // J
+  PARCELA: 11,  // L
+  DUE: 12,      // M  (Previsão de Faturamento)
+  PREV_NF: 12,  // M  (Dt Previsão NF — mesma coluna)
+  NFE: 19,      // T
+  INVOICE: 21,  // V  (Emissão da Fatura)
+  PAID: 23,     // X  (Data de Pagamento)
+};
+
+function mapStatus(raw: any): string | null {
+  if (raw == null) return null;
+  const s = norm(raw);
+  if (!s) return null;
+  if (STATUS_MAP[s]) return STATUS_MAP[s];
+  // Fallback: qualquer variação que comece com RECEBIDO vira "pago"
+  if (/^RECEBIDO/.test(s)) return "pago";
+  return null;
 }
 
 export function parseSpreadsheet(buf: ArrayBuffer): {
@@ -124,10 +136,10 @@ export function parseSpreadsheet(buf: ArrayBuffer): {
   const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
   if (!aoa.length) return { rows: [], detectedColumns: {} };
 
-  // Locate header row: first row containing "OS" or "Proposta" or "Projeto"
+  // Locate header row apenas para referência visual; leitura é por posição fixa
   let headerRowIdx = 0;
   for (let i = 0; i < Math.min(aoa.length, 10); i++) {
-    const r = aoa[i].map((c) => norm(c));
+    const r = (aoa[i] || []).map((c) => norm(c));
     if (r.some((c) => /OS|PROPOSTA|PROJETO/.test(c)) && r.some((c) => /PARCELA/.test(c))) {
       headerRowIdx = i;
       break;
@@ -135,46 +147,35 @@ export function parseSpreadsheet(buf: ArrayBuffer): {
   }
   const headers = (aoa[headerRowIdx] || []).map((h) => String(h ?? ""));
 
-  const colOs = findColumn(headers, ["OS", "Projeto", "Proposta", "Numero", "Número"]);
-  const colParcela = findColumn(headers, ["Parcela"]);
-  const colDue = findColumn(headers, ["Previsão de Faturamento", "Previsao de Faturamento", "Vencimento"]);
-  const colInvoice = findColumn(headers, ["Emissão Fatura", "Emissao Fatura", "Emissão NF", "Emissao NF", "Data Emissão"]);
-  const colPaid = findColumn(headers, ["Data Pagamento", "Pagamento", "Recebimento"]);
-  const colPrevNf = findColumn(headers, ["Previsão NF", "Previsao NF", "Dt Previsão NF"]);
-  const colStatus = findColumn(headers, ["Status"]);
-  const colNfe = findColumn(headers, ["# NFe", "NFe", "NF-e", "Nota Fiscal", "# NF"]);
-
   const detectedColumns = {
-    OS: colOs >= 0 ? headers[colOs] : null,
-    Parcela: colParcela >= 0 ? headers[colParcela] : null,
-    "Previsão Faturamento": colDue >= 0 ? headers[colDue] : null,
-    "Emissão Fatura": colInvoice >= 0 ? headers[colInvoice] : null,
-    "Data Pagamento": colPaid >= 0 ? headers[colPaid] : null,
-    "Previsão NF": colPrevNf >= 0 ? headers[colPrevNf] : null,
-    Status: colStatus >= 0 ? headers[colStatus] : null,
-    "# NFe": colNfe >= 0 ? headers[colNfe] : null,
+    OS: headers[COL.OS] ?? null,
+    Parcela: headers[COL.PARCELA] ?? null,
+    "Previsão Faturamento": headers[COL.DUE] ?? null,
+    "Emissão Fatura": headers[COL.INVOICE] ?? null,
+    "Data Pagamento": headers[COL.PAID] ?? null,
+    "Previsão NF": headers[COL.PREV_NF] ?? null,
+    Status: headers[COL.STATUS] ?? null,
+    "# NFe": headers[COL.NFE] ?? null,
   };
 
   const rows: SheetRow[] = [];
   for (let i = headerRowIdx + 1; i < aoa.length; i++) {
     const r = aoa[i];
     if (!r) continue;
-    const os = String(r[colOs] ?? "").trim();
+    const os = String(r[COL.OS] ?? "").trim();
     if (!os) continue;
-    const p = parseParcelaIndex(r[colParcela]);
-    const statusRaw = r[colStatus] != null ? norm(r[colStatus]) : null;
-    const status = statusRaw ? STATUS_MAP[statusRaw] ?? null : null;
+    const p = parseParcelaIndex(r[COL.PARCELA]);
     rows.push({
       rowIndex: i + 1,
       os,
       parcelaIndex: p.index,
       parcelaRaw: p.raw,
-      due_date: colDue >= 0 ? toIsoDate(r[colDue]) : null,
-      invoice_date: colInvoice >= 0 ? toIsoDate(r[colInvoice]) : null,
-      paid_at: colPaid >= 0 ? toIsoDate(r[colPaid]) : null,
-      previsao_nf: colPrevNf >= 0 ? toIsoDate(r[colPrevNf]) : null,
-      status,
-      nfe_number: colNfe >= 0 ? (r[colNfe] != null ? String(r[colNfe]).trim() : null) : null,
+      due_date: toIsoDate(r[COL.DUE]),
+      invoice_date: toIsoDate(r[COL.INVOICE]),
+      paid_at: toIsoDate(r[COL.PAID]),
+      previsao_nf: toIsoDate(r[COL.PREV_NF]),
+      status: mapStatus(r[COL.STATUS]),
+      nfe_number: r[COL.NFE] != null ? String(r[COL.NFE]).trim() : null,
     });
   }
   return { rows, detectedColumns };
