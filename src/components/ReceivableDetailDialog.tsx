@@ -212,16 +212,39 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">CNPJ Cliente</p>
-                <p className="text-sm font-mono">{client?.cnpj || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">CNPJ Cliente</p>
+                <Input
+                  value={cnpj}
+                  onChange={(e) => setCnpj(e.target.value)}
+                  onBlur={() => {
+                    if ((cnpj || "") !== (client?.cnpj || "")) handleClientUpdate({ cnpj: cnpj || null });
+                  }}
+                  placeholder="00.000.000/0000-00"
+                  className="h-8 text-sm font-mono"
+                />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Contato</p>
-                <p className="text-sm">{client?.contact_name || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Contato</p>
+                <Input
+                  value={contato}
+                  onChange={(e) => setContato(e.target.value)}
+                  onBlur={() => {
+                    if ((contato || "") !== (client?.contact_name || "")) handleClientUpdate({ contact_name: contato || null });
+                  }}
+                  className="h-8 text-sm"
+                />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm truncate">{client?.email || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Email</p>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => {
+                    if ((email || "") !== (client?.email || "")) handleClientUpdate({ email: email || null });
+                  }}
+                  className="h-8 text-sm"
+                />
               </div>
             </div>
 
@@ -230,8 +253,17 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
             {/* Responsável / Previsão de emissão / Parcela */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Responsável</p>
-                <p className="text-sm">{receivable.responsavel_projeto || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                <Input
+                  value={responsavel}
+                  onChange={(e) => setResponsavel(e.target.value)}
+                  onBlur={() => {
+                    if ((responsavel || "") !== (receivable.responsavel_projeto || "")) {
+                      handleUpdate({ responsavel_projeto: responsavel || null });
+                    }
+                  }}
+                  className="h-8 text-sm"
+                />
               </div>
               <DateField label="Previsão de emissão" field="previsao_nf" value={receivable.previsao_nf} />
               <div>
@@ -239,6 +271,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <p className="text-sm">{receivable.parcela_label || `${(receivable.parcela_index ?? 0) + 1}`}</p>
               </div>
             </div>
+
 
             {receivable.status_origem && /A MAIS|A MENOS|SEM NF/i.test(receivable.status_origem) && (
               <div>
