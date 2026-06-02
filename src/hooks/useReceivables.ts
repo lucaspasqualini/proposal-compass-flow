@@ -39,7 +39,7 @@ export function useUpdateReceivable() {
         .from("receivables")
         .update(updates)
         .eq("id", id)
-        .select("*, proposals(proposal_number, title, empresa, tipo_projeto, payment_type), clients(name, cnpj, contact_name, email)")
+        .select("*, proposals(proposal_number, title, empresa, tipo_projeto, payment_type), clients(id, name, cnpj, contact_name, email, cnpjs_vinculados)")
         .single();
       if (error) throw error;
       return data;
