@@ -324,6 +324,7 @@ export default function ContasReceber() {
         case "parcela": va = a.parcela_index; vb = b.parcela_index; break;
         case "amount": va = a.amount || 0; vb = b.amount || 0; break;
         case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
+        case "previsao_nf": va = a.previsao_nf || "9999"; vb = b.previsao_nf || "9999"; break;
         case "due_date": va = a.due_date || "9999"; vb = b.due_date || "9999"; break;
         case "invoice_date": va = a.invoice_date || "9999"; vb = b.invoice_date || "9999"; break;
         case "status": va = a.status; vb = b.status; break;
