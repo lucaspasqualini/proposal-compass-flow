@@ -1,6 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,15 +23,15 @@ interface ContactComboboxProps {
 }
 
 /**
- * Input com autocomplete dos contatos existentes da empresa.
- * - Digitar livre = novo contato (a criação efetiva é responsabilidade do consumidor no submit/blur).
- * - Selecionar item da lista = dispara onSelect com os dados completos (email/phone/cargo).
+ * Combobox simples: input livre + lista de sugestões abaixo.
+ * - Digitar livremente = novo contato (persistido pelo consumidor).
+ * - Clique em item = preenche nome (e dispara onSelect com dados completos).
  */
 export default function ContactCombobox({
   value, onChange, onSelect, onBlur, contacts, placeholder, className, disabled,
 }: ContactComboboxProps) {
   const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
@@ -49,32 +48,27 @@ export default function ContactCombobox({
   const showNewHint = !!value.trim() && !exactMatch;
 
   return (
-    <Popover open={open && !disabled} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          onBlur={(e) => {
-            // Aguarda eventual clique em item do popover (onMouseDown) antes de propagar blur.
-            setTimeout(() => onBlur?.(), 120);
-          }}
-          placeholder={placeholder ?? "Nome do contato"}
-          className={className}
-          disabled={disabled}
-          autoComplete="off"
-        />
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0 w-[--radix-popover-trigger-width]"
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <div className="max-h-64 overflow-y-auto py-1">
-          {filtered.length === 0 && !showNewHint && (
-            <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum contato cadastrado.</p>
-          )}
+    <div className="relative" ref={containerRef}>
+      <Input
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={(e) => {
+          // Fecha popover se foco saiu do container inteiro
+          setTimeout(() => {
+            if (containerRef.current && !containerRef.current.contains(document.activeElement)) {
+              setOpen(false);
+              onBlur?.();
+            }
+          }, 150);
+        }}
+        placeholder={placeholder ?? "Nome do contato"}
+        className={className}
+        disabled={disabled}
+        autoComplete="off"
+      />
+      {open && !disabled && (filtered.length > 0 || showNewHint) && (
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-md border bg-popover shadow-md max-h-64 overflow-y-auto py-1">
           {filtered.map((c) => {
             const selected = c.name.trim().toLowerCase() === value.trim().toLowerCase();
             return (
@@ -103,11 +97,11 @@ export default function ContactCombobox({
           {showNewHint && (
             <div className="border-t mt-1 px-3 py-1.5 text-xs text-muted-foreground flex items-center gap-1.5">
               <UserPlus className="h-3 w-3" />
-              Novo contato: <strong className="text-foreground">"{value.trim()}"</strong> — será adicionado à base.
+              Novo contato: <strong className="text-foreground">"{value.trim()}"</strong> — será adicionado ao salvar.
             </div>
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
