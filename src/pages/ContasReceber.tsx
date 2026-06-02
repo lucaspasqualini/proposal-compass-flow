@@ -529,6 +529,13 @@ export default function ContasReceber() {
                 </TableBody>
               </Table>
             </CardContent>
+            <TablePagination
+              total={sortedProjects.length}
+              page={projectPage}
+              pageSize={projectPageSize}
+              onPageChange={setProjectPage}
+              onPageSizeChange={(s) => { setProjectPageSize(s); setProjectPage(1); }}
+            />
           </Card>
         </TabsContent>
 
