@@ -630,35 +630,56 @@ export type Database = {
       }
       team_members: {
         Row: {
+          address: string | null
           area: string | null
+          birth_date: string | null
+          corporate_email: string | null
+          cpf: string | null
           created_at: string
+          hire_date: string | null
           id: string
           is_active: boolean
           name: string
+          phone: string | null
           role: string | null
           salary: number | null
+          termination_date: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          address?: string | null
           area?: string | null
+          birth_date?: string | null
+          corporate_email?: string | null
+          cpf?: string | null
           created_at?: string
+          hire_date?: string | null
           id?: string
           is_active?: boolean
           name: string
+          phone?: string | null
           role?: string | null
           salary?: number | null
+          termination_date?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          address?: string | null
           area?: string | null
+          birth_date?: string | null
+          corporate_email?: string | null
+          cpf?: string | null
           created_at?: string
+          hire_date?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          phone?: string | null
           role?: string | null
           salary?: number | null
+          termination_date?: string | null
           updated_at?: string
           user_id?: string | null
         }

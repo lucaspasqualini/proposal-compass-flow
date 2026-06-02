@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { usePromotionHistory, useCreatePromotion, useDeletePromotion, useBonusHistory, useCreateBonus, useDeleteBonus } from "@/hooks/useTeamHistory";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { tenureFromHireDate } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, TrendingUp, Award, User } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, User, Mail, Phone, MapPin, Calendar, IdCard, Briefcase } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -25,8 +26,9 @@ interface Props {
 
 export default function TeamMemberDetailDialog({ member, open, onOpenChange }: Props) {
   const { toast } = useToast();
-  const { isSocio } = useUserRole();
+  const { isSocio, isAdministrativo } = useUserRole();
   const canEdit = isSocio;
+  const canSeeSensitive = isSocio || isAdministrativo;
   const { data: promotions } = usePromotionHistory(member?.id);
   const { data: bonuses } = useBonusHistory(member?.id);
   const createPromotion = useCreatePromotion();
@@ -104,11 +106,20 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{member.name}</h2>
             <p className="text-muted-foreground">{member.role || "Sem cargo"}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={member.is_active ? "default" : "secondary"}>
-                {member.is_active ? "Ativo" : "Inativo"}
-              </Badge>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {member.termination_date ? (
+                <Badge variant="destructive">Desligado</Badge>
+              ) : (
+                <Badge variant={member.is_active ? "default" : "secondary"}>
+                  {member.is_active ? "Ativo" : "Inativo"}
+                </Badge>
+              )}
               {member.area && <Badge variant="outline">{member.area}</Badge>}
+              {tenureFromHireDate(member.hire_date, member.termination_date) && (
+                <Badge variant="outline">
+                  {tenureFromHireDate(member.hire_date, member.termination_date)} de casa
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -120,7 +131,7 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
           <div className="rounded-lg border p-3 text-center">
             <User className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Salário Atual</p>
-            <p className="font-semibold text-sm">{formatCurrency(member.salary)}</p>
+            <p className="font-semibold text-sm">{canSeeSensitive ? formatCurrency(member.salary) : "—"}</p>
           </div>
           <div className="rounded-lg border p-3 text-center">
             <TrendingUp className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
@@ -130,16 +141,48 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
           <div className="rounded-lg border p-3 text-center">
             <Award className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Total Bônus</p>
-            <p className="font-semibold text-sm">{formatCurrency(totalBonuses)}</p>
+            <p className="font-semibold text-sm">{canSeeSensitive ? formatCurrency(totalBonuses) : "—"}</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="promotions">
+        <Tabs defaultValue="cadastro">
           <TabsList className="w-full">
+            <TabsTrigger value="cadastro" className="flex-1">Cadastro</TabsTrigger>
             <TabsTrigger value="promotions" className="flex-1">Promoções</TabsTrigger>
             <TabsTrigger value="bonuses" className="flex-1">Bônus</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="cadastro" className="space-y-4">
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identificação</h4>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <InfoRow icon={IdCard} label="CPF" value={canSeeSensitive ? member.cpf : member.cpf ? "•••.•••.•••-••" : null} />
+                <InfoRow icon={Calendar} label="Nascimento" value={formatDate(member.birth_date)} />
+              </div>
+            </section>
+            <Separator />
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato</h4>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <InfoRow icon={Mail} label="E-mail corporativo" value={member.corporate_email} />
+                <InfoRow icon={Phone} label="Telefone" value={member.phone} />
+                <div className="sm:col-span-2">
+                  <InfoRow icon={MapPin} label="Endereço" value={canSeeSensitive ? member.address : member.address ? "(restrito)" : null} />
+                </div>
+              </div>
+            </section>
+            <Separator />
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vínculo</h4>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <InfoRow icon={Briefcase} label="Admissão" value={formatDate(member.hire_date)} />
+                <InfoRow icon={Calendar} label="Desligamento" value={formatDate(member.termination_date)} />
+              </div>
+            </section>
+          </TabsContent>
+
+
 
           <TabsContent value="promotions" className="space-y-3">
             <div className="flex justify-end">
@@ -283,3 +326,16 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
     </Dialog>
   );
 }
+
+function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value?: string | null }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium break-words">{value || "—"}</p>
+      </div>
+    </div>
+  );
+}
+
