@@ -695,6 +695,98 @@ export default function ClienteDetail() {
                 </CardContent>
               </Card>
 
+              {/* CNPJs Vinculados (faturamento) */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Hash className="h-5 w-5" /> CNPJs Vinculados
+                      {form.cnpjs_vinculados.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">{form.cnpjs_vinculados.length}</Badge>
+                      )}
+                    </CardTitle>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            cnpjs_vinculados: [...form.cnpjs_vinculados, { cnpj: "", razao_social: "", label: "" }],
+                          })
+                        }
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Adicionar CNPJ
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    CNPJs adicionais usados para faturamento (além do CNPJ principal). Adicionados automaticamente
+                    quando um CNPJ diferente é informado em Contas a Receber.
+                  </p>
+                  {form.cnpjs_vinculados.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nenhum CNPJ vinculado.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {form.cnpjs_vinculados.map((v, i) => (
+                        <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_1fr_auto] gap-2 items-center">
+                          <Input
+                            value={v.cnpj}
+                            onChange={(e) => {
+                              const arr = [...form.cnpjs_vinculados];
+                              arr[i] = { ...arr[i], cnpj: e.target.value };
+                              setForm({ ...form, cnpjs_vinculados: arr });
+                            }}
+                            placeholder="00.000.000/0000-00"
+                            className="font-mono text-sm"
+                          />
+                          <Input
+                            value={v.razao_social ?? ""}
+                            onChange={(e) => {
+                              const arr = [...form.cnpjs_vinculados];
+                              arr[i] = { ...arr[i], razao_social: e.target.value };
+                              setForm({ ...form, cnpjs_vinculados: arr });
+                            }}
+                            placeholder="Razão social (opcional)"
+                            className="text-sm"
+                          />
+                          <Input
+                            value={v.label ?? ""}
+                            onChange={(e) => {
+                              const arr = [...form.cnpjs_vinculados];
+                              arr[i] = { ...arr[i], label: e.target.value };
+                              setForm({ ...form, cnpjs_vinculados: arr });
+                            }}
+                            placeholder="Apelido (ex: Filial SP)"
+                            className="text-sm"
+                          />
+                          {canEdit && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                setForm({
+                                  ...form,
+                                  cnpjs_vinculados: form.cnpjs_vinculados.filter((_, idx) => idx !== i),
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Quadro Societário */}
               <Card>
                 <CardHeader>
