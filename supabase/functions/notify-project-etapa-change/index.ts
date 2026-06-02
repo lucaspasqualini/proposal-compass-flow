@@ -23,6 +23,8 @@ const ETAPA_LABELS: Record<string, string> = {
   assinado: "Assinado",
 };
 
+const ETAPA_ORDER = ["iniciado", "minuta", "assinado"];
+
 // Mapeia etapa do projeto -> palavras-chave usadas em receivables.description
 // quando o tipo de pagamento é "etapas".
 const ETAPA_TO_PARCELA_KEYS: Record<string, string[]> = {
