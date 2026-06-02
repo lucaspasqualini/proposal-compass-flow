@@ -1,35 +1,47 @@
-## Objetivo
+## Melhorias na página Equipe
 
-Atualizar `src/lib/importReceivables.ts` para refletir o novo layout das planilhas de contas a receber.
+Adicionar campos de cadastro pessoais aos membros do time, com visualização organizada em seções na tela de detalhe.
 
-## Novo mapeamento (posição fixa, 0-indexed)
+### 1. Banco de dados
+Adicionar colunas à tabela `team_members`:
+- `cpf` (text)
+- `birth_date` (date)
+- `hire_date` (date) — data de admissão
+- `termination_date` (date) — data de desligamento
+- `corporate_email` (text) — contato corporativo
+- `phone` (text)
+- `address` (text)
 
-| Campo | Coluna | Índice |
-|---|---|---|
-| Status | E | 4 |
-| OS | J | 9 |
-| Parcela "X/Y" | L | 11 |
-| Previsão de Faturamento (`due_date`) | M | 12 |
-| Dt Previsão NF (`previsao_nf`) | M | 12 |
-| # NFe | T | 19 |
-| Emissão da Fatura (`invoice_date`) | V | 21 |
-| Data de Pagamento (`paid_at`) | X | 23 |
+Cargo, área e salário permanecem como já existem.
 
-Observação: o usuário indicou a mesma coluna M para "Previsão de Faturamento" e "Dt Previsão NF". Vou usar M para ambos (mesmo valor preenchendo `due_date` e `previsao_nf`). Se for engano, me avisa qual é a coluna correta da Previsão NF.
+### 2. Formulário (criar/editar membro)
+Reorganizar o formulário em seções colapsáveis ou agrupadas:
+- **Identificação**: Nome, CPF, Data de nascimento
+- **Contato**: E-mail corporativo, Telefone, Endereço
+- **Cargo & Compensação**: Cargo, Área, Salário
+- **Vínculo**: Data de admissão, Data de desligamento, Ativo (switch)
 
-## Mudanças no parser
+Validações:
+- CPF: máscara `000.000.000-00` e validação básica de dígito
+- Telefone: máscara `(00) 00000-0000`
+- E-mail corporativo: validação de formato
+- Data de desligamento: se preenchida, automaticamente desativa o membro (`is_active = false`)
 
-1. **Forçar posição fixa**: hoje `findColumn` busca por nome de cabeçalho. Vou mudar para usar diretamente os índices acima, ignorando os cabeçalhos (mais robusto já que o usuário descreveu por letra de coluna). O `detectedColumns` retornado vai exibir o conteúdo do cabeçalho daquela posição apenas para referência visual no diálogo.
+### 3. Tela de detalhe do membro
+Exibir os novos campos organizados nas mesmas seções acima, mantendo o histórico de promoções e bônus já existente. Cabeçalho mostra nome, cargo, status (ativo/desligado) e tempo de casa calculado a partir de `hire_date`.
 
-2. **Localização do header row**: manter detecção automática do header (procurar linha que contenha "OS"/"Parcela"), e a partir dela ler as colunas pelos índices fixos. Se não achar header, assumir linha 1.
+### 4. Lista/cards na página Equipe
+Manter o card atual enxuto (nome, cargo, área), mas adicionar:
+- Badge de tempo de casa quando `hire_date` existir
+- Indicador visual de "Desligado" quando `termination_date` preenchida
+- Filtros adicionais no cabeçalho: por área, status (ativo/desligado/todos) e ordenação por nome, admissão ou cargo
 
-3. **Status — regra atualizada**: o `STATUS_MAP` já trata "RECEBIDO", "RECEBIDO A MAIS", "RECEBIDO A MENOS", "RECEBIDO SEM NF" → `pago`. Vou adicionar um fallback: qualquer string que comece com `RECEBIDO` é tratada como `pago` (cobre variações futuras tipo "Recebido parcialmente"). Demais mapeamentos (`LANÇADO`, `PENDENTE`, `CANCELADA`, `PDD`) inalterados.
+### Permissões
+RLS atual mantida: apenas `socio` escreve; todos autenticados leem. Campos sensíveis (CPF, salário, endereço) ficam visíveis apenas para `socio` e `administrativo` na UI (ocultar via condicional no frontend já que a tabela toda é legível).
 
-## Não muda
-
-- `ImportReceivablesDialog.tsx`, `useBulkUpdateReceivables`, fluxo fuzzy, regex de base OS (`^(MA_\d{4}_\d{2})`), permissões/RLS — tudo permanece.
-- Nenhuma alteração de banco.
-
-## Confirmação rápida
-
-A coluna **M** aparece duas vezes (Previsão de Faturamento e Dt Previsão NF). Confirma se é isso mesmo, ou se Previsão NF está em outra coluna?
+### Arquivos afetados
+- Migração SQL: novas colunas em `team_members`
+- `src/pages/Equipe.tsx`: filtros, ordenação, badges
+- `src/components/team/TeamMemberForm.tsx` (ou equivalente): novos campos + máscaras
+- `src/components/team/TeamMemberDetail.tsx` (ou equivalente): seções de exibição
+- `src/hooks/useTeamMembers.ts`: tipos atualizados
