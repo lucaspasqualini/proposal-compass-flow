@@ -94,8 +94,11 @@ export default function Projetos() {
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [search, setSearch] = usePersistedState("projetos:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("projetos:status", "all");
   const [hideFinalizado, setHideFinalizado] = usePersistedState("projetos:hideFinalizado", false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePersistedState<number>("projetos:pageSize", 100);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
