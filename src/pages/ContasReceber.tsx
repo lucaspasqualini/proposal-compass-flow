@@ -681,7 +681,7 @@ export default function ContasReceber() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
