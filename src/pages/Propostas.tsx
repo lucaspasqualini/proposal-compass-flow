@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -21,10 +21,12 @@ import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar
 import { exportToExcel } from "@/lib/exportExcel";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ImportProposals from "@/components/ImportProposals";
-import ProposalDetailDialog from "@/components/ProposalDetailDialog";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
 import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { RoleGuard } from "@/components/RoleGuard";
+
+const ImportProposals = lazy(() => import("@/components/ImportProposals"));
+const ProposalDetailDialog = lazy(() => import("@/components/ProposalDetailDialog"));
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
