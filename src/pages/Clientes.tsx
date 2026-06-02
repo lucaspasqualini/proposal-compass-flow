@@ -251,7 +251,7 @@ export default function Clientes() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Remover cliente?</AlertDialogTitle>
+                                <AlertDialogTitle>Remover empresa?</AlertDialogTitle>
                                 <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
