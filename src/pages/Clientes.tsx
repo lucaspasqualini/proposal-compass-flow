@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/exportExcel";
 import { Badge } from "@/components/ui/badge";
 import { ClientLogo } from "@/components/ClientLogo";
 import { useUserRole } from "@/hooks/useUserRole";
