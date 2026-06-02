@@ -56,6 +56,10 @@ export default function ContactCombobox({
           value={value}
           onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
           onFocus={() => setOpen(true)}
+          onBlur={(e) => {
+            // Aguarda eventual clique em item do popover (onMouseDown) antes de propagar blur.
+            setTimeout(() => onBlur?.(), 120);
+          }}
           placeholder={placeholder ?? "Nome do contato"}
           className={className}
           disabled={disabled}
