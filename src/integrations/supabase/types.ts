@@ -657,6 +657,8 @@ export type Database = {
       receivables: {
         Row: {
           amount: number | null
+          billing_cnpj: string | null
+          billing_razao_social: string | null
           client_id: string | null
           cofins: number | null
           created_at: string
@@ -684,6 +686,8 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          billing_cnpj?: string | null
+          billing_razao_social?: string | null
           client_id?: string | null
           cofins?: number | null
           created_at?: string
@@ -711,6 +715,8 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          billing_cnpj?: string | null
+          billing_razao_social?: string | null
           client_id?: string | null
           cofins?: number | null
           created_at?: string

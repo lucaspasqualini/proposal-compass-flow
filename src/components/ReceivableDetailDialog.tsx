@@ -14,7 +14,7 @@ import { useUpdateClient } from "@/hooks/useClients";
 import { useClientContacts, useCreateClientContact, useUpdateClientContact } from "@/hooks/useClientContacts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Pencil } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ContactCombobox from "@/components/ContactCombobox";
@@ -59,6 +59,81 @@ interface ReceivableDetailDialogProps {
 // Normaliza CNPJ apenas para comparação (não para exibição)
 const normalizeCnpj = (s: string) => (s || "").replace(/\D/g, "");
 
+type CnpjOption = {
+  cnpj: string;
+  label: string;
+  razao_social?: string | null;
+  contact_name?: string | null;
+  email?: string | null;
+  principal?: boolean;
+};
+
+function CnpjBillingCombobox({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: CnpjOption[];
+}) {
+  const [open, setOpen] = useState(false);
+  const secondaryOptions = options.filter((option) => !option.principal);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="00.000.000/0000-00"
+          className="h-8 pr-9 text-sm font-mono"
+        />
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronsUpDown className="h-3.5 w-3.5" />
+          </Button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent className="w-[360px] p-1" align="start">
+        {secondaryOptions.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum CNPJ secundário vinculado.</p>
+        ) : (
+          <div className="max-h-56 overflow-y-auto py-1">
+            {secondaryOptions.map((option) => {
+              const selected = normalizeCnpj(option.cnpj) === normalizeCnpj(value);
+              return (
+                <button
+                  key={normalizeCnpj(option.cnpj)}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.cnpj);
+                    setOpen(false);
+                  }}
+                  className="flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
+                >
+                  <Check className={`mt-0.5 h-3.5 w-3.5 ${selected ? "opacity-100" : "opacity-0"}`} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-mono font-medium">{option.cnpj}</span>
+                    {option.razao_social && (
+                      <span className="block truncate text-xs text-muted-foreground">{option.razao_social}</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ReceivableDetailDialog({ receivable, parcelaLabel, open, onOpenChange }: ReceivableDetailDialogProps) {
   const updateReceivable = useUpdateReceivable();
   const updateClient = useUpdateClient();
@@ -68,8 +143,9 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const { toast } = useToast();
 
   const client = receivable?.clients as any;
+  const clientId: string | undefined = receivable?.client_id || client?.id;
   const proposal = receivable?.proposals as any;
-  const { data: clientContacts } = useClientContacts(client?.id);
+  const { data: clientContacts } = useClientContacts(clientId);
 
   const amount = receivable?.amount || 0;
 
@@ -91,6 +167,46 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const [email, setEmail] = useState(client?.email || "");
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
+  const cnpjOptions = useMemo(() => {
+    const options: CnpjOption[] = [];
+    const seen = new Set<string>();
+    const addOption = (option: typeof options[number]) => {
+      const key = normalizeCnpj(option.cnpj);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      options.push(option);
+    };
+
+    if (client?.cnpj) {
+      addOption({
+        cnpj: client.cnpj,
+        label: `${client.cnpj} — Principal${client.razao_social ? ` · ${client.razao_social}` : ""}`,
+        razao_social: client.razao_social || client.name || null,
+        contact_name: client.contact_name || null,
+        email: client.email || null,
+        principal: true,
+      });
+    }
+
+    const vinculados = Array.isArray(client?.cnpjs_vinculados) ? client.cnpjs_vinculados : [];
+    vinculados.forEach((item: any) => {
+      const linkedCnpj = typeof item === "string" ? item : item?.cnpj;
+      if (!linkedCnpj) return;
+      const razao = typeof item === "string" ? null : item?.razao_social;
+      const contatoVinculado = typeof item === "string" ? null : item?.contact_name;
+      const emailVinculado = typeof item === "string" ? null : item?.email;
+      addOption({
+        cnpj: linkedCnpj,
+        label: `${linkedCnpj} — Secundário${razao ? ` · ${razao}` : ""}`,
+        razao_social: razao || null,
+        contact_name: contatoVinculado || null,
+        email: emailVinculado || null,
+      });
+    });
+
+    return options;
+  }, [client?.cnpj, client?.razao_social, client?.name, client?.contact_name, client?.email, client?.cnpjs_vinculados]);
+
   useEffect(() => {
     if (receivable) {
       setCofins(receivable.cofins ?? +(amount * 0.03).toFixed(2));
@@ -100,9 +216,13 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
       setNfe(receivable.nfe_number || "");
       setResponsavel(receivable.responsavel_projeto || "");
       const c = receivable.clients as any;
-      setCnpj(c?.cnpj || "");
-      setContato(c?.contact_name || "");
-      setEmail(c?.email || "");
+      const billingCnpj = receivable.billing_cnpj || c?.cnpj || "";
+      const linked = Array.isArray(c?.cnpjs_vinculados)
+        ? c.cnpjs_vinculados.find((v: any) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(billingCnpj))
+        : null;
+      setCnpj(billingCnpj);
+      setContato((typeof linked === "object" ? linked?.contact_name : null) || c?.contact_name || "");
+      setEmail((typeof linked === "object" ? linked?.email : null) || c?.email || "");
       setEditingDate(null);
     }
   }, [receivable?.id, amount]);
@@ -141,15 +261,35 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
     if (c.email) setEmail(c.email);
   };
 
+  const handleCnpjChange = (value: string) => {
+    setCnpj(value);
+    const selected = cnpjOptions.find((option) => normalizeCnpj(option.cnpj) === normalizeCnpj(value));
+    if (!selected) return;
+    setContato(selected.contact_name || "");
+    setEmail(selected.email || "");
+  };
+
   const handleSaveAll = async () => {
-    const clientId: string | undefined = receivable?.client_id || client?.id;
     try {
-      // 1. Receivable
+      const novoCnpj = (cnpj || "").trim();
+      let billingRazaoSocial: string | null =
+        normalizeCnpj(novoCnpj) === normalizeCnpj(receivable.billing_cnpj || "")
+          ? receivable.billing_razao_social || null
+          : null;
+
+      const selectedOption = cnpjOptions.find(
+        (option) => normalizeCnpj(option.cnpj) === normalizeCnpj(novoCnpj)
+      );
+      if (selectedOption?.razao_social) billingRazaoSocial = selectedOption.razao_social;
+
+      // 1. Receivable — o CNPJ de faturamento fica gravado na própria parcela/nota
       await updateReceivable.mutateAsync({
         id: receivable.id,
         cofins, csll, irpj, pis,
         nfe_number: nfe || null,
         responsavel_projeto: responsavel || null,
+        billing_cnpj: novoCnpj || null,
+        billing_razao_social: billingRazaoSocial,
       });
 
       const hasClientChanges =
@@ -171,12 +311,11 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
         // Buscar estado atual do cliente para evitar perdas se o cache estiver incompleto
         const { data: currentClient, error: fetchErr } = await supabase
           .from("clients")
-          .select("id, cnpj, contact_name, email, cnpjs_vinculados")
+          .select("id, cnpj, razao_social, contact_name, email, cnpjs_vinculados")
           .eq("id", clientId)
           .single();
         if (fetchErr) throw fetchErr;
 
-        const novoCnpj = (cnpj || "").trim();
         const principal = (currentClient.cnpj || "").trim();
         const isCnpjSecundario =
           !!novoCnpj && !!principal && normalizeCnpj(novoCnpj) !== normalizeCnpj(principal);
@@ -200,11 +339,13 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           );
 
           // Buscar razão social no plugin de CNPJ
-          const lookup = await lookupCnpj(novoCnpj);
+          const lookup = billingRazaoSocial ? null : await lookupCnpj(novoCnpj);
+          const razaoSocial = billingRazaoSocial || lookup?.razao_social || (idx >= 0 ? vinculados[idx]?.razao_social : null) || null;
+          billingRazaoSocial = razaoSocial;
 
           const novaEntrada = {
             cnpj: novoCnpj,
-            razao_social: lookup?.razao_social || (idx >= 0 ? vinculados[idx]?.razao_social : null) || null,
+            razao_social: razaoSocial,
             label: idx >= 0 ? vinculados[idx]?.label ?? null : null,
             contact_name: (contato || "").trim() || (idx >= 0 ? vinculados[idx]?.contact_name : null) || null,
             email: (email || "").trim() || (idx >= 0 ? vinculados[idx]?.email : null) || null,
@@ -219,8 +360,20 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           clientUpdates.cnpjs_vinculados = novosVinculados;
         }
 
+        if (!isCnpjSecundario && !billingRazaoSocial) {
+          billingRazaoSocial = currentClient.razao_social || null;
+        }
+
         if (Object.keys(clientUpdates).length > 0) {
           await updateClient.mutateAsync({ id: clientId, ...clientUpdates });
+        }
+
+        if ((billingRazaoSocial || null) !== (receivable.billing_razao_social || null)) {
+          await updateReceivable.mutateAsync({
+            id: receivable.id,
+            billing_cnpj: novoCnpj || null,
+            billing_razao_social: billingRazaoSocial,
+          });
         }
 
         // 3. Contato → criar ou atualizar em client_contacts (vinculado ao cliente)
@@ -311,12 +464,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">CNPJ Faturamento</p>
-                <Input
-                  value={cnpj}
-                  onChange={(e) => setCnpj(e.target.value)}
-                  placeholder="00.000.000/0000-00"
-                  className="h-8 text-sm font-mono"
-                />
+                <CnpjBillingCombobox value={cnpj} onChange={handleCnpjChange} options={cnpjOptions} />
                 {cnpjDiverge && (
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Diferente do principal — será vinculado ao cadastro.
