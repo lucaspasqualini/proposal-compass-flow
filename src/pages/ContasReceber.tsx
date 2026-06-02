@@ -162,7 +162,7 @@ export default function ContasReceber() {
         const pn = (r.proposals as any)?.proposal_number || "";
         const clientName = (r.clients as any)?.name || "";
         const title = (r.proposals as any)?.title || "";
-        const q = search.toLowerCase();
+        const q = deferredSearch.toLowerCase();
         if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
         if (statusFilter !== "all" && r.status !== statusFilter) return false;
         if (alertasFilter === "atrasado" && r.effectiveStatus !== "atrasado") return false;
