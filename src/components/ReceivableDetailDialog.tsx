@@ -410,7 +410,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                     step="0.01"
                     value={tax.value}
                     onChange={(e) => tax.setter(+e.target.value || 0)}
-                    onBlur={() => handleTaxBlur(tax.field, tax.value)}
                     className="h-8 text-sm"
                   />
                 </div>
