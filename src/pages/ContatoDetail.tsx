@@ -161,6 +161,7 @@ export default function ContatoDetail() {
         last_interaction_at: form.last_interaction_at || null,
         last_interaction_type: form.last_interaction_type || null,
         last_interaction_note: form.last_interaction_note || null,
+        client_id: form.client_id || null,
       } as any);
       toast({ title: "Contato atualizado" });
     } catch {
