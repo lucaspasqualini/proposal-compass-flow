@@ -237,7 +237,7 @@ export default function Propostas() {
           <p className="text-muted-foreground">Gerencie suas propostas comerciais</p>
         </div>
         <div className="flex gap-2">
-          <ImportProposals />
+          <Suspense fallback={null}><ImportProposals /></Suspense>
           <Button
             variant="outline"
             onClick={() => {
