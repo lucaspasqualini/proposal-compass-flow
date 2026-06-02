@@ -76,7 +76,7 @@ export default function Clientes() {
     e.stopPropagation();
     try {
       await deleteClient.mutateAsync(id);
-      toast({ title: "Cliente removido" });
+      toast({ title: "Empresa removida" });
     } catch {
       toast({ title: "Erro ao remover", variant: "destructive" });
     }
