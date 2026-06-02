@@ -366,6 +366,9 @@ export default function ContasReceber() {
     });
   }, [byProject, projectSortKey, projectSortDir]);
 
+  const parcelaPageItems = usePaginatedSlice(sortedParcelas, parcelaPage, parcelaPageSize);
+  const projectPageItems = usePaginatedSlice(sortedProjects, projectPage, projectPageSize);
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
 
   return (
