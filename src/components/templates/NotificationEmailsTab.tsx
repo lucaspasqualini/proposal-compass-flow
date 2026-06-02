@@ -32,10 +32,27 @@ interface NotificationTemplate {
 const SAMPLE_DATA: Record<string, Record<string, string>> = {
   "project-etapa-change": {
     destinatario: "João Silva",
+    autor: "Lucas Pasqualini",
+    codigo_projeto: "MA_0120_26",
     projeto: "Diagnóstico Empresa X",
     cliente: "Empresa X Ltda",
+    cnpj: "12.345.678/0001-90",
     etapa_anterior: "Iniciado",
-    etapa_nova: "Minuta",
+    etapa_nova: "Assinado",
+    parcela_descricao: "Assinatura do contrato",
+    parcela_valor: "R$ 3.300,00",
+    alerta_nf: `
+      <div style="background:#fff8e6;border:1px solid #f0c674;border-radius:6px;padding:16px;margin:20px 0;">
+        <p style="margin:0 0 8px;font-weight:bold;color:#8a5a00;">⚠️ Gatilho para emissão de Nota Fiscal</p>
+        <div style="font-size:14px;line-height:1.6;">
+          <div><strong>Parcela:</strong> Assinatura do contrato</div>
+          <div><strong>Valor:</strong> R$ 3.300,00</div>
+          <div><strong>CNPJ p/ emissão:</strong> 12.345.678/0001-90</div>
+        </div>
+        <p style="margin:12px 0 0;font-weight:bold;color:#8a5a00;">
+          Confirme com o gestor se a Nota já pode ser enviada!
+        </p>
+      </div>`,
   },
 };
 
