@@ -177,8 +177,8 @@ export default function Projetos() {
     return projects
       .filter((p) => {
         // Global search
-        if (search) {
-          const s = search.toLowerCase();
+        if (deferredSearch) {
+          const s = deferredSearch.toLowerCase();
           const matchSearch =
             p.title.toLowerCase().includes(s) ||
             ((p.proposals as any)?.proposal_number ?? "").toLowerCase().includes(s) ||
