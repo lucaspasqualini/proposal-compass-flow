@@ -142,7 +142,9 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, dateFilters, sortKey, sortDir, hidePerdida]);
+  }, [proposals, deferredSearch, statusFilter, empresaFilter, dateFilters, sortKey, sortDir, hidePerdida]);
+
+  const pageItems = usePaginatedSlice(filtered, page, pageSize);
 
   const stats = useMemo(() => {
     const ganhas = filtered.filter((p) => p.status === "ganha");
