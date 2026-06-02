@@ -125,6 +125,7 @@ export type Database = {
           cnae_descricao: string | null
           cnae_principal: string | null
           cnpj: string | null
+          cnpjs_vinculados: Json
           contact_name: string | null
           created_at: string
           data_abertura: string | null
@@ -150,6 +151,7 @@ export type Database = {
           cnae_descricao?: string | null
           cnae_principal?: string | null
           cnpj?: string | null
+          cnpjs_vinculados?: Json
           contact_name?: string | null
           created_at?: string
           data_abertura?: string | null
@@ -175,6 +177,7 @@ export type Database = {
           cnae_descricao?: string | null
           cnae_principal?: string | null
           cnpj?: string | null
+          cnpjs_vinculados?: Json
           contact_name?: string | null
           created_at?: string
           data_abertura?: string | null
