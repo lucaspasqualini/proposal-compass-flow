@@ -379,11 +379,15 @@ export default function ContasReceber() {
           <Upload className="h-4 w-4 mr-2" /> Importar planilha
         </Button>
       </div>
-      <ImportReceivablesDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        receivables={(receivables as any) || []}
-      />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportReceivablesDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            receivables={(receivables as any) || []}
+          />
+        </Suspense>
+      )}
 
       {/* Dashboard Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -525,6 +529,13 @@ export default function ContasReceber() {
                 </TableBody>
               </Table>
             </CardContent>
+            <TablePagination
+              total={sortedProjects.length}
+              page={projectPage}
+              pageSize={projectPageSize}
+              onPageChange={setProjectPage}
+              onPageSizeChange={(s) => { setProjectPageSize(s); setProjectPage(1); }}
+            />
           </Card>
         </TabsContent>
 
@@ -660,16 +671,27 @@ export default function ContasReceber() {
                 </TableBody>
               </Table>
             </CardContent>
+            <TablePagination
+              total={sortedParcelas.length}
+              page={parcelaPage}
+              pageSize={parcelaPageSize}
+              onPageChange={setParcelaPage}
+              onPageSizeChange={(s) => { setParcelaPageSize(s); setParcelaPage(1); }}
+            />
           </Card>
         </TabsContent>
       </Tabs>
 
-      <ReceivableDetailDialog
-        receivable={selectedReceivable}
-        parcelaLabel={selectedReceivable ? getParcelaLabel(selectedReceivable) : ""}
-        open={!!selectedReceivable}
-        onOpenChange={(open) => { if (!open) setSelectedReceivable(null); }}
-      />
+      {selectedReceivable && (
+        <Suspense fallback={null}>
+          <ReceivableDetailDialog
+            receivable={selectedReceivable}
+            parcelaLabel={selectedReceivable ? getParcelaLabel(selectedReceivable) : ""}
+            open={!!selectedReceivable}
+            onOpenChange={(open) => { if (!open) setSelectedReceivable(null); }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

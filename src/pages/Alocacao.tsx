@@ -1,8 +1,7 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,6 +28,9 @@ import {
   projectEtapaLabels,
   projectEtapaColors,
 } from "@/lib/format";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
+
+const ProjectDetailDialog = lazy(() => import("@/components/ProjectDetailDialog"));
 
 const STATUS_HIERARCHY: { value: string; label: string; statuses: string[] }[] = [
   { value: "em_andamento", label: "Ativo", statuses: ["em_andamento"] },
@@ -42,12 +44,15 @@ type SortDir = "asc" | "desc";
 
 export default function Alocacao() {
   const [search, setSearch] = usePersistedState("alocacao:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [selectedMember, setSelectedMember] = usePersistedState<string>("alocacao:member", "all");
   const [selectedStatus, setSelectedStatus] = usePersistedState<string>("alocacao:status", "em_andamento");
   const [selectedEtapa, setSelectedEtapa] = usePersistedState<string>("alocacao:etapa", "all");
   const [sortKey, setSortKey] = usePersistedState<SortKey | null>("alocacao:sortKey", null);
   const [sortDir, setSortDir] = usePersistedState<SortDir>("alocacao:sortDir", "asc");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePersistedState<number>("alocacao:pageSize", 100);
 
   const { data: projects, isLoading } = useQuery({
     // Compartilha namespace com ["projects"] para que invalidações de alocação propaguem
@@ -105,6 +110,7 @@ export default function Alocacao() {
 
   const filtered = useMemo(() => {
     if (!projects) return [];
+    const q = deferredSearch.toLowerCase();
     return projects
       .filter((p: any) => {
         if (!allowedStatuses.includes(p.status)) return false;
@@ -115,8 +121,7 @@ export default function Alocacao() {
           if (!hasMatch) return false;
         }
         if (selectedEtapa !== "all" && p.etapa !== selectedEtapa) return false;
-        if (search) {
-          const q = search.toLowerCase();
+        if (q) {
           const pn = p.proposals?.proposal_number || "";
           const title = p.title || "";
           const client = p.clients?.name || "";
@@ -131,7 +136,9 @@ export default function Alocacao() {
         const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [projects, allowedStatuses, selectedMember, selectedEtapa, search, sortKey, sortDir]);
+  }, [projects, allowedStatuses, selectedMember, selectedEtapa, deferredSearch, sortKey, sortDir]);
+
+  const pageItems = usePaginatedSlice(filtered, page, pageSize);
 
   const getInitials = (name: string) =>
     name
@@ -240,7 +247,7 @@ export default function Alocacao() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((p: any) => {
+              pageItems.map((p: any) => {
                 const members = (p.project_allocations ?? [])
                   .map((a: any) => a.team_members)
                   .filter(Boolean);
@@ -293,13 +300,24 @@ export default function Alocacao() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          total={filtered.length}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+        />
       </div>
 
-      <ProjectDetailDialog
-        projectId={selectedProjectId}
-        open={!!selectedProjectId}
-        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
-      />
+      {selectedProjectId && (
+        <Suspense fallback={null}>
+          <ProjectDetailDialog
+            projectId={selectedProjectId}
+            open={!!selectedProjectId}
+            onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
