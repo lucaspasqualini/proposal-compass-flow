@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useReceivables, useUpdateReceivable } from "@/hooks/useReceivables";
 import { useProjects } from "@/hooks/useProjects";
@@ -15,12 +15,14 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
-import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
-import ImportReceivablesDialog from "@/components/ImportReceivablesDialog";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning, Upload } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const ReceivableDetailDialog = lazy(() => import("@/components/ReceivableDetailDialog"));
+const ImportReceivablesDialog = lazy(() => import("@/components/ImportReceivablesDialog"));
 
 const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
 const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
