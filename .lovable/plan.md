@@ -1,47 +1,37 @@
-## Melhorias na página Equipe
+## Importação do cadastro de colaboradores
 
-Adicionar campos de cadastro pessoais aos membros do time, com visualização organizada em seções na tela de detalhe.
+Usar a planilha `Colaboradores - Cadastro.xlsx` (29 linhas, colunas: Nome, Status, CPF, Nascimento, E-mail corporativo, Telefone, Endereço, Admissão, Desligamento) para preencher os dados básicos da tabela `team_members`.
 
-### 1. Banco de dados
-Adicionar colunas à tabela `team_members`:
-- `cpf` (text)
-- `birth_date` (date)
-- `hire_date` (date) — data de admissão
-- `termination_date` (date) — data de desligamento
-- `corporate_email` (text) — contato corporativo
-- `phone` (text)
-- `address` (text)
+### Estratégia de match
 
-Cargo, área e salário permanecem como já existem.
+Cruzar por **nome normalizado** (sem acentos, lowercase, espaços colapsados). Como há divergências entre planilha e banco, aplicar mapeamento manual para esses casos:
 
-### 2. Formulário (criar/editar membro)
-Reorganizar o formulário em seções colapsáveis ou agrupadas:
-- **Identificação**: Nome, CPF, Data de nascimento
-- **Contato**: E-mail corporativo, Telefone, Endereço
-- **Cargo & Compensação**: Cargo, Área, Salário
-- **Vínculo**: Data de admissão, Data de desligamento, Ativo (switch)
+| Planilha | Banco |
+|---|---|
+| Antonio Luiz Feijó Nicolau | Antônio Nicolau |
+| Fellipe Franco Rosman | Fellipe Franco |
+| Lucas Pasqualini de Lima | Lucas Pasqualini |
+| Caio Lima Falcão | Caio Lima Falcao |
 
-Validações:
-- CPF: máscara `000.000.000-00` e validação básica de dígito
-- Telefone: máscara `(00) 00000-0000`
-- E-mail corporativo: validação de formato
-- Data de desligamento: se preenchida, automaticamente desativa o membro (`is_active = false`)
+Demais 13 nomes "Ativo/Sócio" batem direto.
 
-### 3. Tela de detalhe do membro
-Exibir os novos campos organizados nas mesmas seções acima, mantendo o histórico de promoções e bônus já existente. Cabeçalho mostra nome, cargo, status (ativo/desligado) e tempo de casa calculado a partir de `hire_date`.
+### Ações por linha
 
-### 4. Lista/cards na página Equipe
-Manter o card atual enxuto (nome, cargo, área), mas adicionar:
-- Badge de tempo de casa quando `hire_date` existir
-- Indicador visual de "Desligado" quando `termination_date` preenchida
-- Filtros adicionais no cabeçalho: por área, status (ativo/desligado/todos) e ordenação por nome, admissão ou cargo
+1. **Match encontrado** (existe no banco) → `UPDATE` preenchendo `cpf`, `birth_date`, `corporate_email`, `phone`, `address`, `hire_date`, `termination_date`. Não sobrescrever campos do banco com `NULL` da planilha (usar `COALESCE(planilha, atual)`).
+2. **Não encontrado + status Ativo/Sócio** (ex.: "João Gabriel Ponce") → `INSERT` novo membro ativo, sem `role`/`area`/`salary` (não estão na planilha).
+3. **Não encontrado + status Desligado** (10 nomes) → `INSERT` com `is_active = false`, preenchendo `termination_date` se houver. Sem `role`/`area`/`salary`.
 
-### Permissões
-RLS atual mantida: apenas `socio` escreve; todos autenticados leem. Campos sensíveis (CPF, salário, endereço) ficam visíveis apenas para `socio` e `administrativo` na UI (ocultar via condicional no frontend já que a tabela toda é legível).
+### No banco
 
-### Arquivos afetados
-- Migração SQL: novas colunas em `team_members`
-- `src/pages/Equipe.tsx`: filtros, ordenação, badges
-- `src/components/team/TeamMemberForm.tsx` (ou equivalente): novos campos + máscaras
-- `src/components/team/TeamMemberDetail.tsx` (ou equivalente): seções de exibição
-- `src/hooks/useTeamMembers.ts`: tipos atualizados
+- 19 membros atuais: ~15 receberão `UPDATE`, 4 sem correspondência permanecem inalterados (Gabriel Venturim, Mauricio Emerick — não estão na planilha).
+- ~11 novos `INSERT` (1 ativo + 10 desligados).
+
+### Avisos
+
+- Membros do banco que **não estão na planilha** (Gabriel Venturim, Mauricio Emerick) ficam intocados.
+- Desligados sem `termination_date` na planilha ficam com `is_active=false` e `termination_date=NULL`.
+- A planilha não traz cargo, área ou salário — esses campos não serão alterados.
+
+### Execução
+
+Script Node/TS no sandbox que: (1) lê a planilha, (2) consulta `team_members`, (3) faz match, (4) emite SQL de `UPDATE`/`INSERT` via supabase insert tool. Sem mudanças de schema, sem mudanças de UI.
