@@ -148,6 +148,42 @@ export function useCreateAllocation() {
     onError: (_err, _vars, ctx) => {
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
     },
+    onSuccess: (real, vars) => {
+      // Substitui a alocação temporária (temp-*) pela real, em todas as caches que a embarcam.
+      const swap = (list: any[]) =>
+        list.map((p: any) =>
+          p.id === vars.project_id
+            ? {
+                ...p,
+                project_allocations: (p.project_allocations || []).map((a: any) =>
+                  typeof a.id === "string" &&
+                  a.id.startsWith("temp-") &&
+                  a.team_member_id === vars.team_member_id
+                    ? { ...a, id: (real as any).id }
+                    : a
+                ),
+              }
+            : p
+        );
+      qc.getQueriesData<any>({ queryKey: ["projects"] }).forEach(([key, data]) => {
+        if (Array.isArray(data)) qc.setQueryData(key, swap(data));
+        else if (data && data.id === vars.project_id) {
+          qc.setQueryData(key, {
+            ...data,
+            project_allocations: (data.project_allocations || []).map((a: any) =>
+              typeof a.id === "string" &&
+              a.id.startsWith("temp-") &&
+              a.team_member_id === vars.team_member_id
+                ? { ...a, id: (real as any).id }
+                : a
+            ),
+          });
+        }
+      });
+      qc.getQueriesData<any>({ queryKey: ["alocacao-projects"] }).forEach(([key, data]) => {
+        if (Array.isArray(data)) qc.setQueryData(key, swap(data));
+      });
+    },
     onSettled: () => invalidateAllocationQueries(qc),
   });
 }
