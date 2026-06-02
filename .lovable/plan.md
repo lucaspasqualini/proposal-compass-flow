@@ -1,110 +1,82 @@
-## Diagnóstico objetivo
+## Objetivo
 
-O problema restante parece ser principalmente **frontend/renderização**, não Lovable Cloud:
+Disparar notificações automáticas (push + email) sempre que um projeto mudar de etapa (iniciado/minuta/assinado). Destinatários: o colaborador mais sênior alocado no projeto **e** o mais sênior da área Administrativa.
 
-- O banco está saudável: memória 51%, conexões 7/60, disco 11%, tamanho ~14,8 MB.
-- As consultas que medi retornaram rápido (~100–200 ms), mas a página chegou a **110 mil nós de DOM**, **224 mil event listeners**, **323 MB de JS heap** e ~**9s de script**.
-- As páginas renderizam listas inteiras de 900–1.900 registros com componentes caros por linha: `Select`, `Popover`, `Calendar`, `AlertDialog`, `Tooltip`, `Avatar`, etc.
-- Ainda há bundle pesado carregado cedo: `xlsx` entra no carregamento das páginas por causa de imports estáticos de exportação/importação.
+---
 
-Em outras palavras: os dados chegam relativamente rápido, mas o navegador fica pesado para montar e atualizar tudo.
+## 1. Ranking de senioridade (cargo fixo)
 
-## Plano de otimização
+Os cargos cadastrados hoje são texto livre. Vou criar um helper que mapeia cada `role` para um peso numérico (maior = mais sênior). Proposta inicial:
 
-### 1. Paginação visual imediata nas tabelas pesadas
+```
+Sócio                       = 100
+Diretor (Sênior/Pleno/Jr)   = 90 / 85 / 80
+Gerente                     = 70
+Coordenador                 = 60
+Executivo de Vendas         = 55
+Analista Sênior             = 50
+Analista Pleno              = 40
+Analista Júnior             = 30
+Estagiário I / II           = 10 / 15
+(desconhecido)              = 0
+```
 
-Implementar paginação local nas páginas:
+> Posso ajustar esse ranking antes de implementar — é só sinalizar. O matching será case-insensitive e por substring (ex.: "Analista Sênior" detecta "sênior" → 50).
 
-- Propostas
-- Projetos
-- Contas a Receber
-- Alocação
+**Mais sênior do projeto** = entre os `team_members` ativos com alocação em `project_allocations`, o de maior peso.
+**Mais sênior do administrativo** = entre os `team_members` ativos com `area = 'Administrativo'`, o de maior peso.
 
-Começar exibindo 50 ou 100 linhas por página, com controles no rodapé.
+Se as duas regras apontarem a mesma pessoa, ela recebe apenas uma notificação.
 
-Benefício esperado:
+---
 
-- Reduzir DOM de dezenas/centenas de milhares de elementos para poucos milhares.
-- Melhorar bastante digitação em busca, troca de filtros, abertura de menus e scroll.
-- Baixo risco, pois mantém os dados e filtros atuais funcionando.
+## 2. Gatilho no banco
 
-### 2. Adiar componentes caros por linha
+Trigger AFTER UPDATE em `public.projects` que dispara quando `etapa` muda. Em vez de enviar do Postgres (limitado), o trigger chama via `pg_net` um novo Edge Function `notify-project-etapa-change` passando `{ project_id, etapa_anterior, etapa_nova }`.
 
-Trocar controles pesados renderizados em todas as linhas por versões mais leves:
+Habilitar extensão `pg_net` se ainda não estiver.
 
-- Evitar `Calendar` montado em cada linha de Contas a Receber/Propostas.
-- Evitar `AlertDialog` por linha quando possível; usar um único diálogo compartilhado de confirmação.
-- Manter `Select` apenas onde for realmente necessário; onde possível, usar menu/modal compartilhado.
+---
 
-Benefício esperado:
+## 3. Edge Function `notify-project-etapa-change`
 
-- Menos event listeners.
-- Menos custo de renderização inicial.
-- Menos travamento ao interagir com filtros e status.
+Responsabilidades:
+1. Carregar projeto + cliente + alocações + team_members.
+2. Selecionar os dois destinatários (sênior projeto + sênior administrativo) usando o ranking.
+3. Para cada destinatário, montar título/corpo:
+   - Título: `Projeto mudou de etapa: <Título>`
+   - Corpo: `Cliente · Etapa: <anterior> → <nova>`
+4. **Push**: para cada destinatário com `user_id`, invocar a função existente `send-push-notification`.
+5. **Email**: invocar `send-transactional-email` (template `project-etapa-change`) usando o `corporate_email` (fallback `profiles.email`).
 
-### 3. Lazy load dos diálogos e ferramentas pesadas
+Idempotência: `idempotencyKey = projeto_id + etapa_nova` evita duplicatas em retentativas.
 
-Carregar sob demanda:
+---
 
-- `ProposalDetailDialog`
-- `ProjectDetailDialog`
-- `ReceivableDetailDialog`
-- `ImportProposals`
-- `ImportReceivablesDialog`
-- biblioteca `xlsx` usada em exportação/importação
+## 4. Email — infraestrutura
 
-Hoje `xlsx` aparece entre os maiores scripts carregados mesmo antes de exportar/importar.
+O projeto ainda não tem domínio de email configurado. Para enviar emails de app preciso:
 
-Benefício esperado:
+1. Você configura um domínio remetente (passo único, abre um diálogo guiado e adiciona DNS).
+2. Eu provisiono a fila de envio (`setup_email_infra`) e o scaffolding transacional.
+3. Crio o template React Email `project-etapa-change` (PT-BR, branding teal #0D7377, fonte Futura/Inter).
 
-- Primeiro carregamento menor.
-- Páginas abrem mais rápido.
-- Exportação/importação continuam funcionando, mas só carregam o peso quando o usuário clicar.
+Se preferir só Push agora, posso entregar push imediatamente e deixar o email para uma segunda etapa após o domínio estar pronto.
 
-### 4. Reduzir buscas e filtros a cada tecla
+---
 
-Aplicar `useDeferredValue` ou debounce curto nos campos de busca das páginas pesadas.
+## 5. Resumo técnico
 
-Benefício esperado:
+- **Migration**: trigger + função plpgsql + `pg_net` enabled
+- **Edge Function nova**: `supabase/functions/notify-project-etapa-change/index.ts` (verify_jwt=false, validação por shared secret no header vindo do trigger)
+- **Helper TS** `src/lib/seniorityRank.ts` (também usado no edge function, duplicado lá em Deno)
+- **Template** `_shared/transactional-email-templates/project-etapa-change.tsx`
+- **Sem mudanças de UI** — fluxo 100% backend
 
-- Digitação mais fluida.
-- Evita recalcular filtro/sort de milhares de itens em cada tecla imediatamente.
+---
 
-### 5. Enxugar payload restante das queries
+## Pontos para confirmar antes de implementar
 
-Ajustar selects onde ainda baixamos colunas demais:
-
-- `useReceivables`: remover `select("*")` da listagem e carregar impostos/notes só no detalhe.
-- `useProposals`: remover `observacoes` da lista, carregar no detalhe.
-- `useClients`: criar versão leve para dropdowns (`id`, `name`) em vez de `select("*")` nos diálogos.
-- `useProjects`: separar alocações em uma query leve ou compor no frontend, reduzindo join aninhado.
-
-Benefício esperado:
-
-- Menos JSON transferido e menos objetos para o React processar.
-
-### 6. Segunda etapa: paginação no servidor
-
-Depois dos ganhos rápidos acima, migrar gradualmente para paginação real no banco:
-
-- filtros e ordenação enviados para a query;
-- `range()` por página;
-- `count` total;
-- exportação buscando todos os resultados apenas sob demanda;
-- estatísticas via consultas agregadas ou views/funções leves.
-
-Esta é a mudança com maior ganho estrutural, mas também a mais delicada porque altera como filtros, totais e exportação funcionam.
-
-## Ordem recomendada
-
-1. Paginação visual + debounce nas 4 páginas.
-2. Lazy load de diálogos/importação/exportação e `xlsx`.
-3. Diálogo único para ações por linha e redução de `Calendar/AlertDialog` repetidos.
-4. Selects mais enxutos nos hooks.
-5. Paginação no servidor como fase 2, se ainda houver lentidão com muitos dados.
-
-## Fora de escopo por enquanto
-
-- Upgrade da instância Lovable Cloud: neste momento os sinais não indicam saturação do backend.
-- Reescrever toda a UX das tabelas.
-- Trocar o design system.
+1. O ranking de senioridade acima está OK? Algum cargo a adicionar/reordenar?
+2. Push agora **e** email depois do domínio estar pronto, ou esperar para entregar tudo junto?
+3. Email do colaborador: usar `team_members.corporate_email` (fallback para `profiles.email` pelo `user_id`)?
