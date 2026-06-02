@@ -109,79 +109,29 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
   const valorLiquido = amount - cofins - csll - irpj - pis;
 
-  const handleUpdate = async (updates: Record<string, any>) => {
-    try {
-      await updateReceivable.mutateAsync({ id: receivable.id, ...updates });
-      toast({ title: "Parcela atualizada" });
-    } catch {
-      toast({ title: "Erro ao atualizar", variant: "destructive" });
-    }
-  };
-
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string) => {
     const updates: any = { status: newStatus };
     if (newStatus !== "pago") updates.paid_at = null;
     if (newStatus === "lancado") Object.assign(updates, computeLancadoDefaults(receivable));
-    handleUpdate(updates);
+    try {
+      await updateReceivable.mutateAsync({ id: receivable.id, ...updates });
+      toast({ title: "Status atualizado" });
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
   };
 
-  const handleDateChange = (field: string, date: Date | undefined) => {
+  const handleDateChange = async (field: string, date: Date | undefined) => {
     if (!date) return;
     const updates: any = { [field]: format(date, "yyyy-MM-dd") };
     if (field === "paid_at" && receivable.status !== "pago") updates.status = "pago";
-    handleUpdate(updates);
-    setEditingDate(null);
-  };
-
-  const handleTaxBlur = (field: string, value: number) => {
-    handleUpdate({ [field]: value });
-  };
-
-  const handleNfeBlur = () => {
-    if (nfe !== (receivable.nfe_number || "")) {
-      handleUpdate({ nfe_number: nfe || null });
-    }
-  };
-
-  // CNPJ: se diferente do CNPJ principal e ainda não estiver em cnpjs_vinculados, adiciona ao cadastro
-  const handleCnpjBlur = async () => {
-    const novoCnpj = (cnpj || "").trim();
-    const principal = (client?.cnpj || "").trim();
-    if (!client?.id) return;
-    if (!novoCnpj || normalizeCnpj(novoCnpj) === normalizeCnpj(principal)) return;
-
-    const vinculados: any[] = Array.isArray(client?.cnpjs_vinculados) ? client.cnpjs_vinculados : [];
-    const jaVinculado = vinculados.some((v) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(novoCnpj));
-    if (jaVinculado) return;
-
     try {
-      const novaLista = [...vinculados, { cnpj: novoCnpj, added_from: "receivable", added_at: new Date().toISOString() }];
-      await updateClient.mutateAsync({ id: client.id, cnpjs_vinculados: novaLista } as any);
-      qc.invalidateQueries({ queryKey: ["receivables"] });
-      qc.invalidateQueries({ queryKey: ["clients", client.id] });
-      toast({ title: "CNPJ vinculado ao cadastro do cliente" });
+      await updateReceivable.mutateAsync({ id: receivable.id, ...updates });
+      toast({ title: "Data atualizada" });
     } catch {
-      toast({ title: "Erro ao vincular CNPJ", variant: "destructive" });
+      toast({ title: "Erro", variant: "destructive" });
     }
-  };
-
-  // Contato: se for nome novo, cria em client_contacts. Se já existir e email mudou, atualiza o email do contato.
-  const persistContactIfNeeded = async (nome: string, mail: string) => {
-    const n = (nome || "").trim();
-    const m = (mail || "").trim();
-    if (!client?.id || !n) return;
-
-    const existing = (clientContacts ?? []).find(
-      (c) => c.name.trim().toLowerCase() === n.toLowerCase()
-    );
-    try {
-      if (!existing) {
-        await createContact.mutateAsync({ client_id: client.id, name: n, email: m || null });
-        toast({ title: "Contato adicionado à base do cliente" });
-      } else if (m && (existing.email || "") !== m) {
-        await updateContact.mutateAsync({ id: existing.id, email: m });
-      }
-    } catch { /* silencioso */ }
+    setEditingDate(null);
   };
 
   const handleContatoSelect = (c: { name: string; email?: string | null }) => {
@@ -189,11 +139,61 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
     if (c.email) setEmail(c.email);
   };
 
-  const handleContatoBlur = () => {
-    persistContactIfNeeded(contato, email);
-  };
-  const handleEmailBlur = () => {
-    persistContactIfNeeded(contato, email);
+  const handleSaveAll = async () => {
+    try {
+      // 1. Receivable
+      await updateReceivable.mutateAsync({
+        id: receivable.id,
+        cofins, csll, irpj, pis,
+        nfe_number: nfe || null,
+        responsavel_projeto: responsavel || null,
+      });
+
+      // 2. Cliente — contato/email principais + CNPJ principal se vazio
+      if (client?.id) {
+        const clientUpdates: any = {};
+        if ((contato || "") !== (client.contact_name || "")) clientUpdates.contact_name = contato || null;
+        if ((email || "") !== (client.email || "")) clientUpdates.email = email || null;
+        if (!client.cnpj && cnpj) clientUpdates.cnpj = cnpj;
+
+        // CNPJ adicional → cnpjs_vinculados
+        const novoCnpj = (cnpj || "").trim();
+        const principal = (client?.cnpj || "").trim();
+        if (novoCnpj && principal && normalizeCnpj(novoCnpj) !== normalizeCnpj(principal)) {
+          const vinculados: any[] = Array.isArray(client?.cnpjs_vinculados) ? client.cnpjs_vinculados : [];
+          const jaVinculado = vinculados.some((v) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(novoCnpj));
+          if (!jaVinculado) {
+            clientUpdates.cnpjs_vinculados = [...vinculados, { cnpj: novoCnpj, added_from: "receivable", added_at: new Date().toISOString() }];
+          }
+        }
+
+        if (Object.keys(clientUpdates).length > 0) {
+          await updateClient.mutateAsync({ id: client.id, ...clientUpdates });
+        }
+
+        // 3. Contato → criar ou atualizar em client_contacts
+        const n = (contato || "").trim();
+        const m = (email || "").trim();
+        if (n) {
+          const existing = (clientContacts ?? []).find(
+            (c) => c.name.trim().toLowerCase() === n.toLowerCase()
+          );
+          if (!existing) {
+            await createContact.mutateAsync({ client_id: client.id, name: n, email: m || null });
+          } else if (m && (existing.email || "") !== m) {
+            await updateContact.mutateAsync({ id: existing.id, email: m });
+          }
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ["receivables"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      if (client?.id) qc.invalidateQueries({ queryKey: ["client_contacts", client.id] });
+
+      toast({ title: "Alterações salvas" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message, variant: "destructive" });
+    }
   };
 
   const DateField = ({ label, field, value }: { label: string; field: string; value: string | null }) => (
