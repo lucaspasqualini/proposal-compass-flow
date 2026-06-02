@@ -63,6 +63,7 @@ export default function ContasReceber() {
   const updateReceivable = useUpdateReceivable();
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("contasreceber:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("contasreceber:status", "all");
   const [alertasFilter, setAlertasFilter] = usePersistedState<string>("contasreceber:alertas", "all");
   const [yearFilter, setYearFilter] = usePersistedState<string>("contasreceber:year", "all");
