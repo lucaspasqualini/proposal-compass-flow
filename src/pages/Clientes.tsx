@@ -105,12 +105,12 @@ export default function Clientes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-muted-foreground">Gerencie sua base de clientes</p>
+          <h1 className="text-2xl font-bold">Empresas</h1>
+          <p className="text-muted-foreground">Gerencie sua base de empresas</p>
         </div>
         {canEdit && (
           <Button onClick={() => setShowNew(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Novo Cliente
+            <Plus className="h-4 w-4 mr-1" /> Nova Empresa
           </Button>
         )}
       </div>
