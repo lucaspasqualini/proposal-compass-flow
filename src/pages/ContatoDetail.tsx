@@ -270,6 +270,7 @@ export default function ContatoDetail() {
                   onChange={(e) => setForm({ ...form, cargo: e.target.value })}
                   placeholder="Ex: Diretor Financeiro"
                 />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label className="flex items-center gap-1">
