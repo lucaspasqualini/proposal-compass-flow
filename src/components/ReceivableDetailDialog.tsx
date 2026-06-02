@@ -302,11 +302,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <Input
                   value={responsavel}
                   onChange={(e) => setResponsavel(e.target.value)}
-                  onBlur={() => {
-                    if ((responsavel || "") !== (receivable.responsavel_projeto || "")) {
-                      handleUpdate({ responsavel_projeto: responsavel || null });
-                    }
-                  }}
                   className="h-8 text-sm"
                 />
               </div>
