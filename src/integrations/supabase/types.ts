@@ -65,7 +65,7 @@ export type Database = {
       client_contacts: {
         Row: {
           cargo: string | null
-          client_id: string
+          client_id: string | null
           created_at: string
           email: string | null
           id: string
@@ -80,7 +80,7 @@ export type Database = {
         }
         Insert: {
           cargo?: string | null
-          client_id: string
+          client_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -95,7 +95,7 @@ export type Database = {
         }
         Update: {
           cargo?: string | null
-          client_id?: string
+          client_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
