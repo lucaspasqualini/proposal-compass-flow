@@ -208,7 +208,9 @@ export default function Projetos() {
         const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [projects, search, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
+  }, [projects, deferredSearch, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
+
+  const pageItems = usePaginatedSlice(filtered, page, pageSize);
 
   const stats = useMemo(() => {
     const ativos = filtered.filter((p) => p.status === "em_andamento");
