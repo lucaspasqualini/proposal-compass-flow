@@ -427,6 +427,12 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
             )}
           </div>
         </ScrollArea>
+        <DialogFooter className="pt-2 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleSaveAll} disabled={updateReceivable.isPending || updateClient.isPending}>
+            {updateReceivable.isPending || updateClient.isPending ? "Salvando..." : "Salvar alterações"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
