@@ -457,7 +457,15 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                   </div>
                   <div className="grid gap-2">
                     <Label>Contato do Cliente</Label>
-                    <Input value={form.cliente_contato ?? ""} onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })} placeholder="Nome do contato" />
+                    <ContactCombobox
+                      value={form.cliente_contato ?? ""}
+                      onChange={(v) => setForm({ ...form, cliente_contato: v })}
+                      contacts={(clientContacts ?? []).map((c) => ({
+                        id: c.id, name: c.name, email: c.email, phone: c.phone, cargo: c.cargo,
+                      }))}
+                      disabled={!form.client_id}
+                      placeholder={form.client_id ? "Buscar contato ou digitar novo nome" : "Selecione um cliente primeiro"}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label>Status</Label>
