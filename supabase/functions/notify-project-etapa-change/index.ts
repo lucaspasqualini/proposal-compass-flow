@@ -130,16 +130,17 @@ function buildAlertaNF(parcela: {
   valor: number | null;
   cnpj: string | null;
 } | null): string {
-  if (!parcela) return "";
-  const cnpjLine = parcela.cnpj
+  const descricao = parcela?.descricao || "—";
+  const valor = parcela ? formatBRL(parcela.valor) : "—";
+  const cnpjLine = parcela?.cnpj
     ? `<div><strong>CNPJ p/ emissão:</strong> ${parcela.cnpj}</div>`
     : `<div style="color:#a15c00;"><strong>CNPJ p/ emissão:</strong> não cadastrado no cliente</div>`;
   return `
-  <div style="background:#fff8e6;border:1px solid #f0c674;border-radius:6px;padding:16px;margin:20px 0;">
+  <div style="background:#fff8e6;border:1px solid #f0c674;border-radius:6px;padding:16px;margin:16px 0;">
     <p style="margin:0 0 8px;font-weight:bold;color:#8a5a00;">⚠️ Gatilho para emissão de Nota Fiscal</p>
     <div style="font-size:14px;line-height:1.6;">
-      <div><strong>Parcela:</strong> ${parcela.descricao}</div>
-      <div><strong>Valor:</strong> ${formatBRL(parcela.valor)}</div>
+      <div><strong>Parcela:</strong> ${descricao}</div>
+      <div><strong>Valor:</strong> ${valor}</div>
       ${cnpjLine}
     </div>
     <p style="margin:12px 0 0;font-weight:bold;color:#8a5a00;">
