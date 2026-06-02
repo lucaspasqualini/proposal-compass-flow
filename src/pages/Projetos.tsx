@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate, Link } from "react-router-dom";
 import { useProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
@@ -19,8 +19,10 @@ import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEt
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, Download } from "lucide-react";
 import { exportToExcel } from "@/lib/exportExcel";
-import ProjectDetailDialog from "@/components/ProjectDetailDialog";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
 import { RoleGuard } from "@/components/RoleGuard";
+
+const ProjectDetailDialog = lazy(() => import("@/components/ProjectDetailDialog"));
 
 type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
 type SortDir = "asc" | "desc";
