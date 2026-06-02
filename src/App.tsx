@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Clientes = lazy(() => import("@/pages/Clientes"));
 const ClienteDetail = lazy(() => import("@/pages/ClienteDetail"));
+const ContatoDetail = lazy(() => import("@/pages/ContatoDetail"));
 const Propostas = lazy(() => import("@/pages/Propostas"));
 const Projetos = lazy(() => import("@/pages/Projetos"));
 const Equipe = lazy(() => import("@/pages/Equipe"));
