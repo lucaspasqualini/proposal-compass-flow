@@ -578,6 +578,19 @@ export default function ContasReceber() {
                            <Popover>
                              <PopoverTrigger asChild>
                                <Button variant="ghost" size="sm" className="h-7 px-1 text-xs font-normal gap-1">
+                                 {r.previsao_nf ? formatDate(r.previsao_nf) : "—"}
+                                 <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                               </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-3" align="start">
+                               <Calendar mode="single" selected={r.previsao_nf ? new Date(r.previsao_nf + "T12:00:00") : undefined} onSelect={(d) => { if (d) handleDateInline(r.id, "previsao_nf", d); }} locale={ptBR} />
+                             </PopoverContent>
+                           </Popover>
+                         </TableCell>
+                         <TableCell onClick={(e) => e.stopPropagation()}>
+                           <Popover>
+                             <PopoverTrigger asChild>
+                               <Button variant="ghost" size="sm" className="h-7 px-1 text-xs font-normal gap-1">
                                  {r.due_date ? formatDate(r.due_date) : "—"}
                                  <CalendarIcon className="h-3 w-3 text-muted-foreground" />
                                </Button>
