@@ -21,6 +21,7 @@ import { generateProposalPptx } from "@/lib/generateProposalPptx";
 import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
 import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
+import NewClientDialog from "@/components/NewClientDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
