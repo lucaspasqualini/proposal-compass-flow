@@ -68,6 +68,7 @@ export default function ContatoDetail() {
   const updateContact = useUpdateClientContact();
   const deleteContact = useDeleteClientContact();
   const { data: allProposals } = useProposals();
+  const { data: clientsList } = useClients();
 
   const { data: projects } = useQuery({
     queryKey: ["projects-by-client", clientId],
