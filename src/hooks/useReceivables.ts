@@ -33,6 +33,7 @@ export function useUpdateReceivable() {
       csll?: number | null;
       irpj?: number | null;
       pis?: number | null;
+      responsavel_projeto?: string | null;
     }) => {
       const { data, error } = await supabase
         .from("receivables")

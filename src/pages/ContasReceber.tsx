@@ -53,7 +53,7 @@ const editableStatuses = [
   { value: "pdd", label: "PDD" },
 ];
 
-type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "due_date" | "invoice_date" | "status" | "alertas" | "paid_at";
+type ParcelaSortKey = "number" | "title" | "parcela" | "amount" | "nfe" | "previsao_nf" | "due_date" | "invoice_date" | "status" | "alertas" | "paid_at";
 type ProjectSortKey = "number" | "client" | "title" | "total" | "received" | "pending";
 type SortDir = "asc" | "desc";
 
@@ -324,6 +324,7 @@ export default function ContasReceber() {
         case "parcela": va = a.parcela_index; vb = b.parcela_index; break;
         case "amount": va = a.amount || 0; vb = b.amount || 0; break;
         case "nfe": va = a.nfe_number || ""; vb = b.nfe_number || ""; break;
+        case "previsao_nf": va = a.previsao_nf || "9999"; vb = b.previsao_nf || "9999"; break;
         case "due_date": va = a.due_date || "9999"; vb = b.due_date || "9999"; break;
         case "invoice_date": va = a.invoice_date || "9999"; vb = b.invoice_date || "9999"; break;
         case "status": va = a.status; vb = b.status; break;
@@ -550,6 +551,7 @@ export default function ContasReceber() {
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("parcela")}>Parcela <ParcelaSortIcon col="parcela" /></button></TableHead>
                      <TableHead className="text-right"><button className="flex items-center ml-auto hover:text-foreground transition-colors" onClick={() => handleParcelaSort("amount")}>Valor <ParcelaSortIcon col="amount" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("nfe")}># NFe <ParcelaSortIcon col="nfe" /></button></TableHead>
+                     <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("previsao_nf")}>Previsão de emissão <ParcelaSortIcon col="previsao_nf" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("due_date")}>Previsão de recebimento <ParcelaSortIcon col="due_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("invoice_date")}>Emissão <ParcelaSortIcon col="invoice_date" /></button></TableHead>
                      <TableHead><button className="flex items-center hover:text-foreground transition-colors" onClick={() => handleParcelaSort("status")}>Status <ParcelaSortIcon col="status" /></button></TableHead>
@@ -572,6 +574,19 @@ export default function ContasReceber() {
                          <TableCell className="font-mono text-sm">{parcelaLabel}</TableCell>
                          <TableCell className="text-right">{formatCurrency(r.amount)}</TableCell>
                          <TableCell className="text-xs">{r.nfe_number || "—"}</TableCell>
+                         <TableCell onClick={(e) => e.stopPropagation()}>
+                           <Popover>
+                             <PopoverTrigger asChild>
+                               <Button variant="ghost" size="sm" className="h-7 px-1 text-xs font-normal gap-1">
+                                 {r.previsao_nf ? formatDate(r.previsao_nf) : "—"}
+                                 <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                               </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-auto p-3" align="start">
+                               <Calendar mode="single" selected={r.previsao_nf ? new Date(r.previsao_nf + "T12:00:00") : undefined} onSelect={(d) => { if (d) handleDateInline(r.id, "previsao_nf", d); }} locale={ptBR} />
+                             </PopoverContent>
+                           </Popover>
+                         </TableCell>
                          <TableCell onClick={(e) => e.stopPropagation()}>
                            <Popover>
                              <PopoverTrigger asChild>
@@ -666,7 +681,7 @@ export default function ContasReceber() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

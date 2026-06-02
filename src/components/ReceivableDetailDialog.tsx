@@ -10,10 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Separator } from "@/components/ui/separator";
 import { useUpdateReceivable } from "@/hooks/useReceivables";
+import { useUpdateClient } from "@/hooks/useClients";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 
 const statusLabels: Record<string, string> = {
@@ -51,6 +54,8 @@ interface ReceivableDetailDialogProps {
 
 export default function ReceivableDetailDialog({ receivable, parcelaLabel, open, onOpenChange }: ReceivableDetailDialogProps) {
   const updateReceivable = useUpdateReceivable();
+  const updateClient = useUpdateClient();
+  const qc = useQueryClient();
   const { toast } = useToast();
 
   const amount = receivable?.amount || 0;
@@ -67,6 +72,10 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const [irpj, setIrpj] = useState(defaultTaxes.irpj);
   const [pis, setPis] = useState(defaultTaxes.pis);
   const [nfe, setNfe] = useState(receivable?.nfe_number || "");
+  const [responsavel, setResponsavel] = useState(receivable?.responsavel_projeto || "");
+  const [cnpj, setCnpj] = useState((receivable?.clients as any)?.cnpj || "");
+  const [contato, setContato] = useState((receivable?.clients as any)?.contact_name || "");
+  const [email, setEmail] = useState((receivable?.clients as any)?.email || "");
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,6 +85,11 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
       setIrpj(receivable.irpj ?? +(amount * 0.015).toFixed(2));
       setPis(receivable.pis ?? +(amount * 0.0065).toFixed(2));
       setNfe(receivable.nfe_number || "");
+      setResponsavel(receivable.responsavel_projeto || "");
+      const c = receivable.clients as any;
+      setCnpj(c?.cnpj || "");
+      setContato(c?.contact_name || "");
+      setEmail(c?.email || "");
       setEditingDate(null);
     }
   }, [receivable?.id, amount]);
@@ -95,6 +109,22 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
     }
   };
 
+  const handleClientUpdate = async (updates: Record<string, any>) => {
+    if (!client?.id) {
+      toast({ title: "Cliente não vinculado", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateClient.mutateAsync({ id: client.id, ...updates });
+      // Receivables joinam clients — invalida para refletir na lista e em outros lugares.
+      qc.invalidateQueries({ queryKey: ["receivables"] });
+      qc.invalidateQueries({ queryKey: ["clients", client.id] });
+      toast({ title: "Cliente atualizado" });
+    } catch {
+      toast({ title: "Erro ao atualizar cliente", variant: "destructive" });
+    }
+  };
+
   const handleStatusChange = (newStatus: string) => {
     const updates: any = { status: newStatus };
     if (newStatus !== "pago") updates.paid_at = null;
@@ -104,9 +134,15 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
   const handleDateChange = (field: string, date: Date | undefined) => {
     if (!date) return;
-    handleUpdate({ [field]: format(date, "yyyy-MM-dd") });
+    const updates: any = { [field]: format(date, "yyyy-MM-dd") };
+    // Ao definir data de recebimento, marca automaticamente como pago.
+    if (field === "paid_at" && receivable.status !== "pago") {
+      updates.status = "pago";
+    }
+    handleUpdate(updates);
     setEditingDate(null);
   };
+
 
   const handleTaxBlur = (field: string, value: number) => {
     handleUpdate({ [field]: value });
@@ -176,16 +212,39 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">CNPJ Cliente</p>
-                <p className="text-sm font-mono">{client?.cnpj || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">CNPJ Cliente</p>
+                <Input
+                  value={cnpj}
+                  onChange={(e) => setCnpj(e.target.value)}
+                  onBlur={() => {
+                    if ((cnpj || "") !== (client?.cnpj || "")) handleClientUpdate({ cnpj: cnpj || null });
+                  }}
+                  placeholder="00.000.000/0000-00"
+                  className="h-8 text-sm font-mono"
+                />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Contato</p>
-                <p className="text-sm">{client?.contact_name || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Contato</p>
+                <Input
+                  value={contato}
+                  onChange={(e) => setContato(e.target.value)}
+                  onBlur={() => {
+                    if ((contato || "") !== (client?.contact_name || "")) handleClientUpdate({ contact_name: contato || null });
+                  }}
+                  className="h-8 text-sm"
+                />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm truncate">{client?.email || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Email</p>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => {
+                    if ((email || "") !== (client?.email || "")) handleClientUpdate({ email: email || null });
+                  }}
+                  className="h-8 text-sm"
+                />
               </div>
             </div>
 
@@ -194,8 +253,17 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
             {/* Responsável / Previsão de emissão / Parcela */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Responsável</p>
-                <p className="text-sm">{receivable.responsavel_projeto || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                <Input
+                  value={responsavel}
+                  onChange={(e) => setResponsavel(e.target.value)}
+                  onBlur={() => {
+                    if ((responsavel || "") !== (receivable.responsavel_projeto || "")) {
+                      handleUpdate({ responsavel_projeto: responsavel || null });
+                    }
+                  }}
+                  className="h-8 text-sm"
+                />
               </div>
               <DateField label="Previsão de emissão" field="previsao_nf" value={receivable.previsao_nf} />
               <div>
@@ -203,6 +271,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <p className="text-sm">{receivable.parcela_label || `${(receivable.parcela_index ?? 0) + 1}`}</p>
               </div>
             </div>
+
 
             {receivable.status_origem && /A MAIS|A MENOS|SEM NF/i.test(receivable.status_origem) && (
               <div>
