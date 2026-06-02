@@ -189,7 +189,7 @@ export default function Clientes() {
                   <TableRow>
                     <TableHead className="w-[52px]"></TableHead>
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
-                      <span className="flex items-center">Cliente <SortIcon col="name" /></span>
+                      <span className="flex items-center">Empresa <SortIcon col="name" /></span>
                     </TableHead>
                     <TableHead className="hidden md:table-cell">CNPJ</TableHead>
                     <TableHead className="cursor-pointer select-none text-center" onClick={() => toggleSort("proposal_count")}>
