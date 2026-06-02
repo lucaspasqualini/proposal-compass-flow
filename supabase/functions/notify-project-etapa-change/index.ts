@@ -163,6 +163,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    const prevIndex = ETAPA_ORDER.indexOf(etapa_anterior);
+    const newIndex = ETAPA_ORDER.indexOf(etapa_nova);
+    if (prevIndex !== -1 && newIndex !== -1 && newIndex < prevIndex) {
+      return new Response(
+        JSON.stringify({ ok: true, skipped: true, reason: "retrocesso de etapa" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { data: project, error: projErr } = await supabase
       .from("projects")
       .select(
