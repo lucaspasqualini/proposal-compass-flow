@@ -75,6 +75,7 @@ export const ROLE_ROUTES: Record<AppRole, string[]> = {
     "/projetos",
     "/equipe",
     "/clientes",
+    "/contatos",
     "/alocacao",
     "/contas-a-receber",
     "/templates",
@@ -84,6 +85,7 @@ export const ROLE_ROUTES: Record<AppRole, string[]> = {
     "/propostas",
     "/projetos",
     "/clientes",
+    "/contatos",
     "/alocacao",
     "/contas-a-receber",
     "/templates",
@@ -92,11 +94,12 @@ export const ROLE_ROUTES: Record<AppRole, string[]> = {
     "/propostas",
     "/projetos",
     "/clientes",
+    "/contatos",
     "/alocacao",
     "/templates",
   ],
   estagiario: ["/alocacao"],
-  administrativo: ["/clientes", "/equipe", "/alocacao", "/contas-a-receber"],
+  administrativo: ["/clientes", "/contatos", "/equipe", "/alocacao", "/contas-a-receber"],
 };
 
 export function canAccessRoute(role: AppRole | null, path: string): boolean {
