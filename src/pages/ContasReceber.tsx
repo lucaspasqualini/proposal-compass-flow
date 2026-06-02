@@ -76,6 +76,10 @@ export default function ContasReceber() {
   const [parcelaSortDir, setParcelaSortDir] = usePersistedState<SortDir>("contasreceber:parcelaSortDir", "asc");
   const [projectSortKey, setProjectSortKey] = usePersistedState<ProjectSortKey | null>("contasreceber:projectSortKey", null);
   const [projectSortDir, setProjectSortDir] = usePersistedState<SortDir>("contasreceber:projectSortDir", "asc");
+  const [parcelaPage, setParcelaPage] = useState(1);
+  const [parcelaPageSize, setParcelaPageSize] = usePersistedState<number>("contasreceber:parcelaPageSize", 100);
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectPageSize, setProjectPageSize] = usePersistedState<number>("contasreceber:projectPageSize", 100);
 
   // proposal_id -> { etapa, status }
   const projectByProposal = useMemo(() => {
