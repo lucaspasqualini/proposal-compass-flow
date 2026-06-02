@@ -172,7 +172,7 @@ export default function ClienteDetail() {
       data_entrada: string;
       faixa_etaria: string;
     }>,
-    cnpjs_vinculados: [] as Array<{ cnpj: string; razao_social?: string | null; label?: string | null }>,
+    cnpjs_vinculados: [] as Array<{ cnpj: string; razao_social?: string | null; label?: string | null; contact_name?: string | null; email?: string | null }>,
   });
   const [cnpjDialogOpen, setCnpjDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
