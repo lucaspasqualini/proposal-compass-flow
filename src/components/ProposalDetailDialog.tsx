@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProposal, useUpdateProposal, useCreateProposal } from "@/hooks/useProposals";
 import { useClients, useCreateClient } from "@/hooks/useClients";
+import { useClientContacts, useCreateClientContact } from "@/hooks/useClientContacts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,7 @@ import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
 import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
 import NewClientDialog from "@/components/NewClientDialog";
+import ContactCombobox from "@/components/ContactCombobox";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
