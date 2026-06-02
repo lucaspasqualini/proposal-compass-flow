@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useClient, useUpdateClient } from "@/hooks/useClients";
 import { useProposals } from "@/hooks/useProposals";
 import {
