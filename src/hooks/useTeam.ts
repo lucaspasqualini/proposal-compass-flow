@@ -76,10 +76,14 @@ export function useProjectAllocations(projectId?: string) {
  * Usado após criar/remover alocações para garantir que UI fique sincronizada
  * em todas as abas (Projetos, Alocação, ProjectDetailDialog).
  */
+/**
+ * Invalida apenas a key específica de project_allocations (usada em alguns lugares
+ * com filtros por projectId). NÃO invalida ["projects"] / ["alocacao-projects"]
+ * para evitar refetch pesado da lista — a atualização in-place é feita via
+ * setQueryData nas próprias mutações.
+ */
 function invalidateAllocationQueries(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["project_allocations"] });
-  qc.invalidateQueries({ queryKey: ["projects"] });
-  qc.invalidateQueries({ queryKey: ["alocacao-projects"] });
 }
 
 export function useCreateAllocation() {
