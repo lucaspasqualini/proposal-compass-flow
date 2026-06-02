@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/exportExcel";
 import { Badge } from "@/components/ui/badge";
 import { ClientLogo } from "@/components/ClientLogo";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -108,11 +109,29 @@ export default function Clientes() {
           <h1 className="text-2xl font-bold">Empresas</h1>
           <p className="text-muted-foreground">Gerencie sua base de empresas</p>
         </div>
-        {canEdit && (
-          <Button onClick={() => setShowNew(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Nova Empresa
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const rows = filtered.map((c) => ({
+                "Empresa": c.name,
+                "CNPJ": c.cnpj ?? "",
+                "Propostas": c.proposal_count,
+                "Projetos": c.project_count,
+                "Valor Ganho": c.won_value,
+                "Última Proposta": c.last_proposal_date ? formatDate(c.last_proposal_date) : "",
+              }));
+              exportToExcel(rows, "empresas");
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" /> Exportar
           </Button>
-        )}
+          {canEdit && (
+            <Button onClick={() => setShowNew(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Nova Empresa
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Summary */}

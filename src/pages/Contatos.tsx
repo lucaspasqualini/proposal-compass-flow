@@ -7,8 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, Users, Linkedin, Phone } from "lucide-react";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Users, Linkedin, Phone, Download } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { exportToExcel } from "@/lib/exportExcel";
 
 type SortKey = "name" | "cargo" | "client_name" | "last_interaction_at";
 type SortDir = "asc" | "desc";
@@ -89,6 +90,23 @@ export default function Contatos() {
           <h1 className="text-2xl font-bold">Contatos</h1>
           <p className="text-muted-foreground">Todos os contatos vinculados às empresas</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const rows = filtered.map((c) => ({
+              "Nome": c.name,
+              "Cargo": c.cargo ?? "",
+              "LinkedIn": c.linkedin ?? "",
+              "Telefone": c.phone ?? "",
+              "Email": c.email ?? "",
+              "Empresa": c.clients?.name ?? "",
+              "Última Interação": c.last_interaction_at ? formatDate(c.last_interaction_at) : "",
+            }));
+            exportToExcel(rows, "contatos");
+          }}
+        >
+          <Download className="h-4 w-4 mr-1" /> Exportar
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
