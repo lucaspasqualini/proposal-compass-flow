@@ -1,82 +1,99 @@
 ## Objetivo
 
-Disparar notificações automáticas (push + email) sempre que um projeto mudar de etapa (iniciado/minuta/assinado). Destinatários: o colaborador mais sênior alocado no projeto **e** o mais sênior da área Administrativa.
+1. Migrar o envio de email pelo **Gmail connector** (sua conta Gmail pessoal)
+2. Criar uma nova aba **"E-mails de Notificação"** dentro de `/templates` onde você edita o texto dos emails e troca a conta remetente
 
 ---
 
-## 1. Ranking de senioridade (cargo fixo)
+## Parte 1 — Envio via Gmail
 
-Os cargos cadastrados hoje são texto livre. Vou criar um helper que mapeia cada `role` para um peso numérico (maior = mais sênior). Proposta inicial:
+### Conectar Gmail
+Disparo o OAuth do Gmail connector. Você autoriza com sua conta pessoal, escopo `gmail.send`. Secrets ficam disponíveis (`GOOGLE_MAIL_API_KEY`, `LOVABLE_API_KEY`).
 
+### Atualizar edge function `notify-project-etapa-change`
+- Remover a chamada quebrada a `send-transactional-email`
+- Buscar o template ativo do banco (nova tabela, ver Parte 2) com placeholders
+- Renderizar placeholders (`{{projeto}}`, `{{cliente}}`, `{{etapa_anterior}}`, `{{etapa_nova}}`, `{{destinatario}}`)
+- Montar email RFC 2822, codificar em base64url
+- `POST https://connector-gateway.lovable.dev/google_mail/gmail/v1/users/me/messages/send`
+- Headers: `Authorization: Bearer $LOVABLE_API_KEY`, `X-Connection-Api-Key: $GOOGLE_MAIL_API_KEY`
+- Push notification permanece intacto
+
+---
+
+## Parte 2 — Aba "E-mails de Notificação" em `/templates`
+
+### Nova tabela `notification_email_templates`
 ```
-Sócio                       = 100
-Diretor (Sênior/Pleno/Jr)   = 90 / 85 / 80
-Gerente                     = 70
-Coordenador                 = 60
-Executivo de Vendas         = 55
-Analista Sênior             = 50
-Analista Pleno              = 40
-Analista Júnior             = 30
-Estagiário I / II           = 10 / 15
-(desconhecido)              = 0
+id              uuid pk
+key             text unique   -- identificador estável (ex: 'project-etapa-change')
+nome            text          -- nome legível ("Mudança de etapa do projeto")
+descricao       text          -- explicação do gatilho
+assunto         text          -- com placeholders
+corpo_html      text          -- com placeholders
+placeholders    jsonb         -- lista de variáveis disponíveis (só leitura)
+ativo           boolean
+created_at, updated_at
 ```
+RLS: leitura para todos os autenticados, escrita só pra sócio.
+Seed inicial: 1 row para `project-etapa-change` com texto padrão atual.
 
-> Posso ajustar esse ranking antes de implementar — é só sinalizar. O matching será case-insensitive e por substring (ex.: "Analista Sênior" detecta "sênior" → 50).
+### Nova tabela `notification_email_settings` (single-row)
+```
+id              uuid pk
+connection_id   text          -- ID da connection Gmail ativa
+sender_label    text          -- nome de exibição (ex: "Notificações MA")
+updated_at
+```
+Guarda qual connection é usada pra envio. Default = primeira Gmail conectada.
 
-**Mais sênior do projeto** = entre os `team_members` ativos com alocação em `project_allocations`, o de maior peso.
-**Mais sênior do administrativo** = entre os `team_members` ativos com `area = 'Administrativo'`, o de maior peso.
+### UI da aba
+Dentro de `<Tabs>` do `Templates.tsx`, adicionar terceira aba **"E-mails de Notificação"** com:
 
-Se as duas regras apontarem a mesma pessoa, ela recebe apenas uma notificação.
+**Bloco superior — Remetente:**
+- Card mostrando "Enviando como: `seunome@gmail.com`"
+- Botão **"Trocar conta de envio"** → abre fluxo de conectar outra conta Gmail
+- Botão **"Reconectar"** caso o token expire
 
----
+**Lista de templates de notificação:**
+Cada card mostra:
+- Nome + descrição do gatilho (read-only)
+- Lista de placeholders disponíveis (chips clicáveis que inserem no editor)
+- Input para `assunto`
+- Textarea grande para `corpo_html`
+- Toggle "ativo"
+- Botão **"Pré-visualizar"** (renderiza com dados de exemplo num dialog)
+- Botão **"Enviar teste para mim"** (envia pra `corporate_email` do usuário logado)
+- Botão **Salvar**
 
-## 2. Gatilho no banco
-
-Trigger AFTER UPDATE em `public.projects` que dispara quando `etapa` muda. Em vez de enviar do Postgres (limitado), o trigger chama via `pg_net` um novo Edge Function `notify-project-etapa-change` passando `{ project_id, etapa_anterior, etapa_nova }`.
-
-Habilitar extensão `pg_net` se ainda não estiver.
-
----
-
-## 3. Edge Function `notify-project-etapa-change`
-
-Responsabilidades:
-1. Carregar projeto + cliente + alocações + team_members.
-2. Selecionar os dois destinatários (sênior projeto + sênior administrativo) usando o ranking.
-3. Para cada destinatário, montar título/corpo:
-   - Título: `Projeto mudou de etapa: <Título>`
-   - Corpo: `Cliente · Etapa: <anterior> → <nova>`
-4. **Push**: para cada destinatário com `user_id`, invocar a função existente `send-push-notification`.
-5. **Email**: invocar `send-transactional-email` (template `project-etapa-change`) usando o `corporate_email` (fallback `profiles.email`).
-
-Idempotência: `idempotencyKey = projeto_id + etapa_nova` evita duplicatas em retentativas.
-
----
-
-## 4. Email — infraestrutura
-
-O projeto ainda não tem domínio de email configurado. Para enviar emails de app preciso:
-
-1. Você configura um domínio remetente (passo único, abre um diálogo guiado e adiciona DNS).
-2. Eu provisiono a fila de envio (`setup_email_infra`) e o scaffolding transacional.
-3. Crio o template React Email `project-etapa-change` (PT-BR, branding teal #0D7377, fonte Futura/Inter).
-
-Se preferir só Push agora, posso entregar push imediatamente e deixar o email para uma segunda etapa após o domínio estar pronto.
+Estrutura futura: novos gatilhos (ex: prazo vencendo, parcela paga) viram só novas rows nessa tabela — sem mudança de código.
 
 ---
 
-## 5. Resumo técnico
+## Considerações
 
-- **Migration**: trigger + função plpgsql + `pg_net` enabled
-- **Edge Function nova**: `supabase/functions/notify-project-etapa-change/index.ts` (verify_jwt=false, validação por shared secret no header vindo do trigger)
-- **Helper TS** `src/lib/seniorityRank.ts` (também usado no edge function, duplicado lá em Deno)
-- **Template** `_shared/transactional-email-templates/project-etapa-change.tsx`
-- **Sem mudanças de UI** — fluxo 100% backend
+- **Sem domínio próprio**: emails saem do seu Gmail pessoal. Trocar pra domínio depois = só apontar pra outro edge function de envio, templates ficam preservados no banco.
+- **Limite Gmail pessoal**: ~500 emails/dia (folgado pra notificações internas).
+- **Edição sem deploy**: você muda texto/assunto pela UI, sem precisar mudar código.
+- **Push notification não muda** — continua disparando junto com o email.
 
 ---
 
-## Pontos para confirmar antes de implementar
+## Arquivos / mudanças
 
-1. O ranking de senioridade acima está OK? Algum cargo a adicionar/reordenar?
-2. Push agora **e** email depois do domínio estar pronto, ou esperar para entregar tudo junto?
-3. Email do colaborador: usar `team_members.corporate_email` (fallback para `profiles.email` pelo `user_id`)?
+**Backend:**
+- Migration: tabelas `notification_email_templates` + `notification_email_settings` + seed
+- Editar `supabase/functions/notify-project-etapa-change/index.ts` (carregar template do banco, render placeholders, enviar via Gmail gateway)
+- Nova edge function `send-notification-test-email` (botão "enviar teste")
+
+**Frontend:**
+- Editar `src/pages/Templates.tsx`: adicionar aba "E-mails de Notificação"
+- Novo componente `src/components/templates/NotificationEmailsTab.tsx`
+- Novo hook `src/hooks/useNotificationEmails.ts`
+
+**Connectors:**
+- Linkar Gmail connector (OAuth)
+
+---
+
+Confirma o plano que eu sigo pra implementação.
