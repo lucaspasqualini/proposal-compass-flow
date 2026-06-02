@@ -165,6 +165,9 @@ const Templates = () => {
           <TabsTrigger value="email" className="gap-1.5">
             <Mail className="h-4 w-4" /> Email Comercial
           </TabsTrigger>
+          <TabsTrigger value="notificacoes" className="gap-1.5">
+            <Bell className="h-4 w-4" /> E-mails de Notificação
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="propostas">
           <TemplatesPropostas />
@@ -173,6 +176,9 @@ const Templates = () => {
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             Em breve — seção de templates de e-mail comercial.
           </div>
+        </TabsContent>
+        <TabsContent value="notificacoes">
+          <NotificationEmailsTab />
         </TabsContent>
       </Tabs>
     </div>
