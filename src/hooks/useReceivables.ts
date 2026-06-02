@@ -65,19 +65,41 @@ export function useBulkUpdateReceivables() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (updates: BulkReceivableUpdate[]) => {
-      let ok = 0;
       const errors: { id: string; error: string }[] = [];
-      // Sequential to keep RLS errors clear; small batches are fine for this use case.
-      for (const u of updates) {
-        const { id, ...patch } = u;
-        const { error } = await supabase.from("receivables").update(patch).eq("id", id);
-        if (error) errors.push({ id, error: error.message });
-        else ok++;
+      const succeeded: BulkReceivableUpdate[] = [];
+
+      // Paralelo em lotes para não estourar conexões nem travar a UI.
+      const BATCH = 10;
+      for (let i = 0; i < updates.length; i += BATCH) {
+        const slice = updates.slice(i, i + BATCH);
+        const results = await Promise.all(
+          slice.map(async (u) => {
+            const { id, ...patch } = u;
+            const { error } = await supabase.from("receivables").update(patch).eq("id", id);
+            return { u, error };
+          })
+        );
+        for (const { u, error } of results) {
+          if (error) errors.push({ id: u.id, error: error.message });
+          else succeeded.push(u);
+        }
       }
-      return { ok, errors };
+      return { ok: succeeded.length, errors, succeeded };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["receivables"] });
+    onSuccess: ({ succeeded }) => {
+      if (succeeded.length === 0) return;
+      // Atualiza in-place no cache em vez de refetch da lista inteira (~1.9k linhas).
+      const byId = new Map(succeeded.map((u) => [u.id, u]));
+      qc.setQueryData<any[]>(["receivables"], (old) =>
+        old
+          ? old.map((r) => {
+              const patch = byId.get(r.id);
+              if (!patch) return r;
+              const { id: _omit, ...rest } = patch;
+              return { ...r, ...rest };
+            })
+          : old
+      );
     },
   });
 }

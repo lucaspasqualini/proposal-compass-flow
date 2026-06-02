@@ -56,12 +56,14 @@ export function useCreateProject() {
 const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
 const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
 
-async function autofillPrevisaoNfFromEtapa(projectId: string, newEtapa: string) {
-  if (!newEtapa || newEtapa === "cancelado") return;
+async function autofillPrevisaoNfFromEtapa(
+  projectId: string,
+  newEtapa: string
+): Promise<{ ids: string[]; previsao_nf: string } | null> {
+  if (!newEtapa || newEtapa === "cancelado") return null;
   const projRank = ETAPA_RANK[newEtapa] ?? 0;
-  if (projRank === 0) return;
+  if (projRank === 0) return null;
 
-  // Buscar projeto + proposta + receivables relevantes
   const { data: project } = await supabase
     .from("projects")
     .select("proposal_id, proposals(payment_type)")
@@ -69,7 +71,7 @@ async function autofillPrevisaoNfFromEtapa(projectId: string, newEtapa: string) 
     .maybeSingle();
   const proposalId = (project as any)?.proposal_id;
   const paymentType = (project as any)?.proposals?.payment_type;
-  if (!proposalId || paymentType !== "etapas") return;
+  if (!proposalId || paymentType !== "etapas") return null;
 
   const today = new Date().toISOString().slice(0, 10);
   const { data: recs } = await supabase
@@ -84,11 +86,10 @@ async function autofillPrevisaoNfFromEtapa(projectId: string, newEtapa: string) 
     return parcRank > 0 && parcRank <= projRank;
   });
 
-  if (toUpdate.length === 0) return;
-  await supabase
-    .from("receivables")
-    .update({ previsao_nf: today })
-    .in("id", toUpdate.map((r) => r.id));
+  if (toUpdate.length === 0) return null;
+  const ids = toUpdate.map((r) => r.id);
+  await supabase.from("receivables").update({ previsao_nf: today }).in("id", ids);
+  return { ids, previsao_nf: today };
 }
 
 export function useUpdateProject() {
@@ -97,19 +98,26 @@ export function useUpdateProject() {
     mutationFn: async ({ id, ...updates }: Partial<Project> & { id: string }) => {
       const { data, error } = await supabase.from("projects").update(updates).eq("id", id).select().single();
       if (error) throw error;
+      let receivablesPatch: { ids: string[]; previsao_nf: string } | null = null;
       if ("etapa" in updates && updates.etapa) {
-        await autofillPrevisaoNfFromEtapa(id, updates.etapa as string);
+        receivablesPatch = await autofillPrevisaoNfFromEtapa(id, updates.etapa as string);
       }
-      return data;
+      return { project: data, receivablesPatch };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ project, receivablesPatch }) => {
       qc.setQueryData<any[]>(["projects"], (old) =>
-        old ? old.map((p) => (p.id === data.id ? { ...p, ...data } : p)) : old
+        old ? old.map((p) => (p.id === project.id ? { ...p, ...project } : p)) : old
       );
-      qc.invalidateQueries({ queryKey: ["projects", data.id] });
-      // Etapa de projeto altera flags de receivables (precisaEmitir) e pode preencher previsao_nf.
-      if ("etapa" in (data as any)) {
-        qc.invalidateQueries({ queryKey: ["receivables"] });
+      qc.setQueryData(["projects", project.id], (old: any) =>
+        old ? { ...old, ...project } : old
+      );
+      // Atualiza receivables em cache (in-place) em vez de refetch completo.
+      if (receivablesPatch && receivablesPatch.ids.length > 0) {
+        const idSet = new Set(receivablesPatch.ids);
+        const today = receivablesPatch.previsao_nf;
+        qc.setQueryData<any[]>(["receivables"], (old) =>
+          old ? old.map((r) => (idSet.has(r.id) ? { ...r, previsao_nf: today } : r)) : old
+        );
       }
     },
   });

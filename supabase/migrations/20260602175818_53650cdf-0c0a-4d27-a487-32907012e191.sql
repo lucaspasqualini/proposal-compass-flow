@@ -1,0 +1,12 @@
+CREATE INDEX IF NOT EXISTS idx_receivables_proposal_id ON public.receivables(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_receivables_client_id ON public.receivables(client_id);
+CREATE INDEX IF NOT EXISTS idx_receivables_due_date ON public.receivables(due_date);
+CREATE INDEX IF NOT EXISTS idx_receivables_status ON public.receivables(status);
+CREATE INDEX IF NOT EXISTS idx_allocations_project ON public.project_allocations(project_id);
+CREATE INDEX IF NOT EXISTS idx_allocations_team_member ON public.project_allocations(team_member_id);
+CREATE INDEX IF NOT EXISTS idx_projects_proposal_id ON public.projects(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_projects_client_id ON public.projects(client_id);
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON public.projects(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_proposals_client_id ON public.proposals(client_id);
+CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON public.proposals(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_proposals_status ON public.proposals(status);
