@@ -270,7 +270,30 @@ export default function ContatoDetail() {
                   onChange={(e) => setForm({ ...form, cargo: e.target.value })}
                   placeholder="Ex: Diretor Financeiro"
                 />
-              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1">
+                <Building2 className="h-3 w-3" /> Empresa
+              </Label>
+              <Select
+                value={form.client_id || "__none__"}
+                onValueChange={(v) =>
+                  setForm({ ...form, client_id: v === "__none__" ? "" : v })
+                }
+                disabled={!canEdit}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma empresa (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Sem empresa —</SelectItem>
+                  {(clientsList ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
