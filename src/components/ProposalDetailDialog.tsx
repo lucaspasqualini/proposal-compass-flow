@@ -437,7 +437,18 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                   </div>
                   <div className="grid gap-2">
                     <Label>Indicador</Label>
-                    <Input value={form.indicador ?? ""} onChange={(e) => setForm({ ...form, indicador: e.target.value })} placeholder="Quem indicou" />
+                    <Select
+                      value={form.indicador || "__none__"}
+                      onValueChange={(v) => setForm({ ...form, indicador: v === "__none__" ? "" : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Sem indicador —</SelectItem>
+                        {clients?.map((c) => (
+                          <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-2">
                     <Label>Contato do Cliente</Label>
