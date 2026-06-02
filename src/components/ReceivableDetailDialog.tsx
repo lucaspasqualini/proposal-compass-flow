@@ -150,6 +150,21 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
       });
 
       // 2. Cliente — contato/email principais + CNPJ principal se vazio
+      const hasClientChanges =
+        !!cnpj || !!contato || !!email ||
+        (contato || "") !== (client?.contact_name || "") ||
+        (email || "") !== (client?.email || "");
+
+      if (hasClientChanges && !client?.id) {
+        toast({
+          title: "Não foi possível salvar os dados do cliente",
+          description: "Cliente não vinculado a esta parcela. A parcela foi salva, mas contato/CNPJ não.",
+          variant: "destructive",
+        });
+        qc.invalidateQueries({ queryKey: ["receivables"] });
+        return;
+      }
+
       if (client?.id) {
         const clientUpdates: any = {};
         if ((contato || "") !== (client.contact_name || "")) clientUpdates.contact_name = contato || null;
