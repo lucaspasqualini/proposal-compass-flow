@@ -379,11 +379,15 @@ export default function ContasReceber() {
           <Upload className="h-4 w-4 mr-2" /> Importar planilha
         </Button>
       </div>
-      <ImportReceivablesDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        receivables={(receivables as any) || []}
-      />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportReceivablesDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            receivables={(receivables as any) || []}
+          />
+        </Suspense>
+      )}
 
       {/* Dashboard Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
