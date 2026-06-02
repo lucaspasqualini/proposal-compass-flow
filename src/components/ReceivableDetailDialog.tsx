@@ -284,7 +284,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
         }
 
         if (!isCnpjSecundario && !billingRazaoSocial) {
-          billingRazaoSocial = currentClient.razao_social || currentClient.id || null;
+          billingRazaoSocial = currentClient.razao_social || null;
         }
 
         if (Object.keys(clientUpdates).length > 0) {
@@ -389,10 +389,16 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <p className="text-xs text-muted-foreground mb-1">CNPJ Faturamento</p>
                 <Input
                   value={cnpj}
-                  onChange={(e) => setCnpj(e.target.value)}
+                  onChange={(e) => handleCnpjChange(e.target.value)}
                   placeholder="00.000.000/0000-00"
                   className="h-8 text-sm font-mono"
+                  list={cnpjDatalistId}
                 />
+                <datalist id={cnpjDatalistId}>
+                  {cnpjOptions.map((option) => (
+                    <option key={normalizeCnpj(option.cnpj)} value={option.cnpj} label={option.label} />
+                  ))}
+                </datalist>
                 {cnpjDiverge && (
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Diferente do principal — será vinculado ao cadastro.
