@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useReceivables, useUpdateReceivable } from "@/hooks/useReceivables";
 import { useProjects } from "@/hooks/useProjects";
@@ -15,12 +15,14 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { compareProjectNumbers } from "@/lib/projectNumber";
-import ReceivableDetailDialog from "@/components/ReceivableDetailDialog";
-import ImportReceivablesDialog from "@/components/ImportReceivablesDialog";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 import { Search, DollarSign, AlertTriangle, TrendingUp, CalendarIcon, Check, ArrowUpDown, ArrowUp, ArrowDown, FileWarning, Upload } from "lucide-react";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const ReceivableDetailDialog = lazy(() => import("@/components/ReceivableDetailDialog"));
+const ImportReceivablesDialog = lazy(() => import("@/components/ImportReceivablesDialog"));
 
 const ETAPA_RANK: Record<string, number> = { iniciado: 1, minuta: 2, assinado: 3 };
 const PARCELA_ETAPA_RANK: Record<string, number> = { inicio: 1, minuta: 2, assinatura: 3 };
@@ -61,6 +63,7 @@ export default function ContasReceber() {
   const updateReceivable = useUpdateReceivable();
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("contasreceber:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("contasreceber:status", "all");
   const [alertasFilter, setAlertasFilter] = usePersistedState<string>("contasreceber:alertas", "all");
   const [yearFilter, setYearFilter] = usePersistedState<string>("contasreceber:year", "all");
@@ -73,6 +76,10 @@ export default function ContasReceber() {
   const [parcelaSortDir, setParcelaSortDir] = usePersistedState<SortDir>("contasreceber:parcelaSortDir", "asc");
   const [projectSortKey, setProjectSortKey] = usePersistedState<ProjectSortKey | null>("contasreceber:projectSortKey", null);
   const [projectSortDir, setProjectSortDir] = usePersistedState<SortDir>("contasreceber:projectSortDir", "asc");
+  const [parcelaPage, setParcelaPage] = useState(1);
+  const [parcelaPageSize, setParcelaPageSize] = usePersistedState<number>("contasreceber:parcelaPageSize", 100);
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectPageSize, setProjectPageSize] = usePersistedState<number>("contasreceber:projectPageSize", 100);
 
   // proposal_id -> { etapa, status }
   const projectByProposal = useMemo(() => {
@@ -155,7 +162,7 @@ export default function ContasReceber() {
         const pn = (r.proposals as any)?.proposal_number || "";
         const clientName = (r.clients as any)?.name || "";
         const title = (r.proposals as any)?.title || "";
-        const q = search.toLowerCase();
+        const q = deferredSearch.toLowerCase();
         if (q && !pn.toLowerCase().includes(q) && !clientName.toLowerCase().includes(q) && !title.toLowerCase().includes(q)) return false;
         if (statusFilter !== "all" && r.status !== statusFilter) return false;
         if (alertasFilter === "atrasado" && r.effectiveStatus !== "atrasado") return false;
@@ -180,7 +187,7 @@ export default function ContasReceber() {
         const pnB = (b.proposals as any)?.proposal_number || "";
         return -compareProjectNumbers(pnA, pnB);
       });
-  }, [enriched, search, statusFilter, alertasFilter, yearFilter, empresaFilter]);
+  }, [enriched, deferredSearch, statusFilter, alertasFilter, yearFilter, empresaFilter]);
 
   // Dashboard stats
   const stats = useMemo(() => {
@@ -359,6 +366,9 @@ export default function ContasReceber() {
     });
   }, [byProject, projectSortKey, projectSortDir]);
 
+  const parcelaPageItems = usePaginatedSlice(sortedParcelas, parcelaPage, parcelaPageSize);
+  const projectPageItems = usePaginatedSlice(sortedProjects, projectPage, projectPageSize);
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
 
   return (
@@ -490,7 +500,7 @@ export default function ContasReceber() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedProjects.map((p) => {
+                  {projectPageItems.map((p) => {
                     const pct = p.total > 0 ? Math.round((p.received / p.total) * 100) : 0;
                     return (
                       <TableRow key={p.proposalNumber}>
@@ -538,7 +548,7 @@ export default function ContasReceber() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedParcelas.map((r) => {
+                  {parcelaPageItems.map((r) => {
                     const parcelaLabel = getParcelaLabel(r);
                     return (
                       <TableRow

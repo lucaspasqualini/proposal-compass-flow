@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -21,10 +21,12 @@ import { Plus, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar
 import { exportToExcel } from "@/lib/exportExcel";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ImportProposals from "@/components/ImportProposals";
-import ProposalDetailDialog from "@/components/ProposalDetailDialog";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
 import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { RoleGuard } from "@/components/RoleGuard";
+
+const ImportProposals = lazy(() => import("@/components/ImportProposals"));
+const ProposalDetailDialog = lazy(() => import("@/components/ProposalDetailDialog"));
 type SortKey = "proposal_number" | "title" | "client" | "value" | "status" | "data_envio" | "data_aprovacao" | "tipo_projeto";
 type SortDir = "asc" | "desc";
 
@@ -35,6 +37,7 @@ export default function Propostas() {
   const updateProposal = useUpdateProposal();
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("propostas:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("propostas:status", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("propostas:empresa", "all");
   const [dateFiltersRaw, setDateFilters] = usePersistedState<string[]>("propostas:dates", []);
@@ -44,6 +47,8 @@ export default function Propostas() {
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePersistedState<number>("propostas:pageSize", 100);
   const parcelasPrompt = useParcelasPrompt();
 
   const toggleSort = (key: SortKey) => {
@@ -79,9 +84,9 @@ export default function Propostas() {
 
   const filtered = useMemo(() => {
     if (!proposals) return [];
+    const s = deferredSearch.toLowerCase();
     let list = proposals.filter((p) => {
-      const s = search.toLowerCase();
-      const matchSearch =
+      const matchSearch = !s ||
         p.title.toLowerCase().includes(s) ||
         (p.proposal_number ?? "").toLowerCase().includes(s) ||
         ((p.clients as any)?.name ?? "").toLowerCase().includes(s) ||
@@ -137,7 +142,9 @@ export default function Propostas() {
     });
 
     return list;
-  }, [proposals, search, statusFilter, empresaFilter, dateFilters, sortKey, sortDir, hidePerdida]);
+  }, [proposals, deferredSearch, statusFilter, empresaFilter, dateFilters, sortKey, sortDir, hidePerdida]);
+
+  const pageItems = usePaginatedSlice(filtered, page, pageSize);
 
   const stats = useMemo(() => {
     const ganhas = filtered.filter((p) => p.status === "ganha");
@@ -230,7 +237,7 @@ export default function Propostas() {
           <p className="text-muted-foreground">Gerencie suas propostas comerciais</p>
         </div>
         <div className="flex gap-2">
-          <ImportProposals />
+          <Suspense fallback={null}><ImportProposals /></Suspense>
           <Button
             variant="outline"
             onClick={() => {
@@ -376,7 +383,7 @@ export default function Propostas() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {filtered.map((p) => (
+                  {pageItems.map((p) => (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedProposalId(p.id)}>
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
@@ -455,23 +462,35 @@ export default function Propostas() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
             </div>
           )}
         </CardContent>
       </Card>
 
-      <ProposalDetailDialog
-        proposalId={selectedProposalId}
-        open={!!selectedProposalId}
-        onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
-      />
-
-      <ProposalDetailDialog
-        proposalId={null}
-        open={showNewDialog}
-        onOpenChange={setShowNewDialog}
-        isNew
-      />
+      <Suspense fallback={null}>
+        {selectedProposalId && (
+          <ProposalDetailDialog
+            proposalId={selectedProposalId}
+            open={!!selectedProposalId}
+            onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
+          />
+        )}
+        {showNewDialog && (
+          <ProposalDetailDialog
+            proposalId={null}
+            open={showNewDialog}
+            onOpenChange={setShowNewDialog}
+            isNew
+          />
+        )}
+      </Suspense>
 
       {parcelasPrompt.dialog}
     </div>

@@ -1,6 +1,10 @@
-import * as XLSX from "xlsx";
-
-export function exportToExcel(data: Record<string, string | number | null>[], filename: string) {
+// Carrega xlsx dinamicamente apenas quando o usuário aciona a exportação,
+// evitando inflar o bundle inicial das páginas.
+export async function exportToExcel(
+  data: Record<string, string | number | null>[],
+  filename: string
+) {
+  const XLSX = await import("xlsx");
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Dados");

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useDeferredValue } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate, Link } from "react-router-dom";
 import { useProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
@@ -19,8 +19,10 @@ import { projectStatusLabels, projectStatusColors, projectEtapaLabels, projectEt
 import { compareProjectNumbers } from "@/lib/projectNumber";
 import { Plus, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown, Filter, Search, Download } from "lucide-react";
 import { exportToExcel } from "@/lib/exportExcel";
-import ProjectDetailDialog from "@/components/ProjectDetailDialog";
+import { TablePagination, usePaginatedSlice } from "@/components/TablePagination";
 import { RoleGuard } from "@/components/RoleGuard";
+
+const ProjectDetailDialog = lazy(() => import("@/components/ProjectDetailDialog"));
 
 type SortKey = "number" | "title" | "client" | "type" | "status" | "etapa" | "collaborators";
 type SortDir = "asc" | "desc";
@@ -92,8 +94,11 @@ export default function Projetos() {
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [search, setSearch] = usePersistedState("projetos:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("projetos:status", "all");
   const [hideFinalizado, setHideFinalizado] = usePersistedState("projetos:hideFinalizado", false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePersistedState<number>("projetos:pageSize", 100);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -172,8 +177,8 @@ export default function Projetos() {
     return projects
       .filter((p) => {
         // Global search
-        if (search) {
-          const s = search.toLowerCase();
+        if (deferredSearch) {
+          const s = deferredSearch.toLowerCase();
           const matchSearch =
             p.title.toLowerCase().includes(s) ||
             ((p.proposals as any)?.proposal_number ?? "").toLowerCase().includes(s) ||
@@ -203,7 +208,9 @@ export default function Projetos() {
         const cmp = va.localeCompare(vb, "pt-BR", { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [projects, search, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
+  }, [projects, deferredSearch, statusFilter, hideFinalizado, columnFilters, sortKey, sortDir]);
+
+  const pageItems = usePaginatedSlice(filtered, page, pageSize);
 
   const stats = useMemo(() => {
     const ativos = filtered.filter((p) => p.status === "em_andamento");
@@ -459,7 +466,7 @@ export default function Projetos() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {filtered.map((p) => {
+                  {pageItems.map((p) => {
                     const allocatedMembers = getProjectAllocatedMembers(p);
                     const allocations = (p as any).project_allocations || [];
 
@@ -566,16 +573,27 @@ export default function Projetos() {
                   })}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
             </div>
           )}
         </CardContent>
       </Card>
 
-      <ProjectDetailDialog
-        projectId={selectedProjectId}
-        open={!!selectedProjectId}
-        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
-      />
+      <Suspense fallback={null}>
+        {selectedProjectId && (
+          <ProjectDetailDialog
+            projectId={selectedProjectId}
+            open={!!selectedProjectId}
+            onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
