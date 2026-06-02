@@ -106,11 +106,20 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{member.name}</h2>
             <p className="text-muted-foreground">{member.role || "Sem cargo"}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={member.is_active ? "default" : "secondary"}>
-                {member.is_active ? "Ativo" : "Inativo"}
-              </Badge>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {member.termination_date ? (
+                <Badge variant="destructive">Desligado</Badge>
+              ) : (
+                <Badge variant={member.is_active ? "default" : "secondary"}>
+                  {member.is_active ? "Ativo" : "Inativo"}
+                </Badge>
+              )}
               {member.area && <Badge variant="outline">{member.area}</Badge>}
+              {tenureFromHireDate(member.hire_date, member.termination_date) && (
+                <Badge variant="outline">
+                  {tenureFromHireDate(member.hire_date, member.termination_date)} de casa
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -122,7 +131,7 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
           <div className="rounded-lg border p-3 text-center">
             <User className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Salário Atual</p>
-            <p className="font-semibold text-sm">{formatCurrency(member.salary)}</p>
+            <p className="font-semibold text-sm">{canSeeSensitive ? formatCurrency(member.salary) : "—"}</p>
           </div>
           <div className="rounded-lg border p-3 text-center">
             <TrendingUp className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
@@ -132,16 +141,48 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
           <div className="rounded-lg border p-3 text-center">
             <Award className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Total Bônus</p>
-            <p className="font-semibold text-sm">{formatCurrency(totalBonuses)}</p>
+            <p className="font-semibold text-sm">{canSeeSensitive ? formatCurrency(totalBonuses) : "—"}</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="promotions">
+        <Tabs defaultValue="cadastro">
           <TabsList className="w-full">
+            <TabsTrigger value="cadastro" className="flex-1">Cadastro</TabsTrigger>
             <TabsTrigger value="promotions" className="flex-1">Promoções</TabsTrigger>
             <TabsTrigger value="bonuses" className="flex-1">Bônus</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="cadastro" className="space-y-4">
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identificação</h4>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <InfoRow icon={IdCard} label="CPF" value={canSeeSensitive ? member.cpf : member.cpf ? "•••.•••.•••-••" : null} />
+                <InfoRow icon={Calendar} label="Nascimento" value={formatDate(member.birth_date)} />
+              </div>
+            </section>
+            <Separator />
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato</h4>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <InfoRow icon={Mail} label="E-mail corporativo" value={member.corporate_email} />
+                <InfoRow icon={Phone} label="Telefone" value={member.phone} />
+                <div className="sm:col-span-2">
+                  <InfoRow icon={MapPin} label="Endereço" value={canSeeSensitive ? member.address : member.address ? "(restrito)" : null} />
+                </div>
+              </div>
+            </section>
+            <Separator />
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vínculo</h4>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <InfoRow icon={Briefcase} label="Admissão" value={formatDate(member.hire_date)} />
+                <InfoRow icon={Calendar} label="Desligamento" value={formatDate(member.termination_date)} />
+              </div>
+            </section>
+          </TabsContent>
+
+
 
           <TabsContent value="promotions" className="space-y-3">
             <div className="flex justify-end">
