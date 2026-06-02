@@ -275,8 +275,8 @@ export default function Clientes() {
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo Cliente</DialogTitle>
-            <DialogDescription>Adicione um novo cliente à sua base.</DialogDescription>
+            <DialogTitle>Nova Empresa</DialogTitle>
+            <DialogDescription>Adicione uma nova empresa à sua base.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
@@ -288,7 +288,7 @@ export default function Clientes() {
               <Input value={newCnpj} onChange={(e) => setNewCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
             </div>
             <Button disabled={!newName.trim() || createClient.isPending} onClick={handleCreate}>
-              Salvar Cliente
+              Salvar Empresa
             </Button>
           </div>
         </DialogContent>
