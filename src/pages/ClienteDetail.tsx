@@ -219,6 +219,7 @@ export default function ClienteDetail() {
         data_abertura: (client as any).data_abertura ?? "",
         situacao_cadastral: (client as any).situacao_cadastral ?? "",
         qsa: (client as any).qsa ?? [],
+        cnpjs_vinculados: (client as any).cnpjs_vinculados ?? [],
       });
     }
   }, [client]);
