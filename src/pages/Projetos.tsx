@@ -573,16 +573,27 @@ export default function Projetos() {
                   })}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
             </div>
           )}
         </CardContent>
       </Card>
 
-      <ProjectDetailDialog
-        projectId={selectedProjectId}
-        open={!!selectedProjectId}
-        onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
-      />
+      <Suspense fallback={null}>
+        {selectedProjectId && (
+          <ProjectDetailDialog
+            projectId={selectedProjectId}
+            open={!!selectedProjectId}
+            onOpenChange={(open) => { if (!open) setSelectedProjectId(null); }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
