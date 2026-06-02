@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ContactCombobox from "@/components/ContactCombobox";
 import { supabase } from "@/integrations/supabase/client";
+import { lookupCnpj } from "@/lib/cnpjLookup";
 
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 
@@ -175,27 +176,54 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           .single();
         if (fetchErr) throw fetchErr;
 
-        const clientUpdates: any = {};
-        if ((contato || "") !== (currentClient.contact_name || "")) clientUpdates.contact_name = contato || null;
-        if ((email || "") !== (currentClient.email || "")) clientUpdates.email = email || null;
-        if (!currentClient.cnpj && cnpj) clientUpdates.cnpj = cnpj;
-
-        // CNPJ adicional → cnpjs_vinculados
         const novoCnpj = (cnpj || "").trim();
         const principal = (currentClient.cnpj || "").trim();
-        if (novoCnpj && principal && normalizeCnpj(novoCnpj) !== normalizeCnpj(principal)) {
-          const vinculados: any[] = Array.isArray(currentClient.cnpjs_vinculados) ? (currentClient.cnpjs_vinculados as any[]) : [];
-          const jaVinculado = vinculados.some((v) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(novoCnpj));
-          if (!jaVinculado) {
-            clientUpdates.cnpjs_vinculados = [...vinculados, { cnpj: novoCnpj, added_from: "receivable", added_at: new Date().toISOString() }];
-          }
+        const isCnpjSecundario =
+          !!novoCnpj && !!principal && normalizeCnpj(novoCnpj) !== normalizeCnpj(principal);
+
+        const clientUpdates: any = {};
+
+        // Contato/email principais — só atualiza se o CNPJ é o principal (ou não há principal ainda)
+        if (!isCnpjSecundario) {
+          if ((contato || "") !== (currentClient.contact_name || "")) clientUpdates.contact_name = contato || null;
+          if ((email || "") !== (currentClient.email || "")) clientUpdates.email = email || null;
+        }
+        if (!currentClient.cnpj && novoCnpj) clientUpdates.cnpj = novoCnpj;
+
+        // CNPJ adicional → cnpjs_vinculados (com razão social vinda do plugin + contato)
+        if (isCnpjSecundario) {
+          const vinculados: any[] = Array.isArray(currentClient.cnpjs_vinculados)
+            ? (currentClient.cnpjs_vinculados as any[])
+            : [];
+          const idx = vinculados.findIndex(
+            (v) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(novoCnpj)
+          );
+
+          // Buscar razão social no plugin de CNPJ
+          const lookup = await lookupCnpj(novoCnpj);
+
+          const novaEntrada = {
+            cnpj: novoCnpj,
+            razao_social: lookup?.razao_social || (idx >= 0 ? vinculados[idx]?.razao_social : null) || null,
+            label: idx >= 0 ? vinculados[idx]?.label ?? null : null,
+            contact_name: (contato || "").trim() || (idx >= 0 ? vinculados[idx]?.contact_name : null) || null,
+            email: (email || "").trim() || (idx >= 0 ? vinculados[idx]?.email : null) || null,
+            added_from: idx >= 0 ? vinculados[idx]?.added_from || "receivable" : "receivable",
+            added_at: idx >= 0 ? vinculados[idx]?.added_at || new Date().toISOString() : new Date().toISOString(),
+          };
+
+          const novosVinculados = [...vinculados];
+          if (idx >= 0) novosVinculados[idx] = { ...vinculados[idx], ...novaEntrada };
+          else novosVinculados.push(novaEntrada);
+
+          clientUpdates.cnpjs_vinculados = novosVinculados;
         }
 
         if (Object.keys(clientUpdates).length > 0) {
           await updateClient.mutateAsync({ id: clientId, ...clientUpdates });
         }
 
-        // 3. Contato → criar ou atualizar em client_contacts
+        // 3. Contato → criar ou atualizar em client_contacts (vinculado ao cliente)
         const n = (contato || "").trim();
         const m = (email || "").trim();
         if (n) {
@@ -209,6 +237,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           }
         }
       }
+
 
       qc.invalidateQueries({ queryKey: ["receivables"] });
       qc.invalidateQueries({ queryKey: ["clients"] });
