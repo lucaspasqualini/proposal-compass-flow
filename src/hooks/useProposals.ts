@@ -6,8 +6,9 @@ import { fetchAllPaginated } from "@/lib/fetchAll";
 type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
 
+// Lista enxuta — campos pesados (scope, description, observacoes, about_company, documentacao_necessaria, payment_terms) ficam só no detalhe.
 const LIST_COLUMNS =
-  "id, proposal_number, title, status, value, created_at, updated_at, client_id, payment_type, parcelas, tipo_projeto, data_envio, data_aprovacao, data_fup, validity_date, empresa, cliente_contato, indicador, observacoes, clients(name)";
+  "id, proposal_number, title, status, value, created_at, updated_at, client_id, payment_type, parcelas, tipo_projeto, data_envio, data_aprovacao, data_fup, validity_date, empresa, cliente_contato, indicador, clients(name)";
 
 export function useProposals() {
   return useQuery({
