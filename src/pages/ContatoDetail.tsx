@@ -94,6 +94,7 @@ export default function ContatoDetail() {
     last_interaction_at: "",
     last_interaction_type: "",
     last_interaction_note: "",
+    client_id: "" as string,
   });
 
   useEffect(() => {
@@ -108,6 +109,7 @@ export default function ContatoDetail() {
         last_interaction_at: contact.last_interaction_at ?? "",
         last_interaction_type: contact.last_interaction_type ?? "",
         last_interaction_note: contact.last_interaction_note ?? "",
+        client_id: (contact as any).client_id ?? "",
       });
     }
   }, [contact]);
