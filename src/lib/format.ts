@@ -8,7 +8,7 @@ export function formatCurrency(value: number | null | undefined): string {
 
 export function formatDate(date: string | null | undefined): string {
   if (!date) return "—";
-  return new Date(date).toLocaleDateString("pt-BR");
+  return new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 export const proposalStatusLabels: Record<string, string> = {

@@ -168,7 +168,7 @@ export function Heatmap({
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <div>
           {hover
-            ? `${hover.date.toLocaleDateString("pt-BR")}: ${hover.count} proposta(s)`
+            ? `${hover.date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}: ${hover.count} proposta(s)`
             : "Passe o mouse sobre um dia"}
         </div>
         <div className="flex items-center gap-1">
