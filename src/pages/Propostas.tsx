@@ -84,9 +84,9 @@ export default function Propostas() {
 
   const filtered = useMemo(() => {
     if (!proposals) return [];
+    const s = deferredSearch.toLowerCase();
     let list = proposals.filter((p) => {
-      const s = search.toLowerCase();
-      const matchSearch =
+      const matchSearch = !s ||
         p.title.toLowerCase().includes(s) ||
         (p.proposal_number ?? "").toLowerCase().includes(s) ||
         ((p.clients as any)?.name ?? "").toLowerCase().includes(s) ||
