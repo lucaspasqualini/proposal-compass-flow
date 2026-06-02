@@ -90,6 +90,23 @@ export default function Contatos() {
           <h1 className="text-2xl font-bold">Contatos</h1>
           <p className="text-muted-foreground">Todos os contatos vinculados às empresas</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const rows = filtered.map((c) => ({
+              "Nome": c.name,
+              "Cargo": c.cargo ?? "",
+              "LinkedIn": c.linkedin ?? "",
+              "Telefone": c.phone ?? "",
+              "Email": c.email ?? "",
+              "Empresa": c.clients?.name ?? "",
+              "Última Interação": c.last_interaction_at ? formatDate(c.last_interaction_at) : "",
+            }));
+            exportToExcel(rows, "contatos");
+          }}
+        >
+          <Download className="h-4 w-4 mr-1" /> Exportar
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
