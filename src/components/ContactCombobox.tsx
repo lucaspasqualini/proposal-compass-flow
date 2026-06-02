@@ -16,6 +16,7 @@ interface ContactComboboxProps {
   value: string;
   onChange: (name: string) => void;
   onSelect?: (contact: ContactOption) => void;
+  onBlur?: () => void;
   contacts: ContactOption[];
   placeholder?: string;
   className?: string;
