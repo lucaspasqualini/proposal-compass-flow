@@ -1,99 +1,44 @@
-## Objetivo
+## Diagnóstico
 
-1. Migrar o envio de email pelo **Gmail connector** (sua conta Gmail pessoal)
-2. Criar uma nova aba **"E-mails de Notificação"** dentro de `/templates` onde você edita o texto dos emails e troca a conta remetente
+Para o projeto **MA_0077_26**, encontrei no banco que a parcela foi atualizada, mas os dados do cliente não:
 
----
+- A parcela em `receivables` salvou campos como **Responsável = Lucas** e **NFe = 109**.
+- O cliente **J&F S.A.** continua com `contact_name`, `email` vazios.
+- `cnpjs_vinculados` continua `[]`.
+- A tabela de contatos do cliente não tem nenhum contato vinculado.
 
-## Parte 1 — Envio via Gmail
+A causa provável é que a consulta de `receivables` carrega `clients(name, cnpj, contact_name, email)`, mas **não carrega `clients.id` nem `clients.cnpjs_vinculados`**. No card, o salvamento de contato/CNPJ depende de `client.id`; sem esse ID, o código salva a parcela, mostra sucesso e pula a atualização do cliente/contato.
 
-### Conectar Gmail
-Disparo o OAuth do Gmail connector. Você autoriza com sua conta pessoal, escopo `gmail.send`. Secrets ficam disponíveis (`GOOGLE_MAIL_API_KEY`, `LOVABLE_API_KEY`).
+## Plano de correção
 
-### Atualizar edge function `notify-project-etapa-change`
-- Remover a chamada quebrada a `send-transactional-email`
-- Buscar o template ativo do banco (nova tabela, ver Parte 2) com placeholders
-- Renderizar placeholders (`{{projeto}}`, `{{cliente}}`, `{{etapa_anterior}}`, `{{etapa_nova}}`, `{{destinatario}}`)
-- Montar email RFC 2822, codificar em base64url
-- `POST https://connector-gateway.lovable.dev/google_mail/gmail/v1/users/me/messages/send`
-- Headers: `Authorization: Bearer $LOVABLE_API_KEY`, `X-Connection-Api-Key: $GOOGLE_MAIL_API_KEY`
-- Push notification permanece intacto
+1. **Corrigir a consulta de Contas a Receber**
+   - Incluir `clients(id, name, cnpj, contact_name, email, cnpjs_vinculados)` no hook de receivables.
+   - Garantir que a mutação de atualização também retorne esses campos para manter a lista e o card sincronizados.
 
----
+2. **Ajustar o botão Salvar do card**
+   - O botão só deve mostrar sucesso quando todas as etapas esperadas forem concluídas.
+   - Se a parcela salva, mas cliente/contato falha, mostrar erro claro em vez de “Alterações salvas”.
+   - Manter o comportamento de salvar tudo junto: responsável, impostos, NFe, contato, email e CNPJ.
 
-## Parte 2 — Aba "E-mails de Notificação" em `/templates`
+3. **Persistir contato novo corretamente**
+   - Ao digitar um nome novo no campo Contato e clicar em Salvar:
+     - criar registro em `client_contacts` para o cliente;
+     - salvar email informado nesse contato;
+     - atualizar também o contato/email principal do cliente quando alterados no card.
 
-### Nova tabela `notification_email_templates`
-```
-id              uuid pk
-key             text unique   -- identificador estável (ex: 'project-etapa-change')
-nome            text          -- nome legível ("Mudança de etapa do projeto")
-descricao       text          -- explicação do gatilho
-assunto         text          -- com placeholders
-corpo_html      text          -- com placeholders
-placeholders    jsonb         -- lista de variáveis disponíveis (só leitura)
-ativo           boolean
-created_at, updated_at
-```
-RLS: leitura para todos os autenticados, escrita só pra sócio.
-Seed inicial: 1 row para `project-etapa-change` com texto padrão atual.
+4. **Persistir CNPJ vinculado corretamente**
+   - Se o CNPJ digitado for diferente do CNPJ principal do cliente:
+     - adicionar em `clients.cnpjs_vinculados`;
+     - não sobrescrever o CNPJ principal, exceto se ele estiver vazio.
 
-### Nova tabela `notification_email_settings` (single-row)
-```
-id              uuid pk
-connection_id   text          -- ID da connection Gmail ativa
-sender_label    text          -- nome de exibição (ex: "Notificações MA")
-updated_at
-```
-Guarda qual connection é usada pra envio. Default = primeira Gmail conectada.
+5. **Melhorar feedback visual**
+   - Desabilitar o botão enquanto salva.
+   - Mensagem de sucesso apenas depois de invalidar/atualizar os caches de `receivables`, `clients` e `client_contacts`.
 
-### UI da aba
-Dentro de `<Tabs>` do `Templates.tsx`, adicionar terceira aba **"E-mails de Notificação"** com:
+## Resultado esperado
 
-**Bloco superior — Remetente:**
-- Card mostrando "Enviando como: `seunome@gmail.com`"
-- Botão **"Trocar conta de envio"** → abre fluxo de conectar outra conta Gmail
-- Botão **"Reconectar"** caso o token expire
+Após a correção, ao abrir o card de **MA_0077_26**, digitar CNPJ/contato/email e clicar em **Salvar alterações**, esses dados devem aparecer depois em:
 
-**Lista de templates de notificação:**
-Cada card mostra:
-- Nome + descrição do gatilho (read-only)
-- Lista de placeholders disponíveis (chips clicáveis que inserem no editor)
-- Input para `assunto`
-- Textarea grande para `corpo_html`
-- Toggle "ativo"
-- Botão **"Pré-visualizar"** (renderiza com dados de exemplo num dialog)
-- Botão **"Enviar teste para mim"** (envia pra `corporate_email` do usuário logado)
-- Botão **Salvar**
-
-Estrutura futura: novos gatilhos (ex: prazo vencendo, parcela paga) viram só novas rows nessa tabela — sem mudança de código.
-
----
-
-## Considerações
-
-- **Sem domínio próprio**: emails saem do seu Gmail pessoal. Trocar pra domínio depois = só apontar pra outro edge function de envio, templates ficam preservados no banco.
-- **Limite Gmail pessoal**: ~500 emails/dia (folgado pra notificações internas).
-- **Edição sem deploy**: você muda texto/assunto pela UI, sem precisar mudar código.
-- **Push notification não muda** — continua disparando junto com o email.
-
----
-
-## Arquivos / mudanças
-
-**Backend:**
-- Migration: tabelas `notification_email_templates` + `notification_email_settings` + seed
-- Editar `supabase/functions/notify-project-etapa-change/index.ts` (carregar template do banco, render placeholders, enviar via Gmail gateway)
-- Nova edge function `send-notification-test-email` (botão "enviar teste")
-
-**Frontend:**
-- Editar `src/pages/Templates.tsx`: adicionar aba "E-mails de Notificação"
-- Novo componente `src/components/templates/NotificationEmailsTab.tsx`
-- Novo hook `src/hooks/useNotificationEmails.ts`
-
-**Connectors:**
-- Linkar Gmail connector (OAuth)
-
----
-
-Confirma o plano que eu sigo pra implementação.
+- Contas a Receber;
+- Empresas > Dados Cadastrais > CNPJs vinculados;
+- Empresas/Contatos, como contato vinculado ao cliente.

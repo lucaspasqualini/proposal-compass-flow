@@ -9,7 +9,7 @@ export function useReceivables() {
       return await fetchAllPaginated(() =>
         supabase
           .from("receivables")
-          .select("*, proposals(proposal_number, title, empresa, tipo_projeto, payment_type), clients(name, cnpj, contact_name, email)")
+          .select("*, proposals(proposal_number, title, empresa, tipo_projeto, payment_type), clients(id, name, cnpj, contact_name, email, cnpjs_vinculados)")
           .order("due_date", { ascending: true, nullsFirst: false })
           .order("id", { ascending: true })
       );
