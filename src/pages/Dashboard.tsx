@@ -241,7 +241,7 @@ function CustomRangePicker({
         <Button variant={isActive ? "default" : "outline"} size="sm" className="gap-1.5">
           <CalendarIcon className="h-3.5 w-3.5" />
           {isActive && range.from && range.to
-            ? `${format(range.from, "dd/MM/yy", { locale: ptBR })} – ${format(range.to, "dd/MM/yy", { locale: ptBR })}`
+            ? `${format(range.from, "dd/MM/yyyy", { locale: ptBR })} – ${format(range.to, "dd/MM/yyyy", { locale: ptBR })}`
             : "Período"}
         </Button>
       </PopoverTrigger>
