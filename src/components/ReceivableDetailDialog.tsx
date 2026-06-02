@@ -276,7 +276,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                   value={contato}
                   onChange={setContato}
                   onSelect={handleContatoSelect}
-                  onBlur={handleContatoBlur}
                   contacts={(clientContacts ?? []).map((c) => ({
                     id: c.id, name: c.name, email: c.email, phone: c.phone, cargo: c.cargo,
                   }))}
@@ -289,7 +288,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onBlur={handleEmailBlur}
                   className="h-8 text-sm"
                 />
               </div>
