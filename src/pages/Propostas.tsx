@@ -383,7 +383,7 @@ export default function Propostas() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {filtered.map((p) => (
+                  {pageItems.map((p) => (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedProposalId(p.id)}>
                       <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{p.proposal_number || "—"}</TableCell>
                       <TableCell className="font-medium">{p.title}</TableCell>
