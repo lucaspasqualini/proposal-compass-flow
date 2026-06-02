@@ -249,6 +249,18 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
       return;
     }
     try {
+      // Se o contato digitado não existir na base do cliente, cria silenciosamente.
+      const contatoNome = (form.cliente_contato ?? "").trim();
+      if (contatoNome && form.client_id) {
+        const existsLocal = (clientContacts ?? []).some(
+          (c) => c.name.trim().toLowerCase() === contatoNome.toLowerCase()
+        );
+        if (!existsLocal) {
+          try {
+            await createContact.mutateAsync({ client_id: form.client_id, name: contatoNome });
+          } catch { /* não bloqueia o save da proposta */ }
+        }
+      }
       let savedParcelas: any[] = [];
       if (form.payment_type === "etapas") {
         savedParcelas = etapas.map((e) => ({
