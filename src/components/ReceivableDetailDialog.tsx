@@ -54,6 +54,8 @@ interface ReceivableDetailDialogProps {
 
 export default function ReceivableDetailDialog({ receivable, parcelaLabel, open, onOpenChange }: ReceivableDetailDialogProps) {
   const updateReceivable = useUpdateReceivable();
+  const updateClient = useUpdateClient();
+  const qc = useQueryClient();
   const { toast } = useToast();
 
   const amount = receivable?.amount || 0;
@@ -70,6 +72,10 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const [irpj, setIrpj] = useState(defaultTaxes.irpj);
   const [pis, setPis] = useState(defaultTaxes.pis);
   const [nfe, setNfe] = useState(receivable?.nfe_number || "");
+  const [responsavel, setResponsavel] = useState(receivable?.responsavel_projeto || "");
+  const [cnpj, setCnpj] = useState((receivable?.clients as any)?.cnpj || "");
+  const [contato, setContato] = useState((receivable?.clients as any)?.contact_name || "");
+  const [email, setEmail] = useState((receivable?.clients as any)?.email || "");
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +85,11 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
       setIrpj(receivable.irpj ?? +(amount * 0.015).toFixed(2));
       setPis(receivable.pis ?? +(amount * 0.0065).toFixed(2));
       setNfe(receivable.nfe_number || "");
+      setResponsavel(receivable.responsavel_projeto || "");
+      const c = receivable.clients as any;
+      setCnpj(c?.cnpj || "");
+      setContato(c?.contact_name || "");
+      setEmail(c?.email || "");
       setEditingDate(null);
     }
   }, [receivable?.id, amount]);
@@ -98,6 +109,22 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
     }
   };
 
+  const handleClientUpdate = async (updates: Record<string, any>) => {
+    if (!client?.id) {
+      toast({ title: "Cliente não vinculado", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateClient.mutateAsync({ id: client.id, ...updates });
+      // Receivables joinam clients — invalida para refletir na lista e em outros lugares.
+      qc.invalidateQueries({ queryKey: ["receivables"] });
+      qc.invalidateQueries({ queryKey: ["clients", client.id] });
+      toast({ title: "Cliente atualizado" });
+    } catch {
+      toast({ title: "Erro ao atualizar cliente", variant: "destructive" });
+    }
+  };
+
   const handleStatusChange = (newStatus: string) => {
     const updates: any = { status: newStatus };
     if (newStatus !== "pago") updates.paid_at = null;
@@ -107,9 +134,15 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
   const handleDateChange = (field: string, date: Date | undefined) => {
     if (!date) return;
-    handleUpdate({ [field]: format(date, "yyyy-MM-dd") });
+    const updates: any = { [field]: format(date, "yyyy-MM-dd") };
+    // Ao definir data de recebimento, marca automaticamente como pago.
+    if (field === "paid_at" && receivable.status !== "pago") {
+      updates.status = "pago";
+    }
+    handleUpdate(updates);
     setEditingDate(null);
   };
+
 
   const handleTaxBlur = (field: string, value: number) => {
     handleUpdate({ [field]: value });
