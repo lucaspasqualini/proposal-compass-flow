@@ -38,7 +38,7 @@ const allItems = [
   { title: "Propostas", url: "/propostas", icon: FileText },
   { title: "Projetos", url: "/projetos", icon: FolderKanban },
   { title: "Equipe", url: "/equipe", icon: Users },
-  { title: "Clientes", url: "/clientes", icon: Building },
+  { title: "Empresas", url: "/clientes", icon: Building },
   { title: "Alocação", url: "/alocacao", icon: CalendarRange },
   { title: "Contas a Receber", url: "/contas-a-receber", icon: Receipt },
   { title: "Templates", url: "/templates", icon: LayoutTemplate },

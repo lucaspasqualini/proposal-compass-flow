@@ -76,7 +76,7 @@ export default function Clientes() {
     e.stopPropagation();
     try {
       await deleteClient.mutateAsync(id);
-      toast({ title: "Cliente removido" });
+      toast({ title: "Empresa removida" });
     } catch {
       toast({ title: "Erro ao remover", variant: "destructive" });
     }
@@ -86,7 +86,7 @@ export default function Clientes() {
     if (!newName.trim()) return;
     try {
       await createClient.mutateAsync({ name: newName.trim(), cnpj: newCnpj.trim() || null });
-      toast({ title: "Cliente criado" });
+      toast({ title: "Empresa criada" });
       setNewName("");
       setNewCnpj("");
       setShowNew(false);
@@ -105,12 +105,12 @@ export default function Clientes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-muted-foreground">Gerencie sua base de clientes</p>
+          <h1 className="text-2xl font-bold">Empresas</h1>
+          <p className="text-muted-foreground">Gerencie sua base de empresas</p>
         </div>
         {canEdit && (
           <Button onClick={() => setShowNew(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Novo Cliente
+            <Plus className="h-4 w-4 mr-1" /> Nova Empresa
           </Button>
         )}
       </div>
@@ -189,7 +189,7 @@ export default function Clientes() {
                   <TableRow>
                     <TableHead className="w-[52px]"></TableHead>
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
-                      <span className="flex items-center">Cliente <SortIcon col="name" /></span>
+                      <span className="flex items-center">Empresa <SortIcon col="name" /></span>
                     </TableHead>
                     <TableHead className="hidden md:table-cell">CNPJ</TableHead>
                     <TableHead className="cursor-pointer select-none text-center" onClick={() => toggleSort("proposal_count")}>
@@ -211,7 +211,7 @@ export default function Clientes() {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                        Nenhum cliente encontrado
+                        Nenhuma empresa encontrada
                       </TableCell>
                     </TableRow>
                   )}
@@ -251,7 +251,7 @@ export default function Clientes() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Remover cliente?</AlertDialogTitle>
+                                <AlertDialogTitle>Remover empresa?</AlertDialogTitle>
                                 <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -275,8 +275,8 @@ export default function Clientes() {
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo Cliente</DialogTitle>
-            <DialogDescription>Adicione um novo cliente à sua base.</DialogDescription>
+            <DialogTitle>Nova Empresa</DialogTitle>
+            <DialogDescription>Adicione uma nova empresa à sua base.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
@@ -288,7 +288,7 @@ export default function Clientes() {
               <Input value={newCnpj} onChange={(e) => setNewCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
             </div>
             <Button disabled={!newName.trim() || createClient.isPending} onClick={handleCreate}>
-              Salvar Cliente
+              Salvar Empresa
             </Button>
           </div>
         </DialogContent>

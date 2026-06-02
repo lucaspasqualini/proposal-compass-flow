@@ -62,6 +62,62 @@ export type Database = {
           },
         ]
       }
+      client_contacts: {
+        Row: {
+          cargo: string | null
+          client_id: string
+          created_at: string
+          email: string | null
+          id: string
+          last_interaction_at: string | null
+          last_interaction_note: string | null
+          last_interaction_type: string | null
+          linkedin: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cargo?: string | null
+          client_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_interaction_at?: string | null
+          last_interaction_note?: string | null
+          last_interaction_type?: string | null
+          linkedin?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string | null
+          client_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_interaction_at?: string | null
+          last_interaction_note?: string | null
+          last_interaction_type?: string | null
+          linkedin?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -74,6 +130,8 @@ export type Database = {
           data_abertura: string | null
           email: string | null
           id: string
+          industria: string | null
+          linkedin: string | null
           name: string
           natureza_juridica: string | null
           nome_fantasia: string | null
@@ -97,6 +155,8 @@ export type Database = {
           data_abertura?: string | null
           email?: string | null
           id?: string
+          industria?: string | null
+          linkedin?: string | null
           name: string
           natureza_juridica?: string | null
           nome_fantasia?: string | null
@@ -120,6 +180,8 @@ export type Database = {
           data_abertura?: string | null
           email?: string | null
           id?: string
+          industria?: string | null
+          linkedin?: string | null
           name?: string
           natureza_juridica?: string | null
           nome_fantasia?: string | null
