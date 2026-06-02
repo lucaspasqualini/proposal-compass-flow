@@ -272,7 +272,10 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const handleSaveAll = async () => {
     try {
       const novoCnpj = (cnpj || "").trim();
-      let billingRazaoSocial: string | null = receivable.billing_razao_social || null;
+      let billingRazaoSocial: string | null =
+        normalizeCnpj(novoCnpj) === normalizeCnpj(receivable.billing_cnpj || "")
+          ? receivable.billing_razao_social || null
+          : null;
 
       const selectedOption = cnpjOptions.find(
         (option) => normalizeCnpj(option.cnpj) === normalizeCnpj(novoCnpj)
