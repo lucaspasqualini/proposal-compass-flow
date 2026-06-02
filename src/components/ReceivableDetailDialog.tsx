@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -146,7 +146,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const clientId: string | undefined = receivable?.client_id || client?.id;
   const proposal = receivable?.proposals as any;
   const { data: clientContacts } = useClientContacts(clientId);
-  const cnpjDatalistId = useId();
 
   const amount = receivable?.amount || 0;
 
@@ -169,7 +168,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
   const cnpjOptions = useMemo(() => {
-    const options: Array<{ cnpj: string; label: string; razao_social?: string | null; contact_name?: string | null; email?: string | null; principal?: boolean }> = [];
+    const options: CnpjOption[] = [];
     const seen = new Set<string>();
     const addOption = (option: typeof options[number]) => {
       const key = normalizeCnpj(option.cnpj);
