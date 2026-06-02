@@ -462,23 +462,35 @@ export default function Propostas() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
             </div>
           )}
         </CardContent>
       </Card>
 
-      <ProposalDetailDialog
-        proposalId={selectedProposalId}
-        open={!!selectedProposalId}
-        onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
-      />
-
-      <ProposalDetailDialog
-        proposalId={null}
-        open={showNewDialog}
-        onOpenChange={setShowNewDialog}
-        isNew
-      />
+      <Suspense fallback={null}>
+        {selectedProposalId && (
+          <ProposalDetailDialog
+            proposalId={selectedProposalId}
+            open={!!selectedProposalId}
+            onOpenChange={(open) => { if (!open) setSelectedProposalId(null); }}
+          />
+        )}
+        {showNewDialog && (
+          <ProposalDetailDialog
+            proposalId={null}
+            open={showNewDialog}
+            onOpenChange={setShowNewDialog}
+            isNew
+          />
+        )}
+      </Suspense>
 
       {parcelasPrompt.dialog}
     </div>
