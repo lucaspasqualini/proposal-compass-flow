@@ -5,16 +5,20 @@ import type { Database } from "@/integrations/supabase/types";
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type ClientInsert = Database["public"]["Tables"]["clients"]["Insert"];
 
+// Lista enxuta — exclui campos pesados (qsa jsonb, notes, address) que só são usados na tela de detalhe.
+const LIST_COLUMNS =
+  "id, name, razao_social, nome_fantasia, cnpj, email, phone, contact_name, website, situacao_cadastral, porte, capital_social, cnae_principal, cnae_descricao, natureza_juridica, data_abertura, created_at, updated_at";
+
 export function useClients() {
   return useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("*")
+        .select(LIST_COLUMNS)
         .order("name");
       if (error) throw error;
-      return data as Client[];
+      return data as unknown as Client[];
     },
   });
 }
