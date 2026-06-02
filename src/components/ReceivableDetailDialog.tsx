@@ -277,13 +277,12 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                   value={contato}
                   onChange={setContato}
                   onSelect={handleContatoSelect}
+                  onBlur={handleContatoBlur}
                   contacts={(clientContacts ?? []).map((c) => ({
                     id: c.id, name: c.name, email: c.email, phone: c.phone, cargo: c.cargo,
                   }))}
                   className="h-8 text-sm"
                 />
-                {/* Persiste no blur */}
-                <input type="hidden" onBlur={handleContatoBlur} />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Email</p>
