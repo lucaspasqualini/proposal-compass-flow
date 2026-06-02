@@ -64,6 +64,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const updateProposal = useUpdateProposal();
   const createProposal = useCreateProposal();
   const createClient = useCreateClient();
+  const createContact = useCreateClientContact();
   const { toast } = useToast();
   const parcelasPrompt = useParcelasPrompt();
 
