@@ -37,6 +37,7 @@ export default function Propostas() {
   const updateProposal = useUpdateProposal();
   const { toast } = useToast();
   const [search, setSearch] = usePersistedState("propostas:search", "");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("propostas:status", "all");
   const [empresaFilter, setEmpresaFilter] = usePersistedState<string>("propostas:empresa", "all");
   const [dateFiltersRaw, setDateFilters] = usePersistedState<string[]>("propostas:dates", []);
@@ -46,6 +47,8 @@ export default function Propostas() {
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePersistedState<number>("propostas:pageSize", 100);
   const parcelasPrompt = useParcelasPrompt();
 
   const toggleSort = (key: SortKey) => {
