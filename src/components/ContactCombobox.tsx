@@ -29,7 +29,7 @@ interface ContactComboboxProps {
  * - Selecionar item da lista = dispara onSelect com os dados completos (email/phone/cargo).
  */
 export default function ContactCombobox({
-  value, onChange, onSelect, contacts, placeholder, className, disabled,
+  value, onChange, onSelect, onBlur, contacts, placeholder, className, disabled,
 }: ContactComboboxProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
