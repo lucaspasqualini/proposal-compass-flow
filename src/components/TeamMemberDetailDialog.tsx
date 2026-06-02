@@ -326,3 +326,16 @@ export default function TeamMemberDetailDialog({ member, open, onOpenChange }: P
     </Dialog>
   );
 }
+
+function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value?: string | null }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium break-words">{value || "—"}</p>
+      </div>
+    </div>
+  );
+}
+
