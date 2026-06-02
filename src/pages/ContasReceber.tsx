@@ -500,7 +500,7 @@ export default function ContasReceber() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedProjects.map((p) => {
+                  {projectPageItems.map((p) => {
                     const pct = p.total > 0 ? Math.round((p.received / p.total) * 100) : 0;
                     return (
                       <TableRow key={p.proposalNumber}>
