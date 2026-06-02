@@ -128,11 +128,12 @@ export default function Contatos() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("cargo")}>
                       <span className="flex items-center">Cargo <SortIcon col="cargo" /></span>
                     </TableHead>
+                    <TableHead>LinkedIn</TableHead>
+                    <TableHead>Telefone</TableHead>
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("client_name")}>
                       <span className="flex items-center">Empresa <SortIcon col="client_name" /></span>
                     </TableHead>
-                    <TableHead className="hidden md:table-cell">Contato</TableHead>
-                    <TableHead className="cursor-pointer select-none hidden lg:table-cell whitespace-nowrap" onClick={() => toggleSort("last_interaction_at")}>
+                    <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort("last_interaction_at")}>
                       <span className="flex items-center">Última Interação <SortIcon col="last_interaction_at" /></span>
                     </TableHead>
                   </TableRow>
@@ -140,7 +141,7 @@ export default function Contatos() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Nenhum contato encontrado
                       </TableCell>
                     </TableRow>
@@ -153,6 +154,28 @@ export default function Contatos() {
                     >
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{c.cargo ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {c.linkedin ? (
+                          <a
+                            href={c.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Linkedin className="h-3.5 w-3.5" />
+                            <span className="truncate max-w-[120px]">{c.linkedin.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</span>
+                          </a>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {c.phone ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5" />
+                            {c.phone}
+                          </span>
+                        ) : "—"}
+                      </TableCell>
                       <TableCell>
                         {c.clients ? (
                           <button
@@ -163,14 +186,7 @@ export default function Contatos() {
                           </button>
                         ) : "—"}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        <div className="flex items-center gap-3">
-                          {c.linkedin && <Linkedin className="h-3.5 w-3.5" />}
-                          {c.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{c.phone}</span>}
-                          {c.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{c.email}</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground">
                         {c.last_interaction_at ? formatDate(c.last_interaction_at) : "—"}
                       </TableCell>
                     </TableRow>
