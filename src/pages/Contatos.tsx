@@ -7,8 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, Users, Linkedin, Phone } from "lucide-react";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Users, Linkedin, Phone, Download } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { exportToExcel } from "@/lib/exportExcel";
 
 type SortKey = "name" | "cargo" | "client_name" | "last_interaction_at";
 type SortDir = "asc" | "desc";
