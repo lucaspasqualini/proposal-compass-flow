@@ -1,0 +1,1 @@
+ALTER TABLE public.client_contacts ALTER COLUMN client_id DROP NOT NULL;

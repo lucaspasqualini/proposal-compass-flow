@@ -6,8 +6,16 @@ import {
   useDeleteClientContact,
 } from "@/hooks/useClientContacts";
 import { useProposals } from "@/hooks/useProposals";
+import { useClients } from "@/hooks/useClients";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +68,7 @@ export default function ContatoDetail() {
   const updateContact = useUpdateClientContact();
   const deleteContact = useDeleteClientContact();
   const { data: allProposals } = useProposals();
+  const { data: clientsList } = useClients();
 
   const { data: projects } = useQuery({
     queryKey: ["projects-by-client", clientId],
@@ -85,6 +94,7 @@ export default function ContatoDetail() {
     last_interaction_at: "",
     last_interaction_type: "",
     last_interaction_note: "",
+    client_id: "" as string,
   });
 
   useEffect(() => {
@@ -99,6 +109,7 @@ export default function ContatoDetail() {
         last_interaction_at: contact.last_interaction_at ?? "",
         last_interaction_type: contact.last_interaction_type ?? "",
         last_interaction_note: contact.last_interaction_note ?? "",
+        client_id: (contact as any).client_id ?? "",
       });
     }
   }, [contact]);
@@ -150,6 +161,7 @@ export default function ContatoDetail() {
         last_interaction_at: form.last_interaction_at || null,
         last_interaction_type: form.last_interaction_type || null,
         last_interaction_note: form.last_interaction_note || null,
+        client_id: form.client_id || null,
       } as any);
       toast({ title: "Contato atualizado" });
     } catch {
@@ -259,6 +271,30 @@ export default function ContatoDetail() {
                   placeholder="Ex: Diretor Financeiro"
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1">
+                <Building2 className="h-3 w-3" /> Empresa
+              </Label>
+              <Select
+                value={form.client_id || "__none__"}
+                onValueChange={(v) =>
+                  setForm({ ...form, client_id: v === "__none__" ? "" : v })
+                }
+                disabled={!canEdit}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma empresa (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Sem empresa —</SelectItem>
+                  {(clientsList ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
