@@ -75,6 +75,7 @@ const App = () => (
                 <Route path="/" element={<RoleHomeRedirect><Dashboard /></RoleHomeRedirect>} />
                 <Route path="/clientes" element={<RoleProtectedRoute><Clientes /></RoleProtectedRoute>} />
                 <Route path="/clientes/:id" element={<RoleProtectedRoute><ClienteDetail /></RoleProtectedRoute>} />
+                <Route path="/clientes/:clientId/contatos/:contactId" element={<RoleProtectedRoute><ContatoDetail /></RoleProtectedRoute>} />
                 <Route path="/propostas" element={<RoleProtectedRoute><Propostas /></RoleProtectedRoute>} />
                 <Route path="/propostas/nova" element={<Navigate to="/propostas" replace />} />
                 <Route path="/propostas/:id" element={<Navigate to="/propostas" replace />} />
