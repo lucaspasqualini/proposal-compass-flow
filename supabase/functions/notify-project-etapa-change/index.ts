@@ -1,6 +1,5 @@
 // Edge Function: notify-project-etapa-change
 // Disparada por trigger pg_net quando projects.etapa muda.
-// Envia push (e email via Gmail connector) para o mais sênior alocado e o mais sênior do administrativo.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -22,6 +21,14 @@ const ETAPA_LABELS: Record<string, string> = {
   iniciado: "Iniciado",
   minuta: "Minuta",
   assinado: "Assinado",
+};
+
+// Mapeia etapa do projeto -> palavras-chave usadas em receivables.description
+// quando o tipo de pagamento é "etapas".
+const ETAPA_TO_PARCELA_KEYS: Record<string, string[]> = {
+  iniciado: ["inicio", "início", "iniciado", "kickoff"],
+  minuta: ["minuta"],
+  assinado: ["assinatura", "assinado", "assinado(a)"],
 };
 
 function seniorityRank(role: string | null | undefined): number {
@@ -59,8 +66,12 @@ function renderTemplate(tpl: string, data: Record<string, string>): string {
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => data[k] ?? "");
 }
 
+function formatBRL(v: number | null | undefined): string {
+  if (v == null) return "—";
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 function base64UrlEncode(str: string): string {
-  // Encode UTF-8 -> base64 -> base64url
   const bytes = new TextEncoder().encode(str);
   let bin = "";
   bytes.forEach((b) => (bin += String.fromCharCode(b)));
@@ -68,7 +79,6 @@ function base64UrlEncode(str: string): string {
 }
 
 function buildRawEmail(to: string, subject: string, html: string): string {
-  // RFC 2822 — subject precisa estar UTF-8 encoded para acentos
   const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
   const msg = [
     `To: ${to}`,
@@ -115,11 +125,34 @@ async function sendPush(user_id: string, title: string, body: string, url: strin
   }
 }
 
+function buildAlertaNF(parcela: {
+  descricao: string;
+  valor: number | null;
+  cnpj: string | null;
+} | null): string {
+  if (!parcela) return "";
+  const cnpjLine = parcela.cnpj
+    ? `<div><strong>CNPJ p/ emissão:</strong> ${parcela.cnpj}</div>`
+    : `<div style="color:#a15c00;"><strong>CNPJ p/ emissão:</strong> não cadastrado no cliente</div>`;
+  return `
+  <div style="background:#fff8e6;border:1px solid #f0c674;border-radius:6px;padding:16px;margin:20px 0;">
+    <p style="margin:0 0 8px;font-weight:bold;color:#8a5a00;">⚠️ Gatilho para emissão de Nota Fiscal</p>
+    <div style="font-size:14px;line-height:1.6;">
+      <div><strong>Parcela:</strong> ${parcela.descricao}</div>
+      <div><strong>Valor:</strong> ${formatBRL(parcela.valor)}</div>
+      ${cnpjLine}
+    </div>
+    <p style="margin:12px 0 0;font-weight:bold;color:#8a5a00;">
+      Confirme com o gestor se a Nota já pode ser enviada!
+    </p>
+  </div>`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { project_id, etapa_anterior, etapa_nova } = await req.json();
+    const { project_id, etapa_anterior, etapa_nova, changed_by_user_id } = await req.json();
     if (!project_id || !etapa_nova) {
       return new Response(JSON.stringify({ error: "project_id e etapa_nova obrigatórios" }), {
         status: 400,
@@ -130,7 +163,10 @@ Deno.serve(async (req) => {
     const { data: project, error: projErr } = await supabase
       .from("projects")
       .select(
-        "id, title, clients(name), project_allocations(team_members(id, name, role, user_id, corporate_email, is_active))"
+        `id, title, proposal_id,
+         clients(name, cnpj),
+         proposals(proposal_number, payment_type),
+         project_allocations(team_members(id, name, role, user_id, corporate_email, is_active))`
       )
       .eq("id", project_id)
       .maybeSingle();
@@ -152,6 +188,44 @@ Deno.serve(async (req) => {
     if (seniorProject) recipients.set(seniorProject.id, seniorProject);
     if (seniorAdmin) recipients.set(seniorAdmin.id, seniorAdmin);
 
+    // Autor da mudança
+    let autorNome = "Sistema";
+    if (changed_by_user_id) {
+      const { data: autorProfile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", changed_by_user_id)
+        .maybeSingle();
+      autorNome = autorProfile?.full_name || autorProfile?.email || "Usuário";
+    }
+
+    // Detecta parcela correspondente à nova etapa (apenas se payment_type = "etapas")
+    const proposalInfo = (project as any).proposals;
+    const codigoProjeto = proposalInfo?.proposal_number || "—";
+    let parcelaInfo: { descricao: string; valor: number | null; cnpj: string | null } | null = null;
+
+    if (proposalInfo?.payment_type === "etapas" && (project as any).proposal_id) {
+      const keys = ETAPA_TO_PARCELA_KEYS[etapa_nova] || [];
+      if (keys.length) {
+        const { data: receivables } = await supabase
+          .from("receivables")
+          .select("description, amount, valor_proposta, status, parcela_label, parcela_index")
+          .eq("proposal_id", (project as any).proposal_id)
+          .order("parcela_index");
+        const match = (receivables || []).find((r: any) => {
+          const desc = (r.description || r.parcela_label || "").toLowerCase();
+          return keys.some((k) => desc.includes(k));
+        });
+        if (match) {
+          parcelaInfo = {
+            descricao: match.description || match.parcela_label || `Parcela ${(match.parcela_index ?? 0) + 1}`,
+            valor: match.valor_proposta ?? match.amount ?? null,
+            cnpj: (project as any).clients?.cnpj || null,
+          };
+        }
+      }
+    }
+
     // Carrega template do banco
     const { data: tpl } = await supabase
       .from("notification_email_templates")
@@ -161,12 +235,16 @@ Deno.serve(async (req) => {
 
     const projectTitle = (project as any).title;
     const clientName = (project as any).clients?.name || "—";
+    const clientCnpj = (project as any).clients?.cnpj || "";
     const etapaAntLabel = ETAPA_LABELS[etapa_anterior] || etapa_anterior || "—";
     const etapaNovaLabel = ETAPA_LABELS[etapa_nova] || etapa_nova;
+    const alertaNfHtml = buildAlertaNF(parcelaInfo);
 
     // Push
-    const pushTitle = `Projeto mudou de etapa: ${projectTitle}`;
-    const pushBody = `${clientName} · ${etapaAntLabel} → ${etapaNovaLabel}`;
+    const pushTitle = `[${codigoProjeto}] ${projectTitle}`;
+    const pushBody = `${autorNome} moveu ${etapaAntLabel} → ${etapaNovaLabel}${
+      parcelaInfo ? " · Emitir NF: " + formatBRL(parcelaInfo.valor) : ""
+    }`;
 
     // Resolve emails
     const userIds = [...recipients.values()].map((r) => r.user_id).filter(Boolean);
@@ -180,12 +258,18 @@ Deno.serve(async (req) => {
         if (m.user_id) await sendPush(m.user_id, pushTitle, pushBody, "/projetos");
         const email = m.corporate_email || (m.user_id ? profileEmailByUser.get(m.user_id) : null);
         if (email && tpl && tpl.ativo !== false) {
-          const data = {
+          const data: Record<string, string> = {
             destinatario: m.name || "",
+            autor: autorNome,
+            codigo_projeto: codigoProjeto,
             projeto: projectTitle,
             cliente: clientName,
+            cnpj: clientCnpj,
             etapa_anterior: etapaAntLabel,
             etapa_nova: etapaNovaLabel,
+            alerta_nf: alertaNfHtml,
+            parcela_descricao: parcelaInfo?.descricao || "",
+            parcela_valor: parcelaInfo ? formatBRL(parcelaInfo.valor) : "",
           };
           const subject = renderTemplate(tpl.assunto, data);
           const html = renderTemplate(tpl.corpo_html, data);
@@ -195,7 +279,13 @@ Deno.serve(async (req) => {
     );
 
     return new Response(
-      JSON.stringify({ ok: true, recipients: [...recipients.values()].map((r) => r.name) }),
+      JSON.stringify({
+        ok: true,
+        recipients: [...recipients.values()].map((r) => r.name),
+        autor: autorNome,
+        codigo_projeto: codigoProjeto,
+        nf_alert: !!parcelaInfo,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
