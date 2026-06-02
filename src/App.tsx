@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Clientes = lazy(() => import("@/pages/Clientes"));
 const ClienteDetail = lazy(() => import("@/pages/ClienteDetail"));
+const Contatos = lazy(() => import("@/pages/Contatos"));
 const ContatoDetail = lazy(() => import("@/pages/ContatoDetail"));
 const Propostas = lazy(() => import("@/pages/Propostas"));
 const Projetos = lazy(() => import("@/pages/Projetos"));
@@ -76,6 +77,7 @@ const App = () => (
                 <Route path="/clientes" element={<RoleProtectedRoute><Clientes /></RoleProtectedRoute>} />
                 <Route path="/clientes/:id" element={<RoleProtectedRoute><ClienteDetail /></RoleProtectedRoute>} />
                 <Route path="/clientes/:clientId/contatos/:contactId" element={<RoleProtectedRoute><ContatoDetail /></RoleProtectedRoute>} />
+                <Route path="/contatos" element={<RoleProtectedRoute><Contatos /></RoleProtectedRoute>} />
                 <Route path="/propostas" element={<RoleProtectedRoute><Propostas /></RoleProtectedRoute>} />
                 <Route path="/propostas/nova" element={<Navigate to="/propostas" replace />} />
                 <Route path="/propostas/:id" element={<Navigate to="/propostas" replace />} />
