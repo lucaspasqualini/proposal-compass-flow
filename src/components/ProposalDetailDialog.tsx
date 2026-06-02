@@ -21,6 +21,7 @@ import { generateProposalPptx } from "@/lib/generateProposalPptx";
 import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
 import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
+import NewClientDialog from "@/components/NewClientDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
@@ -694,37 +695,20 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
           </ScrollArea>
         )}
 
-        {/* Dialog novo cliente */}
-        <Dialog open={showNewClient} onOpenChange={setShowNewClient}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Novo Cliente</DialogTitle>
-              <DialogDescription>Adicione um novo cliente à base de dados.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label>Nome do Cliente *</Label>
-                <Input value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Nome da empresa" />
-              </div>
-              <Button
-                disabled={!newClientName.trim() || createClient.isPending}
-                onClick={async () => {
-                  try {
-                    const created = await createClient.mutateAsync({ name: newClientName.trim() });
-                    setForm((prev) => ({ ...prev, client_id: created.id }));
-                    setNewClientName("");
-                    setShowNewClient(false);
-                    toast({ title: "Cliente criado com sucesso" });
-                  } catch {
-                    toast({ title: "Erro ao criar cliente", variant: "destructive" });
-                  }
-                }}
-              >
-                Salvar Cliente
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Dialog novo cliente (completo) */}
+        <NewClientDialog
+          open={showNewClient}
+          onOpenChange={setShowNewClient}
+          onCreated={(clientId, contactName) => {
+            setForm((prev) => ({
+              ...prev,
+              client_id: clientId,
+              cliente_contato: contactName || prev.cliente_contato,
+            }));
+            setNewClientName("");
+          }}
+          initialName={newClientName}
+        />
       </DialogContent>
     </Dialog>
     </>
