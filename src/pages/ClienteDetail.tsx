@@ -295,6 +295,7 @@ export default function ClienteDetail() {
         data_abertura: form.data_abertura || null,
         situacao_cadastral: form.situacao_cadastral,
         qsa: form.qsa,
+        cnpjs_vinculados: form.cnpjs_vinculados,
       } as any);
       toast({ title: "Empresa atualizada" });
     } catch {
