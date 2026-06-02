@@ -1,0 +1,1 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS cnpjs_vinculados jsonb NOT NULL DEFAULT '[]'::jsonb;

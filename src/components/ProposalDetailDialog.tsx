@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProposal, useUpdateProposal, useCreateProposal } from "@/hooks/useProposals";
 import { useClients, useCreateClient } from "@/hooks/useClients";
+import { useClientContacts, useCreateClientContact } from "@/hooks/useClientContacts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,7 @@ import { syncProposalProjectStatus } from "@/lib/syncProposalProject";
 import { useParcelasPrompt, buildParcelasFromCount } from "@/components/ParcelasPromptDialog";
 import { Plus, Trash2, FileDown, ExternalLink } from "lucide-react";
 import NewClientDialog from "@/components/NewClientDialog";
+import ContactCombobox from "@/components/ContactCombobox";
 import type { Database } from "@/integrations/supabase/types";
 
 type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
@@ -62,6 +64,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   const updateProposal = useUpdateProposal();
   const createProposal = useCreateProposal();
   const createClient = useCreateClient();
+  const createContact = useCreateClientContact();
   const { toast } = useToast();
   const parcelasPrompt = useParcelasPrompt();
 
@@ -246,6 +249,18 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
       return;
     }
     try {
+      // Se o contato digitado não existir na base do cliente, cria silenciosamente.
+      const contatoNome = (form.cliente_contato ?? "").trim();
+      if (contatoNome && form.client_id) {
+        const existsLocal = (clientContacts ?? []).some(
+          (c) => c.name.trim().toLowerCase() === contatoNome.toLowerCase()
+        );
+        if (!existsLocal) {
+          try {
+            await createContact.mutateAsync({ client_id: form.client_id, name: contatoNome });
+          } catch { /* não bloqueia o save da proposta */ }
+        }
+      }
       let savedParcelas: any[] = [];
       if (form.payment_type === "etapas") {
         savedParcelas = etapas.map((e) => ({
@@ -337,6 +352,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   };
 
   const selectedClient = clients?.find((c) => c.id === form.client_id);
+  const { data: clientContacts } = useClientContacts(form.client_id ?? undefined);
 
   const etapaLabels: Record<string, string> = {
     inicio: "Início",
@@ -453,7 +469,15 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
                   </div>
                   <div className="grid gap-2">
                     <Label>Contato do Cliente</Label>
-                    <Input value={form.cliente_contato ?? ""} onChange={(e) => setForm({ ...form, cliente_contato: e.target.value })} placeholder="Nome do contato" />
+                    <ContactCombobox
+                      value={form.cliente_contato ?? ""}
+                      onChange={(v) => setForm({ ...form, cliente_contato: v })}
+                      contacts={(clientContacts ?? []).map((c) => ({
+                        id: c.id, name: c.name, email: c.email, phone: c.phone, cargo: c.cargo,
+                      }))}
+                      disabled={!form.client_id}
+                      placeholder={form.client_id ? "Buscar contato ou digitar novo nome" : "Selecione um cliente primeiro"}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label>Status</Label>
