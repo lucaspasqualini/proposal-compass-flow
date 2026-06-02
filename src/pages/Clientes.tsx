@@ -211,7 +211,7 @@ export default function Clientes() {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                        Nenhum cliente encontrado
+                        Nenhuma empresa encontrada
                       </TableCell>
                     </TableRow>
                   )}
