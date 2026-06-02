@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { usePromotionHistory, useCreatePromotion, useDeletePromotion, useBonusHistory, useCreateBonus, useDeleteBonus } from "@/hooks/useTeamHistory";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { tenureFromHireDate } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, TrendingUp, Award, User } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, User, Mail, Phone, MapPin, Calendar, IdCard, Briefcase } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { Database } from "@/integrations/supabase/types";
 
