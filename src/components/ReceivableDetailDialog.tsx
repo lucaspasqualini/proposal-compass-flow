@@ -330,7 +330,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <Input
                   value={nfe}
                   onChange={(e) => setNfe(e.target.value)}
-                  onBlur={handleNfeBlur}
                   placeholder="Número da NFe"
                   className="h-8 text-sm"
                 />
