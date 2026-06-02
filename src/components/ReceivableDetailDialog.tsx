@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useId, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -68,8 +68,10 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const { toast } = useToast();
 
   const client = receivable?.clients as any;
+  const clientId: string | undefined = receivable?.client_id || client?.id;
   const proposal = receivable?.proposals as any;
-  const { data: clientContacts } = useClientContacts(client?.id);
+  const { data: clientContacts } = useClientContacts(clientId);
+  const cnpjDatalistId = useId();
 
   const amount = receivable?.amount || 0;
 
@@ -91,6 +93,46 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const [email, setEmail] = useState(client?.email || "");
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
+  const cnpjOptions = useMemo(() => {
+    const options: Array<{ cnpj: string; label: string; razao_social?: string | null; contact_name?: string | null; email?: string | null; principal?: boolean }> = [];
+    const seen = new Set<string>();
+    const addOption = (option: typeof options[number]) => {
+      const key = normalizeCnpj(option.cnpj);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      options.push(option);
+    };
+
+    if (client?.cnpj) {
+      addOption({
+        cnpj: client.cnpj,
+        label: `${client.cnpj} — Principal${client.razao_social ? ` · ${client.razao_social}` : ""}`,
+        razao_social: client.razao_social || client.name || null,
+        contact_name: client.contact_name || null,
+        email: client.email || null,
+        principal: true,
+      });
+    }
+
+    const vinculados = Array.isArray(client?.cnpjs_vinculados) ? client.cnpjs_vinculados : [];
+    vinculados.forEach((item: any) => {
+      const linkedCnpj = typeof item === "string" ? item : item?.cnpj;
+      if (!linkedCnpj) return;
+      const razao = typeof item === "string" ? null : item?.razao_social;
+      const contatoVinculado = typeof item === "string" ? null : item?.contact_name;
+      const emailVinculado = typeof item === "string" ? null : item?.email;
+      addOption({
+        cnpj: linkedCnpj,
+        label: `${linkedCnpj} — Secundário${razao ? ` · ${razao}` : ""}`,
+        razao_social: razao || null,
+        contact_name: contatoVinculado || null,
+        email: emailVinculado || null,
+      });
+    });
+
+    return options;
+  }, [client?.cnpj, client?.razao_social, client?.name, client?.contact_name, client?.email, client?.cnpjs_vinculados]);
+
   useEffect(() => {
     if (receivable) {
       setCofins(receivable.cofins ?? +(amount * 0.03).toFixed(2));
@@ -100,9 +142,13 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
       setNfe(receivable.nfe_number || "");
       setResponsavel(receivable.responsavel_projeto || "");
       const c = receivable.clients as any;
-      setCnpj(c?.cnpj || "");
-      setContato(c?.contact_name || "");
-      setEmail(c?.email || "");
+      const billingCnpj = receivable.billing_cnpj || c?.cnpj || "";
+      const linked = Array.isArray(c?.cnpjs_vinculados)
+        ? c.cnpjs_vinculados.find((v: any) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(billingCnpj))
+        : null;
+      setCnpj(billingCnpj);
+      setContato((typeof linked === "object" ? linked?.contact_name : null) || c?.contact_name || "");
+      setEmail((typeof linked === "object" ? linked?.email : null) || c?.email || "");
       setEditingDate(null);
     }
   }, [receivable?.id, amount]);
@@ -139,6 +185,14 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   const handleContatoSelect = (c: { name: string; email?: string | null }) => {
     setContato(c.name);
     if (c.email) setEmail(c.email);
+  };
+
+  const handleCnpjChange = (value: string) => {
+    setCnpj(value);
+    const selected = cnpjOptions.find((option) => normalizeCnpj(option.cnpj) === normalizeCnpj(value));
+    if (!selected) return;
+    setContato(selected.contact_name || "");
+    setEmail(selected.email || "");
   };
 
   const handleSaveAll = async () => {
