@@ -261,7 +261,6 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
                 <Input
                   value={cnpj}
                   onChange={(e) => setCnpj(e.target.value)}
-                  onBlur={handleCnpjBlur}
                   placeholder="00.000.000/0000-00"
                   className="h-8 text-sm font-mono"
                 />
