@@ -340,6 +340,7 @@ export default function ProposalDetailDialog({ proposalId, open, onOpenChange, i
   };
 
   const selectedClient = clients?.find((c) => c.id === form.client_id);
+  const { data: clientContacts } = useClientContacts(form.client_id ?? undefined);
 
   const etapaLabels: Record<string, string> = {
     inicio: "Início",
