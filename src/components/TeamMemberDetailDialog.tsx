@@ -26,8 +26,9 @@ interface Props {
 
 export default function TeamMemberDetailDialog({ member, open, onOpenChange }: Props) {
   const { toast } = useToast();
-  const { isSocio } = useUserRole();
+  const { isSocio, isAdministrativo } = useUserRole();
   const canEdit = isSocio;
+  const canSeeSensitive = isSocio || isAdministrativo;
   const { data: promotions } = usePromotionHistory(member?.id);
   const { data: bonuses } = useBonusHistory(member?.id);
   const createPromotion = useCreatePromotion();
