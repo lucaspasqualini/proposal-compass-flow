@@ -86,7 +86,7 @@ export default function Clientes() {
     if (!newName.trim()) return;
     try {
       await createClient.mutateAsync({ name: newName.trim(), cnpj: newCnpj.trim() || null });
-      toast({ title: "Cliente criado" });
+      toast({ title: "Empresa criada" });
       setNewName("");
       setNewCnpj("");
       setShowNew(false);
