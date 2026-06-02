@@ -1,44 +1,24 @@
-## Diagnóstico
+O erro aparece porque o card está entendendo que a parcela não tem cliente carregado no objeto da tela, então ele salva apenas os dados da parcela e bloqueia o salvamento de CNPJ/contato/email para evitar gravar em cliente errado.
 
-Para o projeto **MA_0077_26**, encontrei no banco que a parcela foi atualizada, mas os dados do cliente não:
+Pelo banco, a parcela MA_0077_26 está sim vinculada ao cliente J&F S.A. (`client_id` preenchido). Portanto, o problema está na atualização/cache do frontend: após salvar a parcela, o objeto `receivable` usado pelo card fica sem `clients.id` em algum momento e dispara essa validação.
 
-- A parcela em `receivables` salvou campos como **Responsável = Lucas** e **NFe = 109**.
-- O cliente **J&F S.A.** continua com `contact_name`, `email` vazios.
-- `cnpjs_vinculados` continua `[]`.
-- A tabela de contatos do cliente não tem nenhum contato vinculado.
+Plano de correção:
 
-A causa provável é que a consulta de `receivables` carrega `clients(name, cnpj, contact_name, email)`, mas **não carrega `clients.id` nem `clients.cnpjs_vinculados`**. No card, o salvamento de contato/CNPJ depende de `client.id`; sem esse ID, o código salva a parcela, mostra sucesso e pula a atualização do cliente/contato.
+1. Ajustar o `Salvar alterações` para usar um `clientId` seguro:
+   - priorizar `receivable.client_id`;
+   - usar `receivable.clients.id` apenas como fallback;
+   - não depender só do objeto relacional `clients` carregado no cache.
 
-## Plano de correção
+2. Salvar contato/email/CNPJ mesmo quando o relacionamento `clients` vier incompleto:
+   - buscar/usar os dados atuais do cliente pelo `client_id` antes de montar a atualização;
+   - atualizar `clients.contact_name`, `clients.email` e `clients.cnpjs_vinculados` corretamente.
 
-1. **Corrigir a consulta de Contas a Receber**
-   - Incluir `clients(id, name, cnpj, contact_name, email, cnpjs_vinculados)` no hook de receivables.
-   - Garantir que a mutação de atualização também retorne esses campos para manter a lista e o card sincronizados.
+3. Corrigir o cache após salvar:
+   - invalidar `receivables`, `clients` e `client_contacts`;
+   - evitar que o card continue com dados antigos após a atualização da parcela.
 
-2. **Ajustar o botão Salvar do card**
-   - O botão só deve mostrar sucesso quando todas as etapas esperadas forem concluídas.
-   - Se a parcela salva, mas cliente/contato falha, mostrar erro claro em vez de “Alterações salvas”.
-   - Manter o comportamento de salvar tudo junto: responsável, impostos, NFe, contato, email e CNPJ.
+4. Melhorar a mensagem de erro:
+   - só mostrar “cliente não vinculado” quando `receivable.client_id` realmente estiver vazio;
+   - se houver falha real ao atualizar cliente/contato, mostrar o erro específico.
 
-3. **Persistir contato novo corretamente**
-   - Ao digitar um nome novo no campo Contato e clicar em Salvar:
-     - criar registro em `client_contacts` para o cliente;
-     - salvar email informado nesse contato;
-     - atualizar também o contato/email principal do cliente quando alterados no card.
-
-4. **Persistir CNPJ vinculado corretamente**
-   - Se o CNPJ digitado for diferente do CNPJ principal do cliente:
-     - adicionar em `clients.cnpjs_vinculados`;
-     - não sobrescrever o CNPJ principal, exceto se ele estiver vazio.
-
-5. **Melhorar feedback visual**
-   - Desabilitar o botão enquanto salva.
-   - Mensagem de sucesso apenas depois de invalidar/atualizar os caches de `receivables`, `clients` e `client_contacts`.
-
-## Resultado esperado
-
-Após a correção, ao abrir o card de **MA_0077_26**, digitar CNPJ/contato/email e clicar em **Salvar alterações**, esses dados devem aparecer depois em:
-
-- Contas a Receber;
-- Empresas > Dados Cadastrais > CNPJs vinculados;
-- Empresas/Contatos, como contato vinculado ao cliente.
+Resultado esperado: no projeto MA_0077_26, o CNPJ `08.505.736/0001-23`, o contato Letícia Melon e o email serão salvos no cadastro do cliente/contatos, e o CNPJ aparecerá em Empresas > Dados Cadastrais > CNPJs vinculados.

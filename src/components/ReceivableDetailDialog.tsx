@@ -18,6 +18,7 @@ import { CalendarIcon, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ContactCombobox from "@/components/ContactCombobox";
+import { supabase } from "@/integrations/supabase/client";
 
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 
@@ -140,6 +141,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   };
 
   const handleSaveAll = async () => {
+    const clientId: string | undefined = receivable?.client_id || client?.id;
     try {
       // 1. Receivable
       await updateReceivable.mutateAsync({
@@ -149,33 +151,40 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
         responsavel_projeto: responsavel || null,
       });
 
-      // 2. Cliente — contato/email principais + CNPJ principal se vazio
       const hasClientChanges =
         !!cnpj || !!contato || !!email ||
         (contato || "") !== (client?.contact_name || "") ||
         (email || "") !== (client?.email || "");
 
-      if (hasClientChanges && !client?.id) {
+      if (hasClientChanges && !clientId) {
         toast({
           title: "Não foi possível salvar os dados do cliente",
-          description: "Cliente não vinculado a esta parcela. A parcela foi salva, mas contato/CNPJ não.",
+          description: "Esta parcela não está vinculada a um cliente.",
           variant: "destructive",
         });
         qc.invalidateQueries({ queryKey: ["receivables"] });
         return;
       }
 
-      if (client?.id) {
+      if (clientId) {
+        // Buscar estado atual do cliente para evitar perdas se o cache estiver incompleto
+        const { data: currentClient, error: fetchErr } = await supabase
+          .from("clients")
+          .select("id, cnpj, contact_name, email, cnpjs_vinculados")
+          .eq("id", clientId)
+          .single();
+        if (fetchErr) throw fetchErr;
+
         const clientUpdates: any = {};
-        if ((contato || "") !== (client.contact_name || "")) clientUpdates.contact_name = contato || null;
-        if ((email || "") !== (client.email || "")) clientUpdates.email = email || null;
-        if (!client.cnpj && cnpj) clientUpdates.cnpj = cnpj;
+        if ((contato || "") !== (currentClient.contact_name || "")) clientUpdates.contact_name = contato || null;
+        if ((email || "") !== (currentClient.email || "")) clientUpdates.email = email || null;
+        if (!currentClient.cnpj && cnpj) clientUpdates.cnpj = cnpj;
 
         // CNPJ adicional → cnpjs_vinculados
         const novoCnpj = (cnpj || "").trim();
-        const principal = (client?.cnpj || "").trim();
+        const principal = (currentClient.cnpj || "").trim();
         if (novoCnpj && principal && normalizeCnpj(novoCnpj) !== normalizeCnpj(principal)) {
-          const vinculados: any[] = Array.isArray(client?.cnpjs_vinculados) ? client.cnpjs_vinculados : [];
+          const vinculados: any[] = Array.isArray(currentClient.cnpjs_vinculados) ? (currentClient.cnpjs_vinculados as any[]) : [];
           const jaVinculado = vinculados.some((v) => normalizeCnpj(typeof v === "string" ? v : v?.cnpj) === normalizeCnpj(novoCnpj));
           if (!jaVinculado) {
             clientUpdates.cnpjs_vinculados = [...vinculados, { cnpj: novoCnpj, added_from: "receivable", added_at: new Date().toISOString() }];
@@ -183,7 +192,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
         }
 
         if (Object.keys(clientUpdates).length > 0) {
-          await updateClient.mutateAsync({ id: client.id, ...clientUpdates });
+          await updateClient.mutateAsync({ id: clientId, ...clientUpdates });
         }
 
         // 3. Contato → criar ou atualizar em client_contacts
@@ -194,7 +203,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
             (c) => c.name.trim().toLowerCase() === n.toLowerCase()
           );
           if (!existing) {
-            await createContact.mutateAsync({ client_id: client.id, name: n, email: m || null });
+            await createContact.mutateAsync({ client_id: clientId, name: n, email: m || null });
           } else if (m && (existing.email || "") !== m) {
             await updateContact.mutateAsync({ id: existing.id, email: m });
           }
@@ -203,7 +212,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
       qc.invalidateQueries({ queryKey: ["receivables"] });
       qc.invalidateQueries({ queryKey: ["clients"] });
-      if (client?.id) qc.invalidateQueries({ queryKey: ["client_contacts", client.id] });
+      if (clientId) qc.invalidateQueries({ queryKey: ["client_contacts", clientId] });
 
       toast({ title: "Alterações salvas" });
     } catch (e: any) {
