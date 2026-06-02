@@ -237,6 +237,66 @@ export type Database = {
           },
         ]
       }
+      notification_email_settings: {
+        Row: {
+          id: string
+          sender_email: string | null
+          sender_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          sender_email?: string | null
+          sender_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          sender_email?: string | null
+          sender_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_email_templates: {
+        Row: {
+          assunto: string
+          ativo: boolean
+          corpo_html: string
+          created_at: string
+          descricao: string | null
+          id: string
+          key: string
+          nome: string
+          placeholders: Json
+          updated_at: string
+        }
+        Insert: {
+          assunto: string
+          ativo?: boolean
+          corpo_html: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          key: string
+          nome: string
+          placeholders?: Json
+          updated_at?: string
+        }
+        Update: {
+          assunto?: string
+          ativo?: boolean
+          corpo_html?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          key?: string
+          nome?: string
+          placeholders?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

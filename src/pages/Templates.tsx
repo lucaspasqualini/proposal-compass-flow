@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Plus, Save, Trash2, FileText, Mail } from "lucide-react";
+import { Plus, Save, Trash2, FileText, Mail, Bell } from "lucide-react";
+import NotificationEmailsTab from "@/components/templates/NotificationEmailsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -164,6 +165,9 @@ const Templates = () => {
           <TabsTrigger value="email" className="gap-1.5">
             <Mail className="h-4 w-4" /> Email Comercial
           </TabsTrigger>
+          <TabsTrigger value="notificacoes" className="gap-1.5">
+            <Bell className="h-4 w-4" /> E-mails de Notificação
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="propostas">
           <TemplatesPropostas />
@@ -172,6 +176,9 @@ const Templates = () => {
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             Em breve — seção de templates de e-mail comercial.
           </div>
+        </TabsContent>
+        <TabsContent value="notificacoes">
+          <NotificationEmailsTab />
         </TabsContent>
       </Tabs>
     </div>

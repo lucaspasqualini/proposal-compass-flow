@@ -1,6 +1,6 @@
 // Edge Function: notify-project-etapa-change
 // Disparada por trigger pg_net quando projects.etapa muda.
-// Envia push (e tentativa de email) para o mais sênior alocado e o mais sênior do administrativo.
+// Envia push (e email via Gmail connector) para o mais sênior alocado e o mais sênior do administrativo.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -14,13 +14,16 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
+const GMAIL_GATEWAY = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GOOGLE_MAIL_API_KEY = Deno.env.get("GOOGLE_MAIL_API_KEY");
+
 const ETAPA_LABELS: Record<string, string> = {
   iniciado: "Iniciado",
   minuta: "Minuta",
   assinado: "Assinado",
 };
 
-// Ranking de senioridade por substring (case-insensitive). Maior = mais sênior.
 function seniorityRank(role: string | null | undefined): number {
   if (!role) return 0;
   const r = role.toLowerCase();
@@ -32,7 +35,7 @@ function seniorityRank(role: string | null | undefined): number {
     return 88;
   }
   if (r.includes("gerente")) return 70;
-  if (r.includes("coordenador") || r.includes("coordenadora")) return 60;
+  if (r.includes("coordenador")) return 60;
   if (r.includes("executivo")) return 55;
   if (r.includes("analista")) {
     if (r.includes("sênior") || r.includes("senior") || r.includes("sr")) return 50;
@@ -49,9 +52,57 @@ function seniorityRank(role: string | null | undefined): number {
 
 function pickMostSenior<T extends { role?: string | null }>(members: T[]): T | null {
   if (!members.length) return null;
-  return members.reduce((best, m) =>
-    seniorityRank(m.role) > seniorityRank(best.role) ? m : best
-  );
+  return members.reduce((best, m) => (seniorityRank(m.role) > seniorityRank(best.role) ? m : best));
+}
+
+function renderTemplate(tpl: string, data: Record<string, string>): string {
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => data[k] ?? "");
+}
+
+function base64UrlEncode(str: string): string {
+  // Encode UTF-8 -> base64 -> base64url
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function buildRawEmail(to: string, subject: string, html: string): string {
+  // RFC 2822 — subject precisa estar UTF-8 encoded para acentos
+  const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+  const msg = [
+    `To: ${to}`,
+    `Subject: ${encodedSubject}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    html,
+  ].join("\r\n");
+  return base64UrlEncode(msg);
+}
+
+async function sendGmail(to: string, subject: string, html: string): Promise<void> {
+  if (!LOVABLE_API_KEY || !GOOGLE_MAIL_API_KEY) {
+    console.warn("Gmail not configured — skipping email to", to);
+    return;
+  }
+  const raw = buildRawEmail(to, subject, html);
+  const res = await fetch(`${GMAIL_GATEWAY}/users/me/messages/send`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "X-Connection-Api-Key": GOOGLE_MAIL_API_KEY,
+    },
+    body: JSON.stringify({ raw }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    console.error(`Gmail send failed (${res.status}) to ${to}:`, txt);
+  } else {
+    console.log("Gmail sent to", to);
+  }
 }
 
 async function sendPush(user_id: string, title: string, body: string, url: string) {
@@ -61,27 +112,6 @@ async function sendPush(user_id: string, title: string, body: string, url: strin
     });
   } catch (e) {
     console.error("push fail", user_id, e);
-  }
-}
-
-async function sendEmail(email: string, projectTitle: string, clientName: string, etapaAnterior: string, etapaNova: string, projectId: string) {
-  try {
-    await supabase.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "project-etapa-change",
-        recipientEmail: email,
-        idempotencyKey: `etapa-${projectId}-${etapaNova}-${email}`,
-        templateData: {
-          projectTitle,
-          clientName,
-          etapaAnterior: ETAPA_LABELS[etapaAnterior] || etapaAnterior || "—",
-          etapaNova: ETAPA_LABELS[etapaNova] || etapaNova,
-        },
-      },
-    });
-  } catch (e) {
-    // email infra pode ainda não estar configurada — silenciar
-    console.warn("email skipped", e?.message || e);
   }
 }
 
@@ -97,10 +127,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Carrega projeto + cliente + alocações
     const { data: project, error: projErr } = await supabase
       .from("projects")
-      .select("id, title, clients(name), project_allocations(team_members(id, name, role, user_id, corporate_email, is_active))")
+      .select(
+        "id, title, clients(name), project_allocations(team_members(id, name, role, user_id, corporate_email, is_active))"
+      )
       .eq("id", project_id)
       .maybeSingle();
     if (projErr || !project) throw projErr || new Error("projeto não encontrado");
@@ -108,29 +139,36 @@ Deno.serve(async (req) => {
     const allocated = ((project as any).project_allocations || [])
       .map((a: any) => a.team_members)
       .filter((m: any) => m && m.is_active);
-
     const seniorProject = pickMostSenior(allocated);
 
-    // Mais sênior do administrativo
     const { data: adminMembers } = await supabase
       .from("team_members")
       .select("id, name, role, user_id, corporate_email")
       .eq("is_active", true)
       .eq("area", "Administrativo");
-
     const seniorAdmin = pickMostSenior(adminMembers || []);
 
     const recipients = new Map<string, any>();
     if (seniorProject) recipients.set(seniorProject.id, seniorProject);
     if (seniorAdmin) recipients.set(seniorAdmin.id, seniorAdmin);
 
+    // Carrega template do banco
+    const { data: tpl } = await supabase
+      .from("notification_email_templates")
+      .select("assunto, corpo_html, ativo")
+      .eq("key", "project-etapa-change")
+      .maybeSingle();
+
     const projectTitle = (project as any).title;
     const clientName = (project as any).clients?.name || "—";
-    const title = `Projeto mudou de etapa: ${projectTitle}`;
-    const body = `${clientName} · ${ETAPA_LABELS[etapa_anterior] || etapa_anterior || "—"} → ${ETAPA_LABELS[etapa_nova] || etapa_nova}`;
-    const url = `/projetos`;
+    const etapaAntLabel = ETAPA_LABELS[etapa_anterior] || etapa_anterior || "—";
+    const etapaNovaLabel = ETAPA_LABELS[etapa_nova] || etapa_nova;
 
-    // Resolve emails: corporate_email com fallback para profiles.email
+    // Push
+    const pushTitle = `Projeto mudou de etapa: ${projectTitle}`;
+    const pushBody = `${clientName} · ${etapaAntLabel} → ${etapaNovaLabel}`;
+
+    // Resolve emails
     const userIds = [...recipients.values()].map((r) => r.user_id).filter(Boolean);
     const { data: profiles } = userIds.length
       ? await supabase.from("profiles").select("user_id, email").in("user_id", userIds)
@@ -139,15 +177,27 @@ Deno.serve(async (req) => {
 
     await Promise.all(
       [...recipients.values()].map(async (m) => {
-        if (m.user_id) await sendPush(m.user_id, title, body, url);
+        if (m.user_id) await sendPush(m.user_id, pushTitle, pushBody, "/projetos");
         const email = m.corporate_email || (m.user_id ? profileEmailByUser.get(m.user_id) : null);
-        if (email) await sendEmail(email, projectTitle, clientName, etapa_anterior, etapa_nova, project_id);
+        if (email && tpl && tpl.ativo !== false) {
+          const data = {
+            destinatario: m.name || "",
+            projeto: projectTitle,
+            cliente: clientName,
+            etapa_anterior: etapaAntLabel,
+            etapa_nova: etapaNovaLabel,
+          };
+          const subject = renderTemplate(tpl.assunto, data);
+          const html = renderTemplate(tpl.corpo_html, data);
+          await sendGmail(email, subject, html);
+        }
       })
     );
 
-    return new Response(JSON.stringify({ ok: true, recipients: [...recipients.values()].map((r) => r.name) }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ ok: true, recipients: [...recipients.values()].map((r) => r.name) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (e: any) {
     console.error(e);
     return new Response(JSON.stringify({ error: e?.message || String(e) }), {
