@@ -10,10 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Separator } from "@/components/ui/separator";
 import { useUpdateReceivable } from "@/hooks/useReceivables";
+import { useUpdateClient } from "@/hooks/useClients";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { maskCNPJ } from "@/lib/masks";
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 
 const statusLabels: Record<string, string> = {
