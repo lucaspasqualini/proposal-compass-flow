@@ -196,14 +196,23 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
   };
 
   const handleSaveAll = async () => {
-    const clientId: string | undefined = receivable?.client_id || client?.id;
     try {
-      // 1. Receivable
+      const novoCnpj = (cnpj || "").trim();
+      let billingRazaoSocial: string | null = receivable.billing_razao_social || null;
+
+      const selectedOption = cnpjOptions.find(
+        (option) => normalizeCnpj(option.cnpj) === normalizeCnpj(novoCnpj)
+      );
+      if (selectedOption?.razao_social) billingRazaoSocial = selectedOption.razao_social;
+
+      // 1. Receivable — o CNPJ de faturamento fica gravado na própria parcela/nota
       await updateReceivable.mutateAsync({
         id: receivable.id,
         cofins, csll, irpj, pis,
         nfe_number: nfe || null,
         responsavel_projeto: responsavel || null,
+        billing_cnpj: novoCnpj || null,
+        billing_razao_social: billingRazaoSocial,
       });
 
       const hasClientChanges =
@@ -225,12 +234,11 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
         // Buscar estado atual do cliente para evitar perdas se o cache estiver incompleto
         const { data: currentClient, error: fetchErr } = await supabase
           .from("clients")
-          .select("id, cnpj, contact_name, email, cnpjs_vinculados")
+          .select("id, cnpj, razao_social, contact_name, email, cnpjs_vinculados")
           .eq("id", clientId)
           .single();
         if (fetchErr) throw fetchErr;
 
-        const novoCnpj = (cnpj || "").trim();
         const principal = (currentClient.cnpj || "").trim();
         const isCnpjSecundario =
           !!novoCnpj && !!principal && normalizeCnpj(novoCnpj) !== normalizeCnpj(principal);
@@ -254,11 +262,13 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           );
 
           // Buscar razão social no plugin de CNPJ
-          const lookup = await lookupCnpj(novoCnpj);
+          const lookup = billingRazaoSocial ? null : await lookupCnpj(novoCnpj);
+          const razaoSocial = billingRazaoSocial || lookup?.razao_social || (idx >= 0 ? vinculados[idx]?.razao_social : null) || null;
+          billingRazaoSocial = razaoSocial;
 
           const novaEntrada = {
             cnpj: novoCnpj,
-            razao_social: lookup?.razao_social || (idx >= 0 ? vinculados[idx]?.razao_social : null) || null,
+            razao_social: razaoSocial,
             label: idx >= 0 ? vinculados[idx]?.label ?? null : null,
             contact_name: (contato || "").trim() || (idx >= 0 ? vinculados[idx]?.contact_name : null) || null,
             email: (email || "").trim() || (idx >= 0 ? vinculados[idx]?.email : null) || null,
@@ -273,8 +283,20 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           clientUpdates.cnpjs_vinculados = novosVinculados;
         }
 
+        if (!isCnpjSecundario && !billingRazaoSocial) {
+          billingRazaoSocial = currentClient.razao_social || currentClient.id || null;
+        }
+
         if (Object.keys(clientUpdates).length > 0) {
           await updateClient.mutateAsync({ id: clientId, ...clientUpdates });
+        }
+
+        if ((billingRazaoSocial || null) !== (receivable.billing_razao_social || null)) {
+          await updateReceivable.mutateAsync({
+            id: receivable.id,
+            billing_cnpj: novoCnpj || null,
+            billing_razao_social: billingRazaoSocial,
+          });
         }
 
         // 3. Contato → criar ou atualizar em client_contacts (vinculado ao cliente)
