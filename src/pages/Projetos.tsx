@@ -466,7 +466,7 @@ export default function Projetos() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {filtered.map((p) => {
+                  {pageItems.map((p) => {
                     const allocatedMembers = getProjectAllocatedMembers(p);
                     const allocations = (p as any).project_allocations || [];
 
