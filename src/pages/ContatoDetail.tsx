@@ -70,6 +70,8 @@ export default function ContatoDetail() {
   const { data: contact, isLoading } = useClientContact(contactId);
   const updateContact = useUpdateClientContact();
   const deleteContact = useDeleteClientContact();
+  const updateClient = useUpdateClient();
+  const queryClient = useQueryClient();
   const { data: allProposals } = useProposals();
   const { data: clientsList } = useClients();
 
