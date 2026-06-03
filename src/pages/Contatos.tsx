@@ -210,6 +210,21 @@ export default function Contatos() {
                           </button>
                         ) : "—"}
                       </TableCell>
+                      <TableCell className="text-sm">
+                        {(() => {
+                          const linked = findVinculadosForContact(c.clients?.cnpjs_vinculados, c.name);
+                          if (linked.length === 0) return <span className="text-muted-foreground">—</span>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {linked.map((v, i) => (
+                                <Badge key={i} variant="secondary" className="font-normal">
+                                  {v.razao_social || v.label || v.cnpj}
+                                </Badge>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {c.last_interaction_at ? formatDate(c.last_interaction_at) : "—"}
                       </TableCell>
