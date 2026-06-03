@@ -56,6 +56,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { findVinculadosForContact } from "@/lib/cnpjVinculados";
 
 export default function ContatoDetail() {
   const { clientId, contactId } = useParams();
@@ -83,6 +84,25 @@ export default function ContatoDetail() {
       return data ?? [];
     },
   });
+
+  const { data: clientCnpjs } = useQuery({
+    queryKey: ["client-cnpjs-vinculados", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("cnpjs_vinculados")
+        .eq("id", clientId!)
+        .single();
+      if (error) throw error;
+      return (data as any)?.cnpjs_vinculados ?? [];
+    },
+  });
+
+  const linkedSecondary = useMemo(
+    () => findVinculadosForContact(clientCnpjs, contact?.name ?? ""),
+    [clientCnpjs, contact?.name]
+  );
 
   const [form, setForm] = useState({
     name: "",
@@ -246,6 +266,31 @@ export default function ContatoDetail() {
           </CardContent>
         </Card>
       )}
+
+      {linkedSecondary.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> Empresas Secundárias
+              <Badge variant="secondary" className="ml-1">{linkedSecondary.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              CNPJs adicionais da empresa onde este contato está vinculado.
+            </p>
+            <div className="space-y-2">
+              {linkedSecondary.map((v, i) => (
+                <div key={i} className="rounded-md border p-3 text-sm">
+                  <div className="font-medium">{v.razao_social || v.label || "—"}</div>
+                  <div className="font-mono text-xs text-muted-foreground">{v.cnpj}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
 
       <fieldset disabled={!canEdit} className="contents">
         <Card>

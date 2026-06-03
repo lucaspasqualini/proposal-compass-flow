@@ -8,6 +8,7 @@ import {
 } from "@/hooks/useClientContacts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getVinculadoContacts, findVinculadosForContact, type CnpjVinculado } from "@/lib/cnpjVinculados";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -172,7 +173,7 @@ export default function ClienteDetail() {
       data_entrada: string;
       faixa_etaria: string;
     }>,
-    cnpjs_vinculados: [] as Array<{ cnpj: string; razao_social?: string | null; label?: string | null; contact_name?: string | null; email?: string | null }>,
+    cnpjs_vinculados: [] as Array<{ cnpj: string; razao_social?: string | null; label?: string | null; contact_name?: string | null; email?: string | null; contacts?: Array<{ name: string; email?: string | null }> }>,
   });
   const [cnpjDialogOpen, setCnpjDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -713,7 +714,7 @@ export default function ClienteDetail() {
                         onClick={() =>
                           setForm({
                             ...form,
-                            cnpjs_vinculados: [...form.cnpjs_vinculados, { cnpj: "", razao_social: "", label: "", contact_name: "", email: "" }],
+                            cnpjs_vinculados: [...form.cnpjs_vinculados, { cnpj: "", razao_social: "", label: "", contacts: [] }],
                           })
                         }
                       >
@@ -782,27 +783,98 @@ export default function ClienteDetail() {
                               </Button>
                             )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <Input
-                              value={v.contact_name ?? ""}
-                              onChange={(e) => {
-                                const arr = [...form.cnpjs_vinculados];
-                                arr[i] = { ...arr[i], contact_name: e.target.value };
-                                setForm({ ...form, cnpjs_vinculados: arr });
-                              }}
-                              placeholder="Contato vinculado a este CNPJ"
-                              className="text-sm"
-                            />
-                            <Input
-                              value={v.email ?? ""}
-                              onChange={(e) => {
-                                const arr = [...form.cnpjs_vinculados];
-                                arr[i] = { ...arr[i], email: e.target.value };
-                                setForm({ ...form, cnpjs_vinculados: arr });
-                              }}
-                              placeholder="Email do contato"
-                              className="text-sm"
-                            />
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs text-muted-foreground">Contatos vinculados a este CNPJ</Label>
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => {
+                                    const arr = [...form.cnpjs_vinculados];
+                                    const current = getVinculadoContacts(arr[i] as CnpjVinculado);
+                                    arr[i] = {
+                                      ...arr[i],
+                                      contacts: [...current, { name: "", email: "" }],
+                                      contact_name: arr[i].contact_name ?? null,
+                                      email: arr[i].email ?? null,
+                                    };
+                                    setForm({ ...form, cnpjs_vinculados: arr });
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" /> Adicionar contato
+                                </Button>
+                              )}
+                            </div>
+                            {(() => {
+                              const contactsList = getVinculadoContacts(v as CnpjVinculado);
+                              if (contactsList.length === 0) {
+                                return (
+                                  <p className="text-xs text-muted-foreground italic">Nenhum contato vinculado.</p>
+                                );
+                              }
+                              return contactsList.map((c, ci) => (
+                                <div key={ci} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                                  <Input
+                                    value={c.name}
+                                    onChange={(e) => {
+                                      const arr = [...form.cnpjs_vinculados];
+                                      const list = [...getVinculadoContacts(arr[i] as CnpjVinculado)];
+                                      list[ci] = { ...list[ci], name: e.target.value };
+                                      arr[i] = {
+                                        ...arr[i],
+                                        contacts: list,
+                                        contact_name: list[0]?.name ?? null,
+                                        email: list[0]?.email ?? null,
+                                      };
+                                      setForm({ ...form, cnpjs_vinculados: arr });
+                                    }}
+                                    placeholder="Nome do contato"
+                                    className="text-sm"
+                                  />
+                                  <Input
+                                    value={c.email ?? ""}
+                                    onChange={(e) => {
+                                      const arr = [...form.cnpjs_vinculados];
+                                      const list = [...getVinculadoContacts(arr[i] as CnpjVinculado)];
+                                      list[ci] = { ...list[ci], email: e.target.value };
+                                      arr[i] = {
+                                        ...arr[i],
+                                        contacts: list,
+                                        contact_name: list[0]?.name ?? null,
+                                        email: list[0]?.email ?? null,
+                                      };
+                                      setForm({ ...form, cnpjs_vinculados: arr });
+                                    }}
+                                    placeholder="Email do contato"
+                                    className="text-sm"
+                                  />
+                                  {canEdit && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-9 w-9"
+                                      onClick={() => {
+                                        const arr = [...form.cnpjs_vinculados];
+                                        const list = getVinculadoContacts(arr[i] as CnpjVinculado).filter((_, idx) => idx !== ci);
+                                        arr[i] = {
+                                          ...arr[i],
+                                          contacts: list,
+                                          contact_name: list[0]?.name ?? null,
+                                          email: list[0]?.email ?? null,
+                                        };
+                                        setForm({ ...form, cnpjs_vinculados: arr });
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ));
+                            })()}
                           </div>
                         </div>
                       ))}
@@ -915,6 +987,7 @@ export default function ClienteDetail() {
                       <TableHead>Cargo</TableHead>
                       <TableHead className="hidden md:table-cell">Email</TableHead>
                       <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                      <TableHead className="hidden lg:table-cell">Empresas secundárias</TableHead>
                       <TableHead className="hidden lg:table-cell">Última interação</TableHead>
                       <TableHead className="w-16"></TableHead>
                     </TableRow>
@@ -937,6 +1010,21 @@ export default function ClienteDetail() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm">
                           {c.phone || "—"}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm">
+                          {(() => {
+                            const linked = findVinculadosForContact(form.cnpjs_vinculados as any, c.name);
+                            if (linked.length === 0) return <span className="text-muted-foreground">—</span>;
+                            return (
+                              <div className="flex flex-wrap gap-1">
+                                {linked.map((v, idx) => (
+                                  <Badge key={idx} variant="secondary" className="font-normal">
+                                    {v.razao_social || v.label || v.cnpj}
+                                  </Badge>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm">
                           {c.last_interaction_at

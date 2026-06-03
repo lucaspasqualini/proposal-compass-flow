@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Users, Linkedin, Phone, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/exportExcel";
+import { findVinculadosForContact } from "@/lib/cnpjVinculados";
 
 type SortKey = "name" | "cargo" | "client_name" | "last_interaction_at";
 type SortDir = "asc" | "desc";
@@ -23,7 +25,7 @@ type Row = {
   phone: string | null;
   email: string | null;
   last_interaction_at: string | null;
-  clients: { id: string; name: string } | null;
+  clients: { id: string; name: string; cnpjs_vinculados?: any } | null;
 };
 
 export default function Contatos() {
@@ -37,7 +39,7 @@ export default function Contatos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_contacts")
-        .select("id, client_id, name, cargo, linkedin, phone, email, last_interaction_at, clients(id, name)")
+        .select("id, client_id, name, cargo, linkedin, phone, email, last_interaction_at, clients(id, name, cnpjs_vinculados)")
         .order("name");
       if (error) throw error;
       return data as unknown as Row[];
@@ -100,6 +102,9 @@ export default function Contatos() {
               "Telefone": c.phone ?? "",
               "Email": c.email ?? "",
               "Empresa": c.clients?.name ?? "",
+              "Empresas Secundárias": findVinculadosForContact(c.clients?.cnpjs_vinculados, c.name)
+                .map((v) => v.razao_social || v.label || v.cnpj)
+                .join("; "),
               "Última Interação": c.last_interaction_at ? formatDate(c.last_interaction_at) : "",
             }));
             exportToExcel(rows, "contatos");
@@ -151,6 +156,7 @@ export default function Contatos() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("client_name")}>
                       <span className="flex items-center">Empresa <SortIcon col="client_name" /></span>
                     </TableHead>
+                    <TableHead>Empresas secundárias</TableHead>
                     <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort("last_interaction_at")}>
                       <span className="flex items-center">Última Interação <SortIcon col="last_interaction_at" /></span>
                     </TableHead>
@@ -159,7 +165,7 @@ export default function Contatos() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         Nenhum contato encontrado
                       </TableCell>
                     </TableRow>
@@ -203,6 +209,21 @@ export default function Contatos() {
                             {c.clients.name}
                           </button>
                         ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {(() => {
+                          const linked = findVinculadosForContact(c.clients?.cnpjs_vinculados, c.name);
+                          if (linked.length === 0) return <span className="text-muted-foreground">—</span>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {linked.map((v, i) => (
+                                <Badge key={i} variant="secondary" className="font-normal">
+                                  {v.razao_social || v.label || v.cnpj}
+                                </Badge>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {c.last_interaction_at ? formatDate(c.last_interaction_at) : "—"}
