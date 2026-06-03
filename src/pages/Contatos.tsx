@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Users, Linkedin, Phone, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/exportExcel";
+import { findVinculadosForContact } from "@/lib/cnpjVinculados";
 
 type SortKey = "name" | "cargo" | "client_name" | "last_interaction_at";
 type SortDir = "asc" | "desc";
