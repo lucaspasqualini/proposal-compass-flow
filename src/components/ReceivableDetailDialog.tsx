@@ -20,6 +20,7 @@ import { ptBR } from "date-fns/locale";
 import ContactCombobox from "@/components/ContactCombobox";
 import { supabase } from "@/integrations/supabase/client";
 import { lookupCnpj } from "@/lib/cnpjLookup";
+import { upsertVinculadoContact, type CnpjVinculado } from "@/lib/cnpjVinculados";
 
 import { computeLancadoDefaults } from "@/lib/lancadoDefaults";
 
