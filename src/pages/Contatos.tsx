@@ -39,7 +39,7 @@ export default function Contatos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_contacts")
-        .select("id, client_id, name, cargo, linkedin, phone, email, last_interaction_at, clients(id, name)")
+        .select("id, client_id, name, cargo, linkedin, phone, email, last_interaction_at, clients(id, name, cnpjs_vinculados)")
         .order("name");
       if (error) throw error;
       return data as unknown as Row[];
