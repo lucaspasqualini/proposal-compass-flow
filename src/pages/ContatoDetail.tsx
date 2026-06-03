@@ -271,29 +271,71 @@ export default function ContatoDetail() {
         </Card>
       )}
 
-      {linkedSecondary.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Building2 className="h-5 w-5" /> Empresas Secundárias
-              <Badge variant="secondary" className="ml-1">{linkedSecondary.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground mb-3">
-              CNPJs adicionais da empresa onde este contato está vinculado.
-            </p>
-            <div className="space-y-2">
-              {linkedSecondary.map((v, i) => (
-                <div key={i} className="rounded-md border p-3 text-sm">
-                  <div className="font-medium">{v.razao_social || v.label || "—"}</div>
-                  <div className="font-mono text-xs text-muted-foreground">{v.cnpj}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {(() => {
+        const allSecondary: CnpjVinculado[] = Array.isArray(clientCnpjs) ? (clientCnpjs as CnpjVinculado[]) : [];
+        if (allSecondary.length === 0) return null;
+        const contactName = contact?.name ?? "";
+        const isLinked = (v: CnpjVinculado) =>
+          getVinculadoContacts(v).some(
+            (c) => (c.name || "").trim().toLowerCase() === contactName.trim().toLowerCase()
+          );
+        const toggle = async (idx: number, checked: boolean) => {
+          if (!clientId || !contactName) return;
+          const next = allSecondary.map((v, i) => {
+            if (i !== idx) return v;
+            return checked
+              ? upsertVinculadoContact(v, { name: contactName, email: contact?.email ?? null })
+              : removeVinculadoContact(v, contactName);
+          });
+          try {
+            await updateClient.mutateAsync({ id: clientId, cnpjs_vinculados: next as any });
+            queryClient.invalidateQueries({ queryKey: ["client-cnpjs-vinculados", clientId] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+            toast({ title: checked ? "Empresa secundária vinculada" : "Empresa secundária desvinculada" });
+          } catch {
+            toast({ title: "Erro ao atualizar vínculo", variant: "destructive" });
+          }
+        };
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Building2 className="h-5 w-5" /> Empresas Secundárias
+                <Badge variant="secondary" className="ml-1">{linkedSecondary.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Marque os CNPJs secundários da empresa aos quais este contato está vinculado.
+              </p>
+              <div className="space-y-2">
+                {allSecondary.map((v, i) => {
+                  const linked = isLinked(v);
+                  return (
+                    <label
+                      key={i}
+                      className={`flex items-start gap-3 rounded-md border p-3 text-sm ${canEdit ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                    >
+                      <Checkbox
+                        checked={linked}
+                        disabled={!canEdit || updateClient.isPending}
+                        onCheckedChange={(c) => toggle(i, !!c)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">
+                          {v.razao_social || v.label || "—"}
+                        </div>
+                        <div className="font-mono text-xs text-muted-foreground">{v.cnpj}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
 
       <fieldset disabled={!canEdit} className="contents">
