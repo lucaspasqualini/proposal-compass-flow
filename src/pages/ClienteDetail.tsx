@@ -987,6 +987,7 @@ export default function ClienteDetail() {
                       <TableHead>Cargo</TableHead>
                       <TableHead className="hidden md:table-cell">Email</TableHead>
                       <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                      <TableHead className="hidden lg:table-cell">Empresas secundárias</TableHead>
                       <TableHead className="hidden lg:table-cell">Última interação</TableHead>
                       <TableHead className="w-16"></TableHead>
                     </TableRow>
