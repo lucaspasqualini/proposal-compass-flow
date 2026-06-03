@@ -1,24 +1,27 @@
-O erro aparece porque o card está entendendo que a parcela não tem cliente carregado no objeto da tela, então ele salva apenas os dados da parcela e bloqueia o salvamento de CNPJ/contato/email para evitar gravar em cliente errado.
+## Mudanças em `src/pages/ContatoDetail.tsx`
 
-Pelo banco, a parcela MA_0077_26 está sim vinculada ao cliente J&F S.A. (`client_id` preenchido). Portanto, o problema está na atualização/cache do frontend: após salvar a parcela, o objeto `receivable` usado pelo card fica sem `clients.id` em algum momento e dispara essa validação.
+### 1. Reordenar
+- Mover o card "Empresas Secundárias" para **depois** do bloco `Dados do Contato` (e antes de "Última Interação"), reduzindo o destaque visual.
 
-Plano de correção:
+### 2. Simplificar a aparência
+- Remover o ícone grande e o `Badge` de contagem do header.
+- Trocar o `CardTitle text-lg` por um título mais discreto (`text-sm font-medium text-muted-foreground`), no mesmo estilo de um sublabel.
+- Reduzir paddings internos do card.
 
-1. Ajustar o `Salvar alterações` para usar um `clientId` seguro:
-   - priorizar `receivable.client_id`;
-   - usar `receivable.clients.id` apenas como fallback;
-   - não depender só do objeto relacional `clients` carregado no cache.
+### 3. Substituir checkboxes por dropdown + campo tipo "Observações"
+- Trocar a lista de `<label><Checkbox/></label>` por um **dropdown multi-seleção** usando `Popover` + `Command` (`CommandInput`, `CommandList`, `CommandItem`), o mesmo padrão usado em `ContactCombobox.tsx` / `ReceivableDetailDialog`.
+  - O dropdown lista todos os CNPJs secundários do cliente (`razão social — CNPJ`).
+  - Cada item exibe um check à esquerda quando já está vinculado ao contato.
+  - Clicar em um item alterna o vínculo (mesma lógica de `upsertVinculadoContact` / `removeVinculadoContact` já existente).
+- Abaixo do dropdown, exibir um **campo somente-leitura no estilo do `Textarea` de Observações** (mesma borda, padding, `min-h`) contendo os nomes selecionados como **chips/badges**:
+  - Cada chip mostra a razão social (ou CNPJ se faltar razão social).
+  - O símbolo "×" aparece **apenas no hover do chip** (via `opacity-0 group-hover:opacity-100`, transição suave). Clicar no "×" remove o vínculo (chama o mesmo `toggle` com `checked=false`).
+  - Quando vazio, exibe placeholder discreto: "Nenhuma empresa secundária vinculada".
 
-2. Salvar contato/email/CNPJ mesmo quando o relacionamento `clients` vier incompleto:
-   - buscar/usar os dados atuais do cliente pelo `client_id` antes de montar a atualização;
-   - atualizar `clients.contact_name`, `clients.email` e `clients.cnpjs_vinculados` corretamente.
+### 4. Preservar a opção "Adicionar novo CNPJ"
+- Manter o bloco "Adicionar nova empresa secundária" abaixo, com a mesma aparência simplificada (borda tracejada, label pequeno). A lógica de `lookupCnpj` + criação continua igual.
 
-3. Corrigir o cache após salvar:
-   - invalidar `receivables`, `clients` e `client_contacts`;
-   - evitar que o card continue com dados antigos após a atualização da parcela.
-
-4. Melhorar a mensagem de erro:
-   - só mostrar “cliente não vinculado” quando `receivable.client_id` realmente estiver vazio;
-   - se houver falha real ao atualizar cliente/contato, mostrar o erro específico.
-
-Resultado esperado: no projeto MA_0077_26, o CNPJ `08.505.736/0001-23`, o contato Letícia Melon e o email serão salvos no cadastro do cliente/contatos, e o CNPJ aparecerá em Empresas > Dados Cadastrais > CNPJs vinculados.
+### Detalhes técnicos
+- Nenhuma alteração de dados/backend; toda a lógica de `cnpjs_vinculados` em `useUpdateClient` permanece.
+- Reutilizar `Command`/`Popover` de `@/components/ui` (já importados em outros pontos do projeto).
+- Manter `useUpdateClient`, `lookupCnpj`, `upsertVinculadoContact`, `removeVinculadoContact` como estão.
