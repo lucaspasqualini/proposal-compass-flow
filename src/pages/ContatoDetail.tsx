@@ -56,6 +56,9 @@ import {
   FileText,
   Plus,
   Loader2,
+  Check,
+  ChevronsUpDown,
+  X,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { findVinculadosForContact, getVinculadoContacts, upsertVinculadoContact, removeVinculadoContact, type CnpjVinculado } from "@/lib/cnpjVinculados";
