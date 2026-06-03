@@ -24,6 +24,7 @@ const Alocacao = lazy(() => import("@/pages/Alocacao"));
 const Templates = lazy(() => import("@/pages/Templates"));
 const ContasReceber = lazy(() => import("@/pages/ContasReceber"));
 const Usuarios = lazy(() => import("@/pages/Usuarios"));
+const Enriquecimento = lazy(() => import("@/pages/Enriquecimento"));
 const AguardandoAcesso = lazy(() => import("@/pages/AguardandoAcesso"));
 const Instalar = lazy(() => import("@/pages/Instalar"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
