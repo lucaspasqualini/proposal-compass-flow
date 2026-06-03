@@ -53,6 +53,23 @@ export function upsertVinculadoContact(
   };
 }
 
+/** Remove um contato (por nome, case-insensitive) de uma entrada vinculada. */
+export function removeVinculadoContact(
+  v: CnpjVinculado,
+  contactName: string
+): CnpjVinculado {
+  const target = norm(contactName);
+  if (!target) return v;
+  const current = getVinculadoContacts(v).filter((c) => norm(c.name) !== target);
+  const first = current[0];
+  return {
+    ...v,
+    contacts: current,
+    contact_name: first?.name ?? null,
+    email: first?.email ?? null,
+  };
+}
+
 /** Para um contato (por nome), retorna os CNPJs vinculados onde ele aparece. */
 export function findVinculadosForContact(
   vinculados: any,
