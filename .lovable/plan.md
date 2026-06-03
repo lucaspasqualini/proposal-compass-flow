@@ -1,27 +1,81 @@
-## Mudanças em `src/pages/ContatoDetail.tsx`
+# Enriquecimento de CNPJs por Excel
 
-### 1. Reordenar
-- Mover o card "Empresas Secundárias" para **depois** do bloco `Dados do Contato` (e antes de "Última Interação"), reduzindo o destaque visual.
+Nova funcionalidade que recebe uma planilha, detecta a coluna de CNPJ, busca para cada empresa **razão social, indústria (CNAE), site oficial e LinkedIn**, e devolve um Excel enriquecido. Sem persistência no banco — fluxo 100% em memória + download.
 
-### 2. Simplificar a aparência
-- Remover o ícone grande e o `Badge` de contagem do header.
-- Trocar o `CardTitle text-lg` por um título mais discreto (`text-sm font-medium text-muted-foreground`), no mesmo estilo de um sublabel.
-- Reduzir paddings internos do card.
+## Arquitetura
 
-### 3. Substituir checkboxes por dropdown + campo tipo "Observações"
-- Trocar a lista de `<label><Checkbox/></label>` por um **dropdown multi-seleção** usando `Popover` + `Command` (`CommandInput`, `CommandList`, `CommandItem`), o mesmo padrão usado em `ContactCombobox.tsx` / `ReceivableDetailDialog`.
-  - O dropdown lista todos os CNPJs secundários do cliente (`razão social — CNPJ`).
-  - Cada item exibe um check à esquerda quando já está vinculado ao contato.
-  - Clicar em um item alterna o vínculo (mesma lógica de `upsertVinculadoContact` / `removeVinculadoContact` já existente).
-- Abaixo do dropdown, exibir um **campo somente-leitura no estilo do `Textarea` de Observações** (mesma borda, padding, `min-h`) contendo os nomes selecionados como **chips/badges**:
-  - Cada chip mostra a razão social (ou CNPJ se faltar razão social).
-  - O símbolo "×" aparece **apenas no hover do chip** (via `opacity-0 group-hover:opacity-100`, transição suave). Clicar no "×" remove o vínculo (chama o mesmo `toggle` com `checked=false`).
-  - Quando vazio, exibe placeholder discreto: "Nenhuma empresa secundária vinculada".
+```text
+[Upload .xlsx] → [Parse + auto-detect coluna CNPJ]
+       ↓
+[Loop por CNPJ, em lotes paralelos de 5]
+       ↓
+   ┌──────────────────────────────────────────┐
+   │ Edge Function: enrich-cnpj               │
+   │  1. BrasilAPI → razão social + CNAE      │
+   │  2. Firecrawl Search (site oficial)      │
+   │  3. Firecrawl Search (LinkedIn company)  │
+   │  ↳ se Firecrawl 402/credits → Google CSE │
+   └──────────────────────────────────────────┘
+       ↓
+[Tabela com progresso] → [Botão "Exportar Excel"]
+```
 
-### 4. Preservar a opção "Adicionar novo CNPJ"
-- Manter o bloco "Adicionar nova empresa secundária" abaixo, com a mesma aparência simplificada (borda tracejada, label pequeno). A lógica de `lookupCnpj` + criação continua igual.
+## Etapas
 
-### Detalhes técnicos
-- Nenhuma alteração de dados/backend; toda a lógica de `cnpjs_vinculados` em `useUpdateClient` permanece.
-- Reutilizar `Command`/`Popover` de `@/components/ui` (já importados em outros pontos do projeto).
-- Manter `useUpdateClient`, `lookupCnpj`, `upsertVinculadoContact`, `removeVinculadoContact` como estão.
+### 1. Conectores e secrets
+- Conectar **Firecrawl** via Connectors (injeta `FIRECRAWL_API_KEY`).
+- Pedir ao usuário 2 secrets para o fallback: `GOOGLE_CSE_API_KEY` e `GOOGLE_CSE_CX`. Não vou pedir agora — peço quando o build começar.
+
+### 2. Edge function `enrich-cnpj`
+- Input: `{ cnpj: string }`
+- Passo A — BrasilAPI (reaproveita lógica de `search-cnpj`): retorna `razao_social`, `nome_fantasia`, `cnae_principal`, `cnae_descricao`.
+- Passo B — Site oficial:
+  - Tenta `Firecrawl /v2/search` com query `"<razao_social>" site oficial` + filtros para descartar linkedin/facebook/instagram/glassdoor.
+  - Pega o 1º domínio "raiz" plausível.
+- Passo C — LinkedIn:
+  - Firecrawl search `"<razao_social>" site:linkedin.com/company`.
+- Fallback Google CSE: ativa quando Firecrawl responde `402` / `payment required` / `insufficient credits`. Mesmo padrão de queries, endpoint `https://www.googleapis.com/customsearch/v1`.
+- Estado de fallback é mantido em memória do processo da função; cada invocação tenta Firecrawl primeiro e só "lembra" do fail dentro daquela request.
+- Retorna: `{ cnpj, razao_social, nome_fantasia, cnae, industria, site, linkedin, source: 'firecrawl'|'google'|'mixed', errors: [] }`.
+
+### 3. Página `/enriquecimento` (rota nova)
+- Adicionar item no sidebar (`AppSidebar.tsx`), ícone `Search` ou `Sparkles`.
+- Layout:
+  - **Dropzone** de upload (.xlsx/.xls). Usa `xlsx` (já instalado).
+  - **Auto-detect**: procura coluna cujo header contém "CNPJ" (case-insensitive, sem acentos); se não achar, escaneia primeiras 20 linhas por valores com 14 dígitos.
+  - **Preview**: tabela mostrando até 10 linhas e qual coluna foi escolhida, com opção de trocar manualmente.
+  - **Botão "Enriquecer N CNPJs"**.
+- Execução:
+  - Lotes de 5 em paralelo via `Promise.all`, com barra de progresso (`Progress` do shadcn) "X de N".
+  - Cada linha aparece em tempo real com status (✓ ok / ⚠ parcial / ✗ erro) e os campos preenchidos.
+  - Toast no fim com resumo.
+- **Exportar**: gera novo `.xlsx` mantendo as colunas originais + 4 novas (`razao_social`, `cnae`, `site`, `linkedin`). Usa `xlsx` writer.
+
+### 4. UX / detalhes
+- Validação: arquivo > 1000 linhas → aviso (limite recomendado 500).
+- CNPJs inválidos (≠ 14 dígitos após limpar) marcados como erro sem chamar API.
+- Deduplicação automática antes de buscar (mesmo CNPJ repetido = 1 chamada).
+- Cache em memória durante a sessão (Map<cnpj, resultado>) para o caso de o usuário rodar de novo.
+
+## Detalhes técnicos
+
+**Arquivos novos:**
+- `supabase/functions/enrich-cnpj/index.ts`
+- `src/pages/Enriquecimento.tsx`
+- `src/lib/enrichExcel.ts` (parse + auto-detect coluna + export)
+
+**Arquivos editados:**
+- `src/App.tsx` — registrar rota
+- `src/components/AppSidebar.tsx` — novo item de menu
+
+**Dependências:** nenhuma nova; `xlsx` já existe.
+
+**Custo aproximado:** Firecrawl Search ~1 crédito por query × 2 queries por CNPJ = ~1000 créditos para 500 empresas. Google CSE = 100 buscas/dia grátis (200 = 100 empresas/dia no fallback).
+
+## Antes de começar a implementar
+
+Quando aprovar o plano, eu vou:
+1. Pedir para conectar o **Firecrawl** (Connectors).
+2. Pedir os secrets `GOOGLE_CSE_API_KEY` e `GOOGLE_CSE_CX` para o fallback. Instruções de como obter:
+   - API Key: console.cloud.google.com → APIs & Services → Credentials → Create API Key, e habilitar "Custom Search API".
+   - CX: programmablesearchengine.google.com → Create → "Search the entire web" → copiar Search engine ID.
