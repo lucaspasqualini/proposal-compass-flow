@@ -267,6 +267,31 @@ export default function ContatoDetail() {
         </Card>
       )}
 
+      {linkedSecondary.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> Empresas Secundárias
+              <Badge variant="secondary" className="ml-1">{linkedSecondary.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              CNPJs adicionais da empresa onde este contato está vinculado.
+            </p>
+            <div className="space-y-2">
+              {linkedSecondary.map((v, i) => (
+                <div key={i} className="rounded-md border p-3 text-sm">
+                  <div className="font-medium">{v.razao_social || v.label || "—"}</div>
+                  <div className="font-mono text-xs text-muted-foreground">{v.cnpj}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
       <fieldset disabled={!canEdit} className="contents">
         <Card>
           <CardHeader>
