@@ -156,6 +156,7 @@ export default function Contatos() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("client_name")}>
                       <span className="flex items-center">Empresa <SortIcon col="client_name" /></span>
                     </TableHead>
+                    <TableHead>Empresas secundárias</TableHead>
                     <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort("last_interaction_at")}>
                       <span className="flex items-center">Última Interação <SortIcon col="last_interaction_at" /></span>
                     </TableHead>
