@@ -80,7 +80,6 @@ export const ROLE_ROUTES: Record<AppRole, string[]> = {
     "/contas-a-receber",
     "/templates",
     "/usuarios",
-    "/enriquecimento",
   ],
   gerente_projetos: [
     "/propostas",
@@ -90,7 +89,6 @@ export const ROLE_ROUTES: Record<AppRole, string[]> = {
     "/alocacao",
     "/contas-a-receber",
     "/templates",
-    "/enriquecimento",
   ],
   consultor_projetos: [
     "/propostas",
