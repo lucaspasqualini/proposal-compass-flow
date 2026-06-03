@@ -56,6 +56,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { findVinculadosForContact } from "@/lib/cnpjVinculados";
 
 export default function ContatoDetail() {
   const { clientId, contactId } = useParams();
