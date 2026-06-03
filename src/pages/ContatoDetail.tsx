@@ -56,7 +56,9 @@ import {
   FileText,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { findVinculadosForContact } from "@/lib/cnpjVinculados";
+import { findVinculadosForContact, getVinculadoContacts, upsertVinculadoContact, removeVinculadoContact, type CnpjVinculado } from "@/lib/cnpjVinculados";
+import { useUpdateClient } from "@/hooks/useClients";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ContatoDetail() {
   const { clientId, contactId } = useParams();
