@@ -45,6 +45,7 @@ const allItems = [
   { title: "Alocação", url: "/alocacao", icon: CalendarRange },
   { title: "Contas a Receber", url: "/contas-a-receber", icon: Receipt },
   { title: "Templates", url: "/templates", icon: LayoutTemplate },
+  { title: "Enriquecimento", url: "/enriquecimento", icon: Sparkles },
   { title: "Usuários", url: "/usuarios", icon: ShieldCheck },
 ];
 
