@@ -124,6 +124,9 @@ export default function ContatoDetail() {
     client_id: "" as string,
   });
 
+  const [novoCnpj, setNovoCnpj] = useState("");
+  const [addingCnpj, setAddingCnpj] = useState(false);
+
   useEffect(() => {
     if (contact) {
       setForm({
