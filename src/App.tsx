@@ -90,6 +90,7 @@ const App = () => (
                 <Route path="/contas-a-receber" element={<RoleProtectedRoute><ContasReceber /></RoleProtectedRoute>} />
                 <Route path="/templates" element={<RoleProtectedRoute><Templates /></RoleProtectedRoute>} />
                 <Route path="/usuarios" element={<RoleProtectedRoute allowed={["socio"]}><Usuarios /></RoleProtectedRoute>} />
+                <Route path="/enriquecimento" element={<RoleProtectedRoute><Enriquecimento /></RoleProtectedRoute>} />
                 <Route path="/instalar" element={<Instalar />} />
               </Route>
               <Route path="*" element={<NotFound />} />
