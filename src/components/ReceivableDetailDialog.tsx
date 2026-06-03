@@ -332,7 +332,7 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
 
         // CNPJ adicional → cnpjs_vinculados (com razão social vinda do plugin + contato)
         if (isCnpjSecundario) {
-          const vinculados: any[] = Array.isArray(currentClient.cnpjs_vinculados)
+          const vinculados: CnpjVinculado[] = Array.isArray(currentClient.cnpjs_vinculados)
             ? (currentClient.cnpjs_vinculados as any[])
             : [];
           const idx = vinculados.findIndex(
@@ -344,18 +344,25 @@ export default function ReceivableDetailDialog({ receivable, parcelaLabel, open,
           const razaoSocial = billingRazaoSocial || lookup?.razao_social || (idx >= 0 ? vinculados[idx]?.razao_social : null) || null;
           billingRazaoSocial = razaoSocial;
 
-          const novaEntrada = {
-            cnpj: novoCnpj,
-            razao_social: razaoSocial,
-            label: idx >= 0 ? vinculados[idx]?.label ?? null : null,
-            contact_name: (contato || "").trim() || (idx >= 0 ? vinculados[idx]?.contact_name : null) || null,
-            email: (email || "").trim() || (idx >= 0 ? vinculados[idx]?.email : null) || null,
-            added_from: idx >= 0 ? vinculados[idx]?.added_from || "receivable" : "receivable",
-            added_at: idx >= 0 ? vinculados[idx]?.added_at || new Date().toISOString() : new Date().toISOString(),
-          };
+          const base: CnpjVinculado =
+            idx >= 0
+              ? { ...vinculados[idx], cnpj: novoCnpj, razao_social: razaoSocial }
+              : {
+                  cnpj: novoCnpj,
+                  razao_social: razaoSocial,
+                  label: null,
+                  contacts: [],
+                  added_from: "receivable",
+                  added_at: new Date().toISOString(),
+                };
+
+          // Faz upsert do contato (sem sobrescrever os demais já existentes)
+          const novaEntrada = (contato || "").trim()
+            ? upsertVinculadoContact(base, { name: (contato || "").trim(), email: (email || "").trim() || null })
+            : base;
 
           const novosVinculados = [...vinculados];
-          if (idx >= 0) novosVinculados[idx] = { ...vinculados[idx], ...novaEntrada };
+          if (idx >= 0) novosVinculados[idx] = novaEntrada;
           else novosVinculados.push(novaEntrada);
 
           clientUpdates.cnpjs_vinculados = novosVinculados;
