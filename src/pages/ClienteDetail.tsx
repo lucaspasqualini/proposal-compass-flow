@@ -1012,6 +1012,20 @@ export default function ClienteDetail() {
                           {c.phone || "—"}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm">
+                          {(() => {
+                            const linked = findVinculadosForContact(form.cnpjs_vinculados as any, c.name);
+                            if (linked.length === 0) return <span className="text-muted-foreground">—</span>;
+                            return (
+                              <div className="flex flex-wrap gap-1">
+                                {linked.map((v, idx) => (
+                                  <Badge key={idx} variant="secondary" className="font-normal">
+                                    {v.razao_social || v.label || v.cnpj}
+                                  </Badge>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        <TableCell className="hidden lg:table-cell text-sm">
                           {c.last_interaction_at
                             ? `${formatDate(c.last_interaction_at)}${
                                 c.last_interaction_type
