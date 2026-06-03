@@ -102,6 +102,9 @@ export default function Contatos() {
               "Telefone": c.phone ?? "",
               "Email": c.email ?? "",
               "Empresa": c.clients?.name ?? "",
+              "Empresas Secundárias": findVinculadosForContact(c.clients?.cnpjs_vinculados, c.name)
+                .map((v) => v.razao_social || v.label || v.cnpj)
+                .join("; "),
               "Última Interação": c.last_interaction_at ? formatDate(c.last_interaction_at) : "",
             }));
             exportToExcel(rows, "contatos");
