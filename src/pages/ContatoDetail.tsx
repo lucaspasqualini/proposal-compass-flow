@@ -54,11 +54,14 @@ import {
   Building2,
   Clock,
   FileText,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { findVinculadosForContact, getVinculadoContacts, upsertVinculadoContact, removeVinculadoContact, type CnpjVinculado } from "@/lib/cnpjVinculados";
 import { useUpdateClient } from "@/hooks/useClients";
 import { Checkbox } from "@/components/ui/checkbox";
+import { lookupCnpj } from "@/lib/cnpjLookup";
 
 export default function ContatoDetail() {
   const { clientId, contactId } = useParams();
@@ -120,6 +123,9 @@ export default function ContatoDetail() {
     last_interaction_note: "",
     client_id: "" as string,
   });
+
+  const [novoCnpj, setNovoCnpj] = useState("");
+  const [addingCnpj, setAddingCnpj] = useState(false);
 
   useEffect(() => {
     if (contact) {
@@ -273,7 +279,6 @@ export default function ContatoDetail() {
 
       {(() => {
         const allSecondary: CnpjVinculado[] = Array.isArray(clientCnpjs) ? (clientCnpjs as CnpjVinculado[]) : [];
-        if (allSecondary.length === 0) return null;
         const contactName = contact?.name ?? "";
         const isLinked = (v: CnpjVinculado) =>
           getVinculadoContacts(v).some(
@@ -296,6 +301,45 @@ export default function ContatoDetail() {
             toast({ title: "Erro ao atualizar vínculo", variant: "destructive" });
           }
         };
+        const handleAddNew = async () => {
+          if (!clientId || !contactName) return;
+          const digits = novoCnpj.replace(/\D/g, "");
+          if (digits.length !== 14) {
+            toast({ title: "CNPJ inválido", description: "Informe 14 dígitos.", variant: "destructive" });
+            return;
+          }
+          if (allSecondary.some((v) => (v.cnpj || "").replace(/\D/g, "") === digits)) {
+            toast({ title: "CNPJ já cadastrado", variant: "destructive" });
+            return;
+          }
+          setAddingCnpj(true);
+          try {
+            const lookup = await lookupCnpj(digits);
+            const novaEntrada: CnpjVinculado = upsertVinculadoContact(
+              {
+                cnpj: digits,
+                razao_social: lookup?.razao_social || "",
+                label: lookup?.nome_fantasia || "",
+                contacts: [],
+                added_from: "contact",
+              },
+              { name: contactName, email: contact?.email ?? null }
+            );
+            const next = [...allSecondary, novaEntrada];
+            await updateClient.mutateAsync({ id: clientId, cnpjs_vinculados: next as any });
+            queryClient.invalidateQueries({ queryKey: ["client-cnpjs-vinculados", clientId] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+            setNovoCnpj("");
+            toast({
+              title: "Empresa secundária adicionada",
+              description: lookup?.razao_social || undefined,
+            });
+          } catch {
+            toast({ title: "Erro ao adicionar CNPJ", variant: "destructive" });
+          } finally {
+            setAddingCnpj(false);
+          }
+        };
         return (
           <Card>
             <CardHeader>
@@ -304,34 +348,65 @@ export default function ContatoDetail() {
                 <Badge variant="secondary" className="ml-1">{linkedSecondary.length}</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground mb-3">
-                Marque os CNPJs secundários da empresa aos quais este contato está vinculado.
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Marque os CNPJs secundários da empresa aos quais este contato está vinculado, ou adicione um novo.
               </p>
-              <div className="space-y-2">
-                {allSecondary.map((v, i) => {
-                  const linked = isLinked(v);
-                  return (
-                    <label
-                      key={i}
-                      className={`flex items-start gap-3 rounded-md border p-3 text-sm ${canEdit ? "cursor-pointer hover:bg-muted/40" : ""}`}
-                    >
-                      <Checkbox
-                        checked={linked}
-                        disabled={!canEdit || updateClient.isPending}
-                        onCheckedChange={(c) => toggle(i, !!c)}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {v.razao_social || v.label || "—"}
+              {allSecondary.length > 0 && (
+                <div className="space-y-2">
+                  {allSecondary.map((v, i) => {
+                    const linked = isLinked(v);
+                    return (
+                      <label
+                        key={i}
+                        className={`flex items-start gap-3 rounded-md border p-3 text-sm ${canEdit ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                      >
+                        <Checkbox
+                          checked={linked}
+                          disabled={!canEdit || updateClient.isPending}
+                          onCheckedChange={(c) => toggle(i, !!c)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">
+                            {v.razao_social || v.label || "—"}
+                          </div>
+                          <div className="font-mono text-xs text-muted-foreground">{v.cnpj}</div>
                         </div>
-                        <div className="font-mono text-xs text-muted-foreground">{v.cnpj}</div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {canEdit && (
+                <div className="rounded-md border border-dashed p-3 space-y-2">
+                  <Label className="text-xs">Adicionar nova empresa secundária</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="CNPJ (apenas números ou formatado)"
+                      value={novoCnpj}
+                      onChange={(e) => setNovoCnpj(e.target.value)}
+                      disabled={addingCnpj}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddNew}
+                      disabled={addingCnpj || novoCnpj.replace(/\D/g, "").length !== 14}
+                    >
+                      {addingCnpj ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    A razão social será buscada automaticamente e o contato será vinculado a este CNPJ.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         );
