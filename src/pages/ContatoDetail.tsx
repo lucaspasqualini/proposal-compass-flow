@@ -85,6 +85,25 @@ export default function ContatoDetail() {
     },
   });
 
+  const { data: clientCnpjs } = useQuery({
+    queryKey: ["client-cnpjs-vinculados", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("cnpjs_vinculados")
+        .eq("id", clientId!)
+        .single();
+      if (error) throw error;
+      return (data as any)?.cnpjs_vinculados ?? [];
+    },
+  });
+
+  const linkedSecondary = useMemo(
+    () => findVinculadosForContact(clientCnpjs, contact?.name ?? ""),
+    [clientCnpjs, contact?.name]
+  );
+
   const [form, setForm] = useState({
     name: "",
     cargo: "",
