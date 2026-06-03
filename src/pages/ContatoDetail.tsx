@@ -60,7 +60,8 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { findVinculadosForContact, getVinculadoContacts, upsertVinculadoContact, removeVinculadoContact, type CnpjVinculado } from "@/lib/cnpjVinculados";
 import { useUpdateClient } from "@/hooks/useClients";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { lookupCnpj } from "@/lib/cnpjLookup";
 
 export default function ContatoDetail() {
