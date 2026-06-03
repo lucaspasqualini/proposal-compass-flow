@@ -714,7 +714,7 @@ export default function ClienteDetail() {
                         onClick={() =>
                           setForm({
                             ...form,
-                            cnpjs_vinculados: [...form.cnpjs_vinculados, { cnpj: "", razao_social: "", label: "", contact_name: "", email: "" }],
+                            cnpjs_vinculados: [...form.cnpjs_vinculados, { cnpj: "", razao_social: "", label: "", contacts: [] }],
                           })
                         }
                       >
