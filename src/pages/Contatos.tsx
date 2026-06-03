@@ -25,7 +25,7 @@ type Row = {
   phone: string | null;
   email: string | null;
   last_interaction_at: string | null;
-  clients: { id: string; name: string } | null;
+  clients: { id: string; name: string; cnpjs_vinculados?: any } | null;
 };
 
 export default function Contatos() {
