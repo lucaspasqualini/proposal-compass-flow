@@ -1025,6 +1025,7 @@ export default function ClienteDetail() {
                               </div>
                             );
                           })()}
+                        </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm">
                           {c.last_interaction_at
                             ? `${formatDate(c.last_interaction_at)}${
