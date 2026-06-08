@@ -207,6 +207,7 @@ export default function Alocacao() {
             <SelectValue placeholder="Colaborador" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">Todos Colaboradores</SelectItem>
             <SelectItem value="none">Sem Alocação</SelectItem>
             {teamMembers?.map((m) => (
               <SelectItem key={m.id} value={m.id}>
