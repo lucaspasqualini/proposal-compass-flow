@@ -114,7 +114,9 @@ export default function Alocacao() {
     return projects
       .filter((p: any) => {
         if (!allowedStatuses.includes(p.status)) return false;
-        if (selectedMember !== "all") {
+        if (selectedMember === "none") {
+          if (p.project_allocations && p.project_allocations.length > 0) return false;
+        } else if (selectedMember !== "all") {
           const hasMatch = p.project_allocations?.some(
             (a: any) => a.team_member_id === selectedMember
           );
@@ -206,6 +208,7 @@ export default function Alocacao() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos Colaboradores</SelectItem>
+            <SelectItem value="none">Sem Alocação</SelectItem>
             {teamMembers?.map((m) => (
               <SelectItem key={m.id} value={m.id}>
                 {m.name}
