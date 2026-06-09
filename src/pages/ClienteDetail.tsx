@@ -85,6 +85,11 @@ import ProjectDetailDialog from "@/components/ProjectDetailDialog";
 import ProposalDetailDialog from "@/components/ProposalDetailDialog";
 import { ClientLogo } from "@/components/ClientLogo";
 import { useUserRole } from "@/hooks/useUserRole";
+import {
+  InlineSetorEdit,
+  InlineSubsetorEdit,
+  InlineUfEdit,
+} from "@/components/InlineSectorEdit";
 
 const RECEIVABLE_STATUS_LABELS: Record<string, string> = {
   pendente: "Pendente",
