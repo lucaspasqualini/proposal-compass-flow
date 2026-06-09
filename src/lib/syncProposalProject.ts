@@ -50,6 +50,7 @@ export async function syncProposalProjectStatus({
         value: proposal.value,
         parcelas: effectiveParcelas,
         payment_type: proposal.payment_type ?? null,
+        data_aprovacao: proposal.data_aprovacao ?? null,
       });
 
       return "reactivated";
@@ -73,6 +74,7 @@ export async function syncProposalProjectStatus({
       value: proposal.value,
       parcelas: effectiveParcelas,
       payment_type: proposal.payment_type ?? null,
+      data_aprovacao: proposal.data_aprovacao ?? null,
     });
 
     return "created";
