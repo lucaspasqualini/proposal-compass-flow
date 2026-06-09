@@ -131,7 +131,6 @@ export type Database = {
           data_abertura: string | null
           email: string | null
           id: string
-          industria: string | null
           linkedin: string | null
           name: string
           natureza_juridica: string | null
@@ -141,7 +140,10 @@ export type Database = {
           porte: string | null
           qsa: Json | null
           razao_social: string | null
+          setor: string | null
           situacao_cadastral: string | null
+          subsetor: string | null
+          uf: string | null
           updated_at: string
           website: string | null
         }
@@ -157,7 +159,6 @@ export type Database = {
           data_abertura?: string | null
           email?: string | null
           id?: string
-          industria?: string | null
           linkedin?: string | null
           name: string
           natureza_juridica?: string | null
@@ -167,7 +168,10 @@ export type Database = {
           porte?: string | null
           qsa?: Json | null
           razao_social?: string | null
+          setor?: string | null
           situacao_cadastral?: string | null
+          subsetor?: string | null
+          uf?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -183,7 +187,6 @@ export type Database = {
           data_abertura?: string | null
           email?: string | null
           id?: string
-          industria?: string | null
           linkedin?: string | null
           name?: string
           natureza_juridica?: string | null
@@ -193,7 +196,10 @@ export type Database = {
           porte?: string | null
           qsa?: Json | null
           razao_social?: string | null
+          setor?: string | null
           situacao_cadastral?: string | null
+          subsetor?: string | null
+          uf?: string | null
           updated_at?: string
           website?: string | null
         }
