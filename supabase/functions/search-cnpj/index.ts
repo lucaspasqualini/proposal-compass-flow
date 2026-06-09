@@ -22,9 +22,12 @@ Deno.serve(async (req) => {
     const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
 
     if (!response.ok) {
+      const msg = response.status === 400
+        ? "CNPJ inválido (dígitos verificadores não conferem)"
+        : "CNPJ não encontrado na Receita Federal";
       return new Response(
-        JSON.stringify({ error: "CNPJ não encontrado" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: msg }),
+        { status: response.status === 400 ? 400 : 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
