@@ -157,7 +157,9 @@ export default function ClienteDetail() {
     phone: "",
     website: "",
     linkedin: "",
-    industria: "",
+    setor: "",
+    subsetor: "",
+    uf: "",
     address: "",
     notes: "",
     capital_social: null as number | null,
@@ -209,7 +211,9 @@ export default function ClienteDetail() {
         phone: client.phone ?? "",
         website: (client as any).website ?? "",
         linkedin: (client as any).linkedin ?? "",
-        industria: (client as any).industria ?? "",
+        setor: (client as any).setor ?? "",
+        subsetor: (client as any).subsetor ?? "",
+        uf: (client as any).uf ?? "",
         address: client.address ?? "",
         notes: client.notes ?? "",
         capital_social: (client as any).capital_social ?? null,
@@ -285,7 +289,9 @@ export default function ClienteDetail() {
         phone: form.phone,
         website: form.website,
         linkedin: form.linkedin,
-        industria: form.industria,
+        setor: form.setor,
+        subsetor: form.subsetor,
+        uf: form.uf,
         address: form.address,
         notes: form.notes,
         capital_social: form.capital_social,
@@ -429,10 +435,14 @@ export default function ClienteDetail() {
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Factory className="h-3.5 w-3.5" />
-                {form.industria ? (
-                  <span>{form.industria}</span>
+                {form.setor ? (
+                  <span>
+                    {form.setor}
+                    {form.subsetor ? ` · ${form.subsetor}` : ""}
+                    {form.uf ? ` · ${form.uf}` : ""}
+                  </span>
                 ) : (
-                  <span className="italic">Indústria não informada</span>
+                  <span className="italic">Setor não informado</span>
                 )}
               </span>
             </div>
@@ -617,12 +627,29 @@ export default function ClienteDetail() {
                   </div>
                   <div className="grid gap-2">
                     <Label className="flex items-center gap-1">
-                      <Factory className="h-3 w-3" /> Indústria
+                      <Factory className="h-3 w-3" /> Setor
                     </Label>
                     <Input
-                      value={form.industria}
-                      onChange={(e) => setForm({ ...form, industria: e.target.value })}
+                      value={form.setor}
+                      onChange={(e) => setForm({ ...form, setor: e.target.value })}
                       placeholder="Ex: Tecnologia, Varejo, Saúde"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Sub-setor</Label>
+                    <Input
+                      value={form.subsetor}
+                      onChange={(e) => setForm({ ...form, subsetor: e.target.value })}
+                      placeholder="Ex: SaaS, E-commerce"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>UF</Label>
+                    <Input
+                      value={form.uf}
+                      onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase().slice(0, 2) })}
+                      maxLength={2}
+                      placeholder="SP"
                     />
                   </div>
                   <div className="grid gap-2">
