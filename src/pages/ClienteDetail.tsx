@@ -440,15 +440,34 @@ export default function ClienteDetail() {
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Factory className="h-3.5 w-3.5" />
-                {form.setor ? (
-                  <span>
-                    {form.setor}
-                    {form.subsetor ? ` · ${form.subsetor}` : ""}
-                    {form.uf ? ` · ${form.uf}` : ""}
-                  </span>
-                ) : (
-                  <span className="italic">Setor não informado</span>
-                )}
+                <InlineSetorEdit
+                  value={form.setor}
+                  disabled={!canEdit}
+                  onChange={(v) => {
+                    const next = { ...form, setor: v, subsetor: "" };
+                    setForm(next);
+                    updateClient.mutate({ id: client.id, setor: v, subsetor: "" } as any);
+                  }}
+                />
+                <span className="text-muted-foreground">·</span>
+                <InlineSubsetorEdit
+                  setor={form.setor}
+                  value={form.subsetor}
+                  disabled={!canEdit}
+                  onChange={(v) => {
+                    setForm({ ...form, subsetor: v });
+                    updateClient.mutate({ id: client.id, subsetor: v } as any);
+                  }}
+                />
+                <span className="text-muted-foreground">·</span>
+                <InlineUfEdit
+                  value={form.uf}
+                  disabled={!canEdit}
+                  onChange={(v) => {
+                    setForm({ ...form, uf: v });
+                    updateClient.mutate({ id: client.id, uf: v } as any);
+                  }}
+                />
               </span>
             </div>
           </div>
