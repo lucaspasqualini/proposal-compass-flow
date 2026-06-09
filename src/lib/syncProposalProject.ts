@@ -10,6 +10,7 @@ type ProjectSyncAction = "created" | "reactivated" | "cancelled" | null;
 type ProposalForSync = Pick<Proposal, "id" | "status" | "title" | "client_id" | "description" | "value"> & {
   parcelas?: any;
   payment_type?: string | null;
+  data_aprovacao?: string | null;
 };
 
 export async function syncProposalProjectStatus({
