@@ -205,39 +205,6 @@ export type Database = {
         }
         Relationships: []
       }
-      clients_import: {
-        Row: {
-          cnpj: string | null
-          linkedin: string | null
-          match_name: string | null
-          new_name: string | null
-          setor: string | null
-          subsetor: string | null
-          uf: string | null
-          website: string | null
-        }
-        Insert: {
-          cnpj?: string | null
-          linkedin?: string | null
-          match_name?: string | null
-          new_name?: string | null
-          setor?: string | null
-          subsetor?: string | null
-          uf?: string | null
-          website?: string | null
-        }
-        Update: {
-          cnpj?: string | null
-          linkedin?: string | null
-          match_name?: string | null
-          new_name?: string | null
-          setor?: string | null
-          subsetor?: string | null
-          uf?: string | null
-          website?: string | null
-        }
-        Relationships: []
-      }
       cnpj_review_queue: {
         Row: {
           client_id: string
