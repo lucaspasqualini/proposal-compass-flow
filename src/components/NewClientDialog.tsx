@@ -36,7 +36,9 @@ const emptyForm = {
   phone: "",
   website: "",
   linkedin: "",
-  industria: "",
+  setor: "",
+  subsetor: "",
+  uf: "",
   address: "",
   notes: "",
   capital_social: null as number | null,
@@ -108,7 +110,9 @@ export default function NewClientDialog({
         phone: form.phone || null,
         website: form.website || null,
         linkedin: form.linkedin || null,
-        industria: form.industria || null,
+        setor: form.setor || null,
+        subsetor: form.subsetor || null,
+        uf: form.uf || null,
         address: form.address || null,
         notes: form.notes || null,
         capital_social: form.capital_social,
@@ -270,11 +274,27 @@ export default function NewClientDialog({
                     />
                   </div>
                   <div className="grid gap-2 sm:col-span-2">
-                    <Label>Indústria</Label>
+                    <Label>Setor</Label>
                     <Input
-                      value={form.industria}
-                      onChange={(e) => setForm({ ...form, industria: e.target.value })}
+                      value={form.setor}
+                      onChange={(e) => setForm({ ...form, setor: e.target.value })}
                       placeholder="Setor de atuação"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Sub-setor</Label>
+                    <Input
+                      value={form.subsetor}
+                      onChange={(e) => setForm({ ...form, subsetor: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>UF</Label>
+                    <Input
+                      value={form.uf}
+                      onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase().slice(0, 2) })}
+                      maxLength={2}
+                      placeholder="SP"
                     />
                   </div>
                 </div>
