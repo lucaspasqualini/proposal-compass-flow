@@ -1,27 +1,45 @@
-## Mudanças em `src/pages/ContatoDetail.tsx`
+## Regra de previsão de NF para propostas por etapas
 
-### 1. Reordenar
-- Mover o card "Empresas Secundárias" para **depois** do bloco `Dados do Contato` (e antes de "Última Interação"), reduzindo o destaque visual.
+Quando uma proposta com `payment_type = "etapas"` for marcada como **ganha**, preencher automaticamente o campo `previsao_nf` de cada parcela com base na `data_aprovacao` da proposta:
 
-### 2. Simplificar a aparência
-- Remover o ícone grande e o `Badge` de contagem do header.
-- Trocar o `CardTitle text-lg` por um título mais discreto (`text-sm font-medium text-muted-foreground`), no mesmo estilo de um sublabel.
-- Reduzir paddings internos do card.
+| Parcela (`descricao`) | previsao_nf |
+|---|---|
+| `inicio` | data_aprovacao |
+| `minuta` | data_aprovacao + 30 dias corridos |
+| `assinatura` | data_aprovacao + 60 dias corridos |
 
-### 3. Substituir checkboxes por dropdown + campo tipo "Observações"
-- Trocar a lista de `<label><Checkbox/></label>` por um **dropdown multi-seleção** usando `Popover` + `Command` (`CommandInput`, `CommandList`, `CommandItem`), o mesmo padrão usado em `ContactCombobox.tsx` / `ReceivableDetailDialog`.
-  - O dropdown lista todos os CNPJs secundários do cliente (`razão social — CNPJ`).
-  - Cada item exibe um check à esquerda quando já está vinculado ao contato.
-  - Clicar em um item alterna o vínculo (mesma lógica de `upsertVinculadoContact` / `removeVinculadoContact` já existente).
-- Abaixo do dropdown, exibir um **campo somente-leitura no estilo do `Textarea` de Observações** (mesma borda, padding, `min-h`) contendo os nomes selecionados como **chips/badges**:
-  - Cada chip mostra a razão social (ou CNPJ se faltar razão social).
-  - O símbolo "×" aparece **apenas no hover do chip** (via `opacity-0 group-hover:opacity-100`, transição suave). Clicar no "×" remove o vínculo (chama o mesmo `toggle` com `checked=false`).
-  - Quando vazio, exibe placeholder discreto: "Nenhuma empresa secundária vinculada".
+Se a proposta não tiver `data_aprovacao` preenchida no momento do ganho, deixar `previsao_nf` em branco (sem fallback para `now()`).
 
-### 4. Preservar a opção "Adicionar novo CNPJ"
-- Manter o bloco "Adicionar nova empresa secundária" abaixo, com a mesma aparência simplificada (borda tracejada, label pequeno). A lógica de `lookupCnpj` + criação continua igual.
+### 1. Atualizar `src/lib/syncReceivables.ts`
+- Adicionar helper `computePrevisaoNf(descricao, dataAprovacao)` que retorna a data conforme regra acima (string ISO `YYYY-MM-DD`) ou `null`.
+- Em `generateReceivables`, receber também `data_aprovacao` da proposta. Quando `isEtapas`, preencher `previsao_nf` com o resultado do helper em vez de `null`.
+- Atualizar a chamada em `src/lib/syncProposalProject.ts` para passar `data_aprovacao` no payload (tanto no caminho "created" quanto "reactivated").
 
-### Detalhes técnicos
-- Nenhuma alteração de dados/backend; toda a lógica de `cnpjs_vinculados` em `useUpdateClient` permanece.
-- Reutilizar `Command`/`Popover` de `@/components/ui` (já importados em outros pontos do projeto).
-- Manter `useUpdateClient`, `lookupCnpj`, `upsertVinculadoContact`, `removeVinculadoContact` como estão.
+### 2. Atualizar o trigger SQL `sync_proposal_to_project_receivables`
+Via migration: replicar a mesma lógica no INSERT de receivables dentro do trigger, usando `NEW.data_aprovacao` e `(NEW.data_aprovacao + interval 'N days')::date` conforme `descricao` da parcela. Mantém o comportamento atual para `payment_type` não-etapas.
+
+### 3. Backfill retroativo (apenas parcelas não lançadas)
+Via migration (UPDATE em uma chamada à ferramenta de migração — é uma alteração pontual de dados que acompanha a regra):
+
+```sql
+UPDATE receivables r
+SET previsao_nf = CASE
+  WHEN r.description = 'inicio'     THEN p.data_aprovacao
+  WHEN r.description = 'minuta'     THEN (p.data_aprovacao + interval '30 days')::date
+  WHEN r.description = 'assinatura' THEN (p.data_aprovacao + interval '60 days')::date
+END
+FROM proposals p
+WHERE r.proposal_id = p.id
+  AND p.status = 'ganha'
+  AND p.payment_type = 'etapas'
+  AND p.data_aprovacao IS NOT NULL
+  AND r.status <> 'lancado'
+  AND r.description IN ('inicio','minuta','assinatura');
+```
+
+Parcelas já com status `lancado` (e também `pago`/`cancelado`/`pdd` por segurança) **não** são alteradas — limitamos o UPDATE a `status NOT IN ('lancado','pago','cancelado','pdd')` para evitar mexer em qualquer parcela já processada.
+
+### Sem mudanças em
+- UI de Contas a Receber (campo `previsao_nf` continua editável manualmente como hoje).
+- Cálculo de `due_date` / lógica de `lancado` (`lancadoDefaults.ts`).
+- Propostas por prazo (`payment_type ≠ "etapas"`).
