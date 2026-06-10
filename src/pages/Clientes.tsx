@@ -293,7 +293,9 @@ export default function Clientes() {
                           navigate(`/projetos?open=${c.last_project_id}`);
                         }}
                       >
-                        {c.last_project_title ?? "—"}
+                        {c.last_project_title
+                          ? `${c.last_project_number ?? ""} - ${c.last_project_title}`
+                          : "—"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{c.last_proposal_date ? formatDate(c.last_proposal_date) : "—"}</TableCell>
