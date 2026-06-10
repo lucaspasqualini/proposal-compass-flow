@@ -100,10 +100,20 @@ export default function Clientes() {
     }
   };
 
-  // Summary stats
-  const totalClients = clients?.length ?? 0;
-  const activeClients = clients?.filter((c) => c.is_active).length ?? 0;
-  const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
+  // Summary stats - based on current filters
+  const baseFiltered = useMemo(() => {
+    if (!clients) return [];
+    const s = search.toLowerCase();
+    let list = clients.filter(
+      (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
+    );
+    if (filterSetor !== "all") list = list.filter((c) => (c as any).setor === filterSetor);
+    return list;
+  }, [clients, search, filterSetor]);
+
+  const totalClients = baseFiltered.length;
+  const activeClients = baseFiltered.filter((c) => c.is_active).length;
+  const totalRevenue = baseFiltered.reduce((s, c) => s + c.won_value, 0);
   
 
   return (
