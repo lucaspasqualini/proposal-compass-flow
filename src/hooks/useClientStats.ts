@@ -23,6 +23,7 @@ export interface ClientWithStats {
   last_proposal_id: string | null;
   last_project_id: string | null;
   last_project_title: string | null;
+  last_project_number: string | null;
   is_active: boolean;
 }
 
