@@ -12,10 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, FolderKanban, TrendingUp, AlertCircle, CheckCircle2, Download } from "lucide-react";
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Building2, FileText, TrendingUp, CheckCircle2, Download } from "lucide-react";
 import { exportToExcel } from "@/lib/exportExcel";
 import { Badge } from "@/components/ui/badge";
 import { ClientLogo } from "@/components/ClientLogo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SECTORS_MAP } from "@/lib/sectors";
 import { useUserRole } from "@/hooks/useUserRole";
 
 type SortKey = "name" | "proposal_count" | "project_count" | "won_value" | "last_proposal_date";
@@ -33,7 +35,8 @@ export default function Clientes() {
   const [sortKey, setSortKey] = usePersistedState<SortKey>("clientes:sortKey", "name");
   const [sortDir, setSortDir] = usePersistedState<SortDir>("clientes:sortDir", "asc");
   const [showNew, setShowNew] = useState(false);
-  const [filterCnpj, setFilterCnpj] = usePersistedState<"all" | "sem_cnpj" | "com_cnpj">("clientes:filterCnpj", "all");
+  const [filterActivity, setFilterActivity] = usePersistedState<"all" | "ativos" | "inativos">("clientes:filterActivity", "all");
+  const [filterSetor, setFilterSetor] = usePersistedState<string>("clientes:filterSetor", "all");
   const [newName, setNewName] = useState("");
   const [newCnpj, setNewCnpj] = useState("");
 
@@ -53,8 +56,9 @@ export default function Clientes() {
     let list = clients.filter(
       (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
     );
-    if (filterCnpj === "sem_cnpj") list = list.filter((c) => !c.cnpj);
-    if (filterCnpj === "com_cnpj") list = list.filter((c) => !!c.cnpj);
+    if (filterActivity === "ativos") list = list.filter((c) => c.is_active);
+    if (filterActivity === "inativos") list = list.filter((c) => !c.is_active);
+    if (filterSetor !== "all") list = list.filter((c) => (c as any).setor === filterSetor);
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
@@ -71,7 +75,7 @@ export default function Clientes() {
       return sortDir === "asc" ? va - vb : vb - va;
     });
     return list;
-  }, [clients, search, sortKey, sortDir, filterCnpj]);
+  }, [clients, search, sortKey, sortDir, filterActivity, filterSetor]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -100,7 +104,7 @@ export default function Clientes() {
   const totalClients = clients?.length ?? 0;
   const activeClients = clients?.filter((c) => c.is_active).length ?? 0;
   const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
-  const semCnpj = clients?.filter((c) => !c.cnpj).length ?? 0;
+  
 
   return (
     <div className="space-y-6">
@@ -165,36 +169,46 @@ export default function Clientes() {
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
-            variant={filterCnpj === "all" ? "default" : "outline"}
+            variant={filterActivity === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilterCnpj("all")}
+            onClick={() => setFilterActivity("all")}
           >
             Todos ({totalClients})
           </Button>
           <Button
-            variant={filterCnpj === "sem_cnpj" ? "destructive" : "outline"}
+            variant={filterActivity === "ativos" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilterCnpj("sem_cnpj")}
-          >
-            <AlertCircle className="h-3 w-3 mr-1" />
-            Sem CNPJ ({semCnpj})
-          </Button>
-          <Button
-            variant={filterCnpj === "com_cnpj" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterCnpj("com_cnpj")}
+            onClick={() => setFilterActivity("ativos")}
           >
             <CheckCircle2 className="h-3 w-3 mr-1" />
-            Com CNPJ ({totalClients - semCnpj})
+            Ativos ({activeClients})
+          </Button>
+          <Button
+            variant={filterActivity === "inativos" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterActivity("inativos")}
+          >
+            Inativos ({totalClients - activeClients})
           </Button>
         </div>
+        <Select value={filterSetor} onValueChange={setFilterSetor}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Setor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os setores</SelectItem>
+            {Object.keys(SECTORS_MAP).sort((a, b) => a.localeCompare(b, "pt-BR")).map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -210,13 +224,13 @@ export default function Clientes() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
                       <span className="flex items-center">Empresa <SortIcon col="name" /></span>
                     </TableHead>
-                    <TableHead className="hidden md:table-cell">CNPJ</TableHead>
                     <TableHead className="cursor-pointer select-none text-center" onClick={() => toggleSort("proposal_count")}>
                       <span className="flex items-center justify-center">Propostas <SortIcon col="proposal_count" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none text-center hidden sm:table-cell" onClick={() => toggleSort("project_count")}>
                       <span className="flex items-center justify-center">Projetos <SortIcon col="project_count" /></span>
                     </TableHead>
+                    <TableHead className="hidden md:table-cell">Último Projeto</TableHead>
                     <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("won_value")}>
                       <span className="flex items-center">Valor Ganho <SortIcon col="won_value" /></span>
                     </TableHead>
@@ -243,21 +257,34 @@ export default function Clientes() {
                         />
                       </TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {c.cnpj ? (
-                          <span className="flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                            {c.cnpj}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-orange-500">
-                            <AlertCircle className="h-3 w-3" />
-                            Pendente
-                          </span>
-                        )}
+                      <TableCell
+                        className={`text-center ${c.last_proposal_id ? "text-primary hover:underline" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (c.last_proposal_id) navigate(`/propostas?open=${c.last_proposal_id}`);
+                        }}
+                      >
+                        {c.proposal_count}
                       </TableCell>
-                      <TableCell className="text-center">{c.proposal_count}</TableCell>
-                      <TableCell className="text-center hidden sm:table-cell">{c.project_count}</TableCell>
+                      <TableCell
+                        className={`text-center hidden sm:table-cell ${c.last_project_id ? "text-primary hover:underline" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (c.last_project_id) navigate(`/projetos?open=${c.last_project_id}`);
+                        }}
+                      >
+                        {c.project_count}
+                      </TableCell>
+                      <TableCell
+                        className={`hidden md:table-cell text-sm ${c.last_project_id ? "text-primary hover:underline" : "text-muted-foreground"}`}
+                        onClick={(e) => {
+                          if (!c.last_project_id) return;
+                          e.stopPropagation();
+                          navigate(`/projetos?open=${c.last_project_id}`);
+                        }}
+                      >
+                        {c.last_project_title ?? "—"}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{c.last_proposal_date ? formatDate(c.last_proposal_date) : "—"}</TableCell>
                       <TableCell>
