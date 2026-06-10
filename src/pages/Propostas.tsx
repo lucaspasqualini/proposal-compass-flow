@@ -45,7 +45,10 @@ export default function Propostas() {
   const [sortKey, setSortKey] = usePersistedState<SortKey>("propostas:sortKey", "status");
   const [sortDir, setSortDir] = usePersistedState<SortDir>("propostas:sortDir", "asc");
   const [hidePerdida, setHidePerdida] = usePersistedState("propostas:hidePerdida", false);
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("open");
+  });
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePersistedState<number>("propostas:pageSize", 100);
