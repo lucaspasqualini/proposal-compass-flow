@@ -169,36 +169,46 @@ export default function Clientes() {
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar por nome ou CNPJ..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
-            variant={filterCnpj === "all" ? "default" : "outline"}
+            variant={filterActivity === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilterCnpj("all")}
+            onClick={() => setFilterActivity("all")}
           >
             Todos ({totalClients})
           </Button>
           <Button
-            variant={filterCnpj === "sem_cnpj" ? "destructive" : "outline"}
+            variant={filterActivity === "ativos" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilterCnpj("sem_cnpj")}
-          >
-            <AlertCircle className="h-3 w-3 mr-1" />
-            Sem CNPJ ({semCnpj})
-          </Button>
-          <Button
-            variant={filterCnpj === "com_cnpj" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterCnpj("com_cnpj")}
+            onClick={() => setFilterActivity("ativos")}
           >
             <CheckCircle2 className="h-3 w-3 mr-1" />
-            Com CNPJ ({totalClients - semCnpj})
+            Ativos ({activeClients})
+          </Button>
+          <Button
+            variant={filterActivity === "inativos" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterActivity("inativos")}
+          >
+            Inativos ({totalClients - activeClients})
           </Button>
         </div>
+        <Select value={filterSetor} onValueChange={setFilterSetor}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Setor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os setores</SelectItem>
+            {Object.keys(SECTORS_MAP).sort((a, b) => a.localeCompare(b, "pt-BR")).map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -214,13 +224,13 @@ export default function Clientes() {
                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
                       <span className="flex items-center">Empresa <SortIcon col="name" /></span>
                     </TableHead>
-                    <TableHead className="hidden md:table-cell">CNPJ</TableHead>
                     <TableHead className="cursor-pointer select-none text-center" onClick={() => toggleSort("proposal_count")}>
                       <span className="flex items-center justify-center">Propostas <SortIcon col="proposal_count" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none text-center hidden sm:table-cell" onClick={() => toggleSort("project_count")}>
                       <span className="flex items-center justify-center">Projetos <SortIcon col="project_count" /></span>
                     </TableHead>
+                    <TableHead className="hidden md:table-cell">Último Projeto</TableHead>
                     <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("won_value")}>
                       <span className="flex items-center">Valor Ganho <SortIcon col="won_value" /></span>
                     </TableHead>
@@ -247,21 +257,34 @@ export default function Clientes() {
                         />
                       </TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {c.cnpj ? (
-                          <span className="flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                            {c.cnpj}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-orange-500">
-                            <AlertCircle className="h-3 w-3" />
-                            Pendente
-                          </span>
-                        )}
+                      <TableCell
+                        className={`text-center ${c.last_proposal_id ? "text-primary hover:underline" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (c.last_proposal_id) navigate(`/propostas?open=${c.last_proposal_id}`);
+                        }}
+                      >
+                        {c.proposal_count}
                       </TableCell>
-                      <TableCell className="text-center">{c.proposal_count}</TableCell>
-                      <TableCell className="text-center hidden sm:table-cell">{c.project_count}</TableCell>
+                      <TableCell
+                        className={`text-center hidden sm:table-cell ${c.last_project_id ? "text-primary hover:underline" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (c.last_project_id) navigate(`/projetos?open=${c.last_project_id}`);
+                        }}
+                      >
+                        {c.project_count}
+                      </TableCell>
+                      <TableCell
+                        className={`hidden md:table-cell text-sm ${c.last_project_id ? "text-primary hover:underline" : "text-muted-foreground"}`}
+                        onClick={(e) => {
+                          if (!c.last_project_id) return;
+                          e.stopPropagation();
+                          navigate(`/projetos?open=${c.last_project_id}`);
+                        }}
+                      >
+                        {c.last_project_title ?? "—"}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{c.last_proposal_date ? formatDate(c.last_proposal_date) : "—"}</TableCell>
                       <TableCell>
