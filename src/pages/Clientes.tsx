@@ -58,7 +58,7 @@ export default function Clientes() {
     );
     if (filterActivity === "ativos") list = list.filter((c) => c.is_active);
     if (filterActivity === "inativos") list = list.filter((c) => !c.is_active);
-    if (filterSetor !== "all") list = list.filter((c) => (c as any).setor === filterSetor);
+    if (filterSetor !== "all") list = list.filter((c) => c.setor === filterSetor);
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
@@ -100,10 +100,20 @@ export default function Clientes() {
     }
   };
 
-  // Summary stats
-  const totalClients = clients?.length ?? 0;
-  const activeClients = clients?.filter((c) => c.is_active).length ?? 0;
-  const totalRevenue = clients?.reduce((s, c) => s + c.won_value, 0) ?? 0;
+  // Summary stats - based on current filters
+  const baseFiltered = useMemo(() => {
+    if (!clients) return [];
+    const s = search.toLowerCase();
+    let list = clients.filter(
+      (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
+    );
+    if (filterSetor !== "all") list = list.filter((c) => c.setor === filterSetor);
+    return list;
+  }, [clients, search, filterSetor]);
+
+  const totalClients = baseFiltered.length;
+  const activeClients = baseFiltered.filter((c) => c.is_active).length;
+  const totalRevenue = baseFiltered.reduce((s, c) => s + c.won_value, 0);
   
 
   return (
@@ -283,7 +293,9 @@ export default function Clientes() {
                           navigate(`/projetos?open=${c.last_project_id}`);
                         }}
                       >
-                        {c.last_project_title ?? "—"}
+                        {c.last_project_title
+                          ? `${c.last_project_number ?? ""} - ${c.last_project_title}`
+                          : "—"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{c.won_value > 0 ? formatCurrency(c.won_value) : "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{c.last_proposal_date ? formatDate(c.last_proposal_date) : "—"}</TableCell>
