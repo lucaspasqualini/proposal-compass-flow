@@ -58,7 +58,7 @@ export default function Clientes() {
     );
     if (filterActivity === "ativos") list = list.filter((c) => c.is_active);
     if (filterActivity === "inativos") list = list.filter((c) => !c.is_active);
-    if (filterSetor !== "all") list = list.filter((c) => (c as any).setor === filterSetor);
+    if (filterSetor !== "all") list = list.filter((c) => c.setor === filterSetor);
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
