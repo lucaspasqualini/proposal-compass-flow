@@ -39,7 +39,7 @@ export function useClientsWithStats() {
       );
 
       const projects = await fetchAllPaginated<any>(() =>
-        supabase.from("projects").select("id, title, client_id, etapa, etapa_assinado_at, created_at")
+        supabase.from("projects").select("id, title, project_number, client_id, etapa, etapa_assinado_at, created_at")
       );
 
       const proposalsByClient = new Map<string, typeof proposals>();
