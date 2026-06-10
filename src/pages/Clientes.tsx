@@ -56,8 +56,9 @@ export default function Clientes() {
     let list = clients.filter(
       (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
     );
-    if (filterCnpj === "sem_cnpj") list = list.filter((c) => !c.cnpj);
-    if (filterCnpj === "com_cnpj") list = list.filter((c) => !!c.cnpj);
+    if (filterActivity === "ativos") list = list.filter((c) => c.is_active);
+    if (filterActivity === "inativos") list = list.filter((c) => !c.is_active);
+    if (filterSetor !== "all") list = list.filter((c) => (c as any).setor === filterSetor);
     list.sort((a, b) => {
       let va: any, vb: any;
       switch (sortKey) {
@@ -74,7 +75,7 @@ export default function Clientes() {
       return sortDir === "asc" ? va - vb : vb - va;
     });
     return list;
-  }, [clients, search, sortKey, sortDir, filterCnpj]);
+  }, [clients, search, sortKey, sortDir, filterActivity, filterSetor]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
