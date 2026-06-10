@@ -90,6 +90,7 @@ export function useClientsWithStats() {
           last_proposal_id: lastProposal?.id ?? null,
           last_project_id: lastProject?.id ?? null,
           last_project_title: lastProject?.title ?? null,
+          last_project_number: lastProject?.project_number ?? null,
           is_active: hasRecent,
         };
       });
