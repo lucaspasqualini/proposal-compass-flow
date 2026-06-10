@@ -92,7 +92,10 @@ export default function Projetos() {
   };
   const [filterSearch, setFilterSearch] = useState<Partial<Record<SortKey, string>>>({});
   const [activeFilter, setActiveFilter] = useState<SortKey | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("open");
+  });
   const [search, setSearch] = usePersistedState("projetos:search", "");
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistedState<string>("projetos:status", "all");
