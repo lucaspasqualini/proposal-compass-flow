@@ -11,12 +11,18 @@ export interface ClientWithStats {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  setor: string | null;
+  subsetor: string | null;
+  uf: string | null;
   created_at: string;
   proposal_count: number;
   project_count: number;
   total_value: number;
   won_value: number;
   last_proposal_date: string | null;
+  last_proposal_id: string | null;
+  last_project_id: string | null;
+  last_project_title: string | null;
   is_active: boolean;
 }
 
@@ -29,11 +35,11 @@ export function useClientsWithStats() {
       );
 
       const proposals = await fetchAllPaginated<any>(() =>
-        supabase.from("proposals").select("client_id, status, value, created_at")
+        supabase.from("proposals").select("id, client_id, status, value, created_at")
       );
 
       const projects = await fetchAllPaginated<any>(() =>
-        supabase.from("projects").select("client_id, etapa, etapa_assinado_at")
+        supabase.from("projects").select("id, title, client_id, etapa, etapa_assinado_at, created_at")
       );
 
       const proposalsByClient = new Map<string, typeof proposals>();
@@ -50,24 +56,28 @@ export function useClientsWithStats() {
         projectsByClient.get(p.client_id)!.push(p);
       }
 
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
       return (clients ?? []).map((c): ClientWithStats => {
-        const cp = proposalsByClient.get(c.id) ?? [];
-        const cProjects = projectsByClient.get(c.id) ?? [];
+        const cp = [...(proposalsByClient.get(c.id) ?? [])].sort((a, b) =>
+          (b.created_at ?? "").localeCompare(a.created_at ?? "")
+        );
+        const cProjects = [...(projectsByClient.get(c.id) ?? [])].sort((a, b) =>
+          (b.created_at ?? "").localeCompare(a.created_at ?? "")
+        );
         const wonValues = cp
           .filter((p) => p.status === "ganha")
           .reduce((sum, p) => sum + (Number(p.value) || 0), 0);
         const totalValue = cp.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
-        const dates = cp.map((p) => p.created_at).sort();
 
-        const hasActiveProposal = cp.some((p) => p.status === "em_elaboracao" || p.status === "em_negociacao");
-        const hasActiveProject = cProjects.some((p) => p.etapa === "iniciado" || p.etapa === "minuta");
-        const hasRecentSigned = cProjects.some((p) => {
-          if (p.etapa !== "assinado" || !(p as any).etapa_assinado_at) return false;
-          return new Date((p as any).etapa_assinado_at) >= threeMonthsAgo;
-        });
+        const lastProposal = cp[0] ?? null;
+        const lastProject = cProjects[0] ?? null;
+
+        // Ativo = tem proposta ou projeto criado nos últimos 6 meses
+        const hasRecent =
+          cp.some((p) => p.created_at && new Date(p.created_at) >= sixMonthsAgo) ||
+          cProjects.some((p) => p.created_at && new Date(p.created_at) >= sixMonthsAgo);
 
         return {
           ...c,
@@ -75,8 +85,11 @@ export function useClientsWithStats() {
           project_count: cProjects.length,
           total_value: totalValue,
           won_value: wonValues,
-          last_proposal_date: dates.length ? dates[dates.length - 1] : null,
-          is_active: hasActiveProposal || hasActiveProject || hasRecentSigned,
+          last_proposal_date: lastProposal?.created_at ?? null,
+          last_proposal_id: lastProposal?.id ?? null,
+          last_project_id: lastProject?.id ?? null,
+          last_project_title: lastProject?.title ?? null,
+          is_active: hasRecent,
         };
       });
     },
