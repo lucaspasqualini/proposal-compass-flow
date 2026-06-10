@@ -35,7 +35,8 @@ export default function Clientes() {
   const [sortKey, setSortKey] = usePersistedState<SortKey>("clientes:sortKey", "name");
   const [sortDir, setSortDir] = usePersistedState<SortDir>("clientes:sortDir", "asc");
   const [showNew, setShowNew] = useState(false);
-  const [filterCnpj, setFilterCnpj] = usePersistedState<"all" | "sem_cnpj" | "com_cnpj">("clientes:filterCnpj", "all");
+  const [filterActivity, setFilterActivity] = usePersistedState<"all" | "ativos" | "inativos">("clientes:filterActivity", "all");
+  const [filterSetor, setFilterSetor] = usePersistedState<string>("clientes:filterSetor", "all");
   const [newName, setNewName] = useState("");
   const [newCnpj, setNewCnpj] = useState("");
 
