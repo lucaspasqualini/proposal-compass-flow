@@ -107,7 +107,7 @@ export default function Clientes() {
     let list = clients.filter(
       (c) => c.name.toLowerCase().includes(s) || (c.cnpj ?? "").toLowerCase().includes(s)
     );
-    if (filterSetor !== "all") list = list.filter((c) => (c as any).setor === filterSetor);
+    if (filterSetor !== "all") list = list.filter((c) => c.setor === filterSetor);
     return list;
   }, [clients, search, filterSetor]);
 
