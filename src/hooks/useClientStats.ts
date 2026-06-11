@@ -40,7 +40,7 @@ export function useClientsWithStats() {
       );
 
       const projects = await fetchAllPaginated<any>(() =>
-        supabase.from("projects").select("id, title, project_number, client_id, etapa, etapa_assinado_at, created_at")
+        supabase.from("projects").select("id, title, client_id, etapa, etapa_assinado_at, created_at, proposals(proposal_number)")
       );
 
       const proposalsByClient = new Map<string, typeof proposals>();
@@ -90,7 +90,7 @@ export function useClientsWithStats() {
           last_proposal_id: lastProposal?.id ?? null,
           last_project_id: lastProject?.id ?? null,
           last_project_title: lastProject?.title ?? null,
-          last_project_number: lastProject?.project_number ?? null,
+          last_project_number: lastProject?.proposals?.proposal_number ?? null,
           is_active: hasRecent,
         };
       });
